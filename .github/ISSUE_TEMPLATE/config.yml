@@ -1,0 +1,7 @@
+blank_issues_enabled: false
+
+# Uncomment and replace with a real URL when the coordination channel is fixed.
+# contact_links:
+#   - name: Coordination chat
+#     url: https://replace-me.invalid/coordination-chat
+#     about: Use this for cross-coder coordination and blockers that do not yet belong to a concrete issue.
