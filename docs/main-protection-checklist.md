@@ -48,3 +48,37 @@
 2. PR в `main` не мерджится без approval
 3. PR по paths из `CODEOWNERS` запрашивает корректный review
 4. после S0-04 PR не мерджится без required checks
+## Текущее состояние репозитория на 2026-04-15
+
+Уже включено и подтверждено практической проверкой:
+- merge в main только через Pull Request
+- direct push в main заблокирован
+- conversation resolution required
+- linear history required
+- force push disabled
+- branch deletion disabled
+- правила применяются к admin
+
+Временно отложено до появления хотя бы еще одного write-capable reviewer:
+- required approvals = 1
+- require review from Code Owners
+- require approval of the most recent reviewable push
+- dismiss stale approvals
+
+Причина:
+- сейчас в репозитории только один подтвержденный write-capable GitHub account, поэтому включение review-gates немедленно заблокирует любой дальнейший merge flow
+
+Отложено до S0-04:
+- required status checks
+- branch must be up to date before merge
+- exact CI checks:
+  - ci / restore
+  - ci / build
+  - ci / unit-tests
+  - ci / integration-tests
+  - ci / format
+
+Operational note:
+- protection для main уже применена и проверена отдельным push-test
+- review-gates включаются после появления дополнительного reviewer account
+- required checks включаются после подъема CI в S0-04
