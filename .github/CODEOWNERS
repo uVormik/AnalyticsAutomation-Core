@@ -1,23 +1,23 @@
 # Replace placeholder usernames below with real GitHub usernames
 # before enabling "Require review from Code Owners".
 
-*                                       @replace-with-platform-owner
+*                                       @uVormik
 
-/.github/                               @replace-with-platform-owner
-/.github/CODEOWNERS                     @replace-with-platform-owner
-/.github/workflows/                     @replace-with-platform-owner
+/.github/                               @uVormik
+/.github/CODEOWNERS                     @uVormik
+/.github/workflows/                     @uVormik
 
-/README.md                              @replace-with-platform-owner
-/docs/adr/                              @replace-with-platform-owner
-/docs/repo-workflow.md                  @replace-with-platform-owner
-/docs/main-protection-checklist.md      @replace-with-platform-owner
-/infra/                                 @replace-with-platform-owner
+/README.md                              @uVormik
+/docs/adr/                              @uVormik
+/docs/repo-workflow.md                  @uVormik
+/docs/main-protection-checklist.md      @uVormik
+/infra/                                 @uVormik
 
-/src/App.Api/                           @replace-with-platform-owner
-/src/App.Worker/                        @replace-with-platform-owner
-/src/BuildingBlocks/                    @replace-with-platform-owner
-/src/Modules/                           @replace-with-platform-owner
+/src/App.Api/                           @uVormik
+/src/App.Worker/                        @uVormik
+/src/BuildingBlocks/                    @uVormik
+/src/Modules/                           @uVormik
 
-/src/App.Web/                           @replace-with-web-owner
-/src/App.UI.Shared/                     @replace-with-web-owner
-/src/App.Mobile.Android/                @replace-with-mobile-owner
+/src/App.Web/                           @uVormik
+/src/App.UI.Shared/                     @uVormik
+/src/App.Mobile.Android/                @uVormik
