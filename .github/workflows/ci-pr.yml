@@ -1,0 +1,207 @@
+name: ci
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  SOLUTION_PATH: AnalyticsAutomation-Core.sln
+  DOTNET_VERSION: 10.0.x
+  JAVA_VERSION: '17'
+  JAVA_DISTRIBUTION: temurin
+  ANDROID_HOME: C:\Android\android-sdk
+  ANDROID_SDK_ROOT: C:\Android\android-sdk
+
+jobs:
+  restore:
+    name: ci / restore
+    runs-on: windows-2022
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - name: Install MAUI workload
+        shell: pwsh
+        run: |
+          dotnet workload install maui --skip-manifest-update
+
+      - name: Restore solution
+        shell: pwsh
+        run: |
+          dotnet restore $env:SOLUTION_PATH `
+            -p:AndroidSdkDirectory="$env:ANDROID_SDK_ROOT" `
+            -p:JavaSdkDirectory="$env:JAVA_HOME"
+
+  build:
+    name: ci / build
+    runs-on: windows-2022
+    needs: restore
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - name: Install MAUI workload
+        shell: pwsh
+        run: |
+          dotnet workload install maui --skip-manifest-update
+
+      - name: Build solution
+        shell: pwsh
+        run: |
+          dotnet build $env:SOLUTION_PATH `
+            -nologo `
+            -v minimal `
+            -p:AndroidSdkDirectory="$env:ANDROID_SDK_ROOT" `
+            -p:JavaSdkDirectory="$env:JAVA_HOME"
+
+  unit_tests:
+    name: ci / unit-tests
+    runs-on: windows-2022
+    needs: build
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Detect unit test projects
+        id: detect_unit
+        shell: pwsh
+        run: |
+          $projects = Get-ChildItem -Path 'tests/Unit' -Recurse -Filter *.csproj -ErrorAction SilentlyContinue
+          if ($projects) {
+            "has_tests=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          }
+          else {
+            "has_tests=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          }
+
+      - name: Run unit tests
+        if: steps.detect_unit.outputs.has_tests == 'true'
+        shell: pwsh
+        run: |
+          $projects = Get-ChildItem -Path 'tests/Unit' -Recurse -Filter *.csproj | Select-Object -ExpandProperty FullName
+          foreach ($project in $projects) {
+            dotnet test $project -nologo -v minimal
+          }
+
+      - name: No unit tests yet
+        if: steps.detect_unit.outputs.has_tests != 'true'
+        shell: pwsh
+        run: |
+          Write-Host "No unit test projects yet. S0-04 skeleton path accepted."
+
+  integration_tests:
+    name: ci / integration-tests
+    runs-on: windows-2022
+    needs: build
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Detect integration test projects
+        id: detect_integration
+        shell: pwsh
+        run: |
+          $projects = Get-ChildItem -Path 'tests/Integration' -Recurse -Filter *.csproj -ErrorAction SilentlyContinue
+          if ($projects) {
+            "has_tests=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          }
+          else {
+            "has_tests=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          }
+
+      - name: Run integration tests
+        if: steps.detect_integration.outputs.has_tests == 'true'
+        shell: pwsh
+        run: |
+          $projects = Get-ChildItem -Path 'tests/Integration' -Recurse -Filter *.csproj | Select-Object -ExpandProperty FullName
+          foreach ($project in $projects) {
+            dotnet test $project -nologo -v minimal
+          }
+
+      - name: No integration tests yet
+        if: steps.detect_integration.outputs.has_tests != 'true'
+        shell: pwsh
+        run: |
+          Write-Host "No integration test projects yet. S0-04 skeleton path accepted."
+
+  format:
+    name: ci / format
+    runs-on: windows-2022
+    needs: restore
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: ${{ env.JAVA_DISTRIBUTION }}
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - name: Install MAUI workload
+        shell: pwsh
+        run: |
+          dotnet workload install maui --skip-manifest-update
+
+      - name: Restore solution for format
+        shell: pwsh
+        run: |
+          dotnet restore $env:SOLUTION_PATH `
+            -p:AndroidSdkDirectory="$env:ANDROID_SDK_ROOT" `
+            -p:JavaSdkDirectory="$env:JAVA_HOME"
+
+      - name: Verify formatting baseline
+        shell: pwsh
+        run: |
+          dotnet format whitespace $env:SOLUTION_PATH --verify-no-changes --no-restore
