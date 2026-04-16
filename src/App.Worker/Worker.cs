@@ -1,16 +1,36 @@
+using System.Collections.Generic;
+
+using App.Worker.Queues;
+
 namespace App.Worker;
 
-public class Worker(ILogger<Worker> logger) : BackgroundService
+public sealed class Worker(
+    ILogger<Worker> logger,
+    IBackgroundCommandQueue queue) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        while (!stoppingToken.IsCancellationRequested)
+        logger.LogInformation("App.Worker execution loop started.");
+
+        try
         {
-            if (logger.IsEnabled(LogLevel.Information))
+            while (!stoppingToken.IsCancellationRequested)
             {
-                logger.LogInformation("Worker running at: {time}", DateTimeOffset.Now);
+                var commandName = await queue.DequeueAsync(stoppingToken);
+
+                using var _ = logger.BeginScope(new Dictionary<string, object?>
+                {
+                    ["CommandName"] = commandName
+                });
+
+                logger.LogInformation("Dequeued background command.");
+                await Task.Delay(TimeSpan.FromSeconds(1), stoppingToken);
+                logger.LogInformation("Background command processed.");
             }
-            await Task.Delay(1000, stoppingToken);
+        }
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        {
+            logger.LogInformation("App.Worker stopping by cancellation.");
         }
     }
 }
