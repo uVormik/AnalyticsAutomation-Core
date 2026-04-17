@@ -16,6 +16,7 @@ using Modules.Auth;
 using Modules.Auth.Services;
 using Modules.Devices;
 using Modules.GroupTree;
+using Modules.WebsiteIntegration;
 
 var startedAtUtc = DateTimeOffset.UtcNow;
 
@@ -46,6 +47,7 @@ builder.Services.AddAuditObservabilityFoundation();
 builder.Services.AddAuthModule(builder.Configuration, builder.Environment);
 builder.Services.AddGroupTreeModule(builder.Configuration, builder.Environment);
 builder.Services.AddDevicesModule(builder.Configuration);
+builder.Services.AddWebsiteIntegrationModule(builder.Configuration);
 
 builder.Services.AddHealthChecks()
     .AddCheck(
@@ -59,6 +61,10 @@ builder.Services.AddHealthChecks()
     .AddCheck(
         "audit_foundation",
         () => HealthCheckResult.Healthy("Audit service baseline ready."),
+        tags: new[] { "ready" })
+    .AddCheck(
+        "site_gateway",
+        () => HealthCheckResult.Healthy("Website integration stub gateway ready."),
         tags: new[] { "ready" })
     .AddDbContextCheck<PlatformDbContext>(
         name: "postgresql",
@@ -287,6 +293,8 @@ app.MapPost(
             });
         }
     });
+
+app.MapWebsiteIntegrationEndpoints();
 
 app.Logger.LogInformation(
     "App.Api started. Environment={Environment} StartedAtUtc={StartedAtUtc} Database={Database}",
