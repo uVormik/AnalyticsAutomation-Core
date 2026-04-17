@@ -1,4 +1,5 @@
 using BuildingBlocks.Infrastructure.Persistence.Entities;
+using BuildingBlocks.Infrastructure.Persistence.Entities.Audit;
 using BuildingBlocks.Infrastructure.Persistence.Entities.Auth;
 using BuildingBlocks.Infrastructure.Persistence.Entities.Devices;
 using BuildingBlocks.Infrastructure.Persistence.Entities.GroupTree;
@@ -23,6 +24,8 @@ public sealed class PlatformDbContext(DbContextOptions<PlatformDbContext> option
     public DbSet<GroupAdminAssignment> GroupAdminAssignments => Set<GroupAdminAssignment>();
 
     public DbSet<DeviceRegistration> DeviceRegistrations => Set<DeviceRegistration>();
+
+    public DbSet<AuditRecord> AuditRecords => Set<AuditRecord>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
