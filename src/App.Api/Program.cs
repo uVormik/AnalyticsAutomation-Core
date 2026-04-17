@@ -4,6 +4,7 @@ using System.Runtime.InteropServices;
 using App.Api.Middleware;
 
 using BuildingBlocks.Infrastructure.AssemblyMetadata;
+using BuildingBlocks.Infrastructure.Persistence;
 
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -18,12 +19,28 @@ builder.Logging.AddJsonConsole(options =>
     options.IncludeScopes = true;
 });
 
+var databaseOptions = new DatabaseOptions
+{
+    ConnectionString = builder.Configuration.GetConnectionString("MainDatabase"),
+    Host = builder.Configuration["Database:Host"] ?? DatabaseOptions.DefaultHost,
+    Port = int.TryParse(builder.Configuration["Database:Port"], out var databasePort)
+        ? databasePort
+        : DatabaseOptions.DefaultPort,
+    Database = builder.Configuration["Database:Database"] ?? DatabaseOptions.DefaultDatabase,
+    Username = builder.Configuration["Database:Username"] ?? DatabaseOptions.DefaultUsername,
+    PasswordFilePath = builder.Configuration["Database:PasswordFilePath"]
+};
+
 builder.Services.AddProblemDetails();
+builder.Services.AddPlatformPersistence(databaseOptions);
 builder.Services.AddHealthChecks()
     .AddCheck(
         "self",
         () => HealthCheckResult.Healthy("App.Api self-check passed."),
-        tags: ["ready"]);
+        tags: new[] { "ready" })
+    .AddDbContextCheck<PlatformDbContext>(
+        name: "postgresql",
+        tags: new[] { "ready" });
 
 var app = builder.Build();
 
@@ -78,12 +95,14 @@ app.MapGet(
         version = ApplicationVersionReader.GetVersion<Program>(),
         framework = RuntimeInformation.FrameworkDescription,
         assemblyVersion = typeof(Program).Assembly.GetName().Version?.ToString(),
+        databaseProvider = "PostgreSQL / EF Core / Npgsql",
         startedAtUtc
     }));
 
 app.Logger.LogInformation(
-    "App.Api started. Environment={Environment} StartedAtUtc={StartedAtUtc}",
+    "App.Api started. Environment={Environment} StartedAtUtc={StartedAtUtc} Database={Database}",
     app.Environment.EnvironmentName,
-    startedAtUtc);
+    startedAtUtc,
+    databaseOptions.Database);
 
 app.Run();
