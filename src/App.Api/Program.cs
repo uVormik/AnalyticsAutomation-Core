@@ -1,11 +1,11 @@
 using System.Linq;
-using System.Runtime.InteropServices;
 
 using App.Api.Middleware;
 
 using BuildingBlocks.Contracts.Auth;
 using BuildingBlocks.Contracts.Devices;
 using BuildingBlocks.Infrastructure.AssemblyMetadata;
+using BuildingBlocks.Infrastructure.Observability;
 using BuildingBlocks.Infrastructure.Persistence;
 using BuildingBlocks.Infrastructure.PlatformRuntime;
 
@@ -42,6 +42,7 @@ var databaseOptions = new DatabaseOptions
 builder.Services.AddProblemDetails();
 builder.Services.AddPlatformRuntimeFoundation(builder.Configuration);
 builder.Services.AddPlatformPersistence(databaseOptions);
+builder.Services.AddAuditObservabilityFoundation();
 builder.Services.AddAuthModule(builder.Configuration, builder.Environment);
 builder.Services.AddGroupTreeModule(builder.Configuration, builder.Environment);
 builder.Services.AddDevicesModule(builder.Configuration);
@@ -51,12 +52,21 @@ builder.Services.AddHealthChecks()
         "self",
         () => HealthCheckResult.Healthy("App.Api self-check passed."),
         tags: new[] { "ready" })
+    .AddCheck(
+        "platform_runtime",
+        () => HealthCheckResult.Healthy("Feature flags and modular options foundation ready."),
+        tags: new[] { "ready" })
+    .AddCheck(
+        "audit_foundation",
+        () => HealthCheckResult.Healthy("Audit service baseline ready."),
+        tags: new[] { "ready" })
     .AddDbContextCheck<PlatformDbContext>(
         name: "postgresql",
         tags: new[] { "ready" });
 
 var app = builder.Build();
 
+app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseMiddleware<GlobalExceptionHandlingMiddleware>();
 
 app.MapGet(
@@ -106,12 +116,9 @@ app.MapGet(
         service = environment.ApplicationName,
         environmentName = environment.EnvironmentName,
         version = ApplicationVersionReader.GetVersion<Program>(),
-        framework = RuntimeInformation.FrameworkDescription,
+        framework = System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription,
         assemblyVersion = typeof(Program).Assembly.GetName().Version?.ToString(),
         databaseProvider = "PostgreSQL / EF Core / Npgsql",
-        authMode = "Opaque access token + server side refresh session",
-        groupTreeMode = "Tree nodes + branch admin escalation",
-        devicesMode = "Device registration + last known user link",
         startedAtUtc
     }));
 
@@ -131,15 +138,66 @@ app.MapGet(
         }
     }));
 
+app.MapGet(
+    "/api/system/observability",
+    (IRequestContextAccessor requestContext) => Results.Ok(new
+    {
+        correlationId = requestContext.CorrelationId,
+        healthChecks = new[]
+        {
+            "self",
+            "platform_runtime",
+            "audit_foundation",
+            "postgresql"
+        },
+        auditCategories = AuditCategories.All
+    }));
+
 app.MapPost(
     "/api/auth/sign-in",
     async Task<IResult> (
         SignInRequestDto request,
         IAuthService authService,
+        IAuditService auditService,
         CancellationToken cancellationToken) =>
     {
         var response = await authService.SignInAsync(request, cancellationToken);
-        return response is null ? Results.Unauthorized() : Results.Ok(response);
+
+        if (response is null)
+        {
+            await auditService.WriteAsync(
+                new AuditWriteEntry(
+                    AuditCategories.Authentication,
+                    "sign_in_failed",
+                    null,
+                    request.DeviceId,
+                    "auth_session",
+                    null,
+                    new
+                    {
+                        request.Login
+                    }),
+                cancellationToken);
+
+            return Results.Unauthorized();
+        }
+
+        await auditService.WriteAsync(
+            new AuditWriteEntry(
+                AuditCategories.Authentication,
+                "sign_in_succeeded",
+                response.User.UserId,
+                response.Session.DeviceId,
+                "auth_session",
+                response.Session.SessionId.ToString(),
+                new
+                {
+                    response.User.UserName,
+                    response.User.Roles
+                }),
+            cancellationToken);
+
+        return Results.Ok(response);
     });
 
 app.MapPost(
@@ -180,15 +238,48 @@ app.MapPost(
     async Task<IResult> (
         DeviceRegistrationUpsertRequestDto request,
         IDeviceRegistrationService service,
+        IAuditService auditService,
         CancellationToken cancellationToken) =>
     {
         try
         {
             var result = await service.UpsertAsync(request, cancellationToken);
+
+            await auditService.WriteAsync(
+                new AuditWriteEntry(
+                    AuditCategories.Devices,
+                    "device_registration_upserted",
+                    request.LastKnownUserId,
+                    request.DeviceId,
+                    "device_registration",
+                    result.DeviceId.ToString(),
+                    new
+                    {
+                        result.Platform,
+                        result.DeviceName,
+                        result.IsTrusted
+                    }),
+                cancellationToken);
+
             return Results.Ok(result);
         }
         catch (FeatureDisabledException ex)
         {
+            await auditService.WriteAsync(
+                new AuditWriteEntry(
+                    AuditCategories.Devices,
+                    "device_registration_blocked_by_flag",
+                    request.LastKnownUserId,
+                    request.DeviceId,
+                    "device_registration",
+                    request.DeviceId.ToString(),
+                    new
+                    {
+                        ex.FlagName,
+                        request.Platform
+                    }),
+                cancellationToken);
+
             return Results.Conflict(new
             {
                 error = "feature_disabled",
