@@ -1,5 +1,7 @@
 using BuildingBlocks.Infrastructure.Persistence.Entities;
 using BuildingBlocks.Infrastructure.Persistence.Entities.Auth;
+using BuildingBlocks.Infrastructure.Persistence.Entities.Devices;
+using BuildingBlocks.Infrastructure.Persistence.Entities.GroupTree;
 
 using Microsoft.EntityFrameworkCore;
 
@@ -16,6 +18,11 @@ public sealed class PlatformDbContext(DbContextOptions<PlatformDbContext> option
     public DbSet<AuthRolePermission> AuthRolePermissions => Set<AuthRolePermission>();
     public DbSet<AuthSession> AuthSessions => Set<AuthSession>();
     public DbSet<AuthLastActiveDeviceAccount> AuthLastActiveDeviceAccounts => Set<AuthLastActiveDeviceAccount>();
+
+    public DbSet<GroupNode> GroupNodes => Set<GroupNode>();
+    public DbSet<GroupAdminAssignment> GroupAdminAssignments => Set<GroupAdminAssignment>();
+
+    public DbSet<DeviceRegistration> DeviceRegistrations => Set<DeviceRegistration>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
