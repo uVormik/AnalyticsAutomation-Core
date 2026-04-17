@@ -1,6 +1,9 @@
+using System.ComponentModel.DataAnnotations;
+
 using BuildingBlocks.Contracts.Groups;
 using BuildingBlocks.Infrastructure.Persistence;
 using BuildingBlocks.Infrastructure.Persistence.Entities.GroupTree;
+using BuildingBlocks.Infrastructure.PlatformRuntime;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -13,7 +16,17 @@ namespace Modules.GroupTree;
 
 public sealed class GroupTreeOptions
 {
+    [Required]
     public string DevelopmentBootstrapAdminLogin { get; init; } = "platform-owner";
+
+    [Required]
+    public string RootNodeCode { get; init; } = "root";
+
+    [Required]
+    public string BranchNodeCode { get; init; } = "branch-a";
+
+    [Required]
+    public string SubBranchNodeCode { get; init; } = "branch-a-sub";
 }
 
 public interface IGroupTreeQueryService
@@ -33,8 +46,9 @@ public static class GroupTreeModuleServiceCollectionExtensions
         IConfiguration configuration,
         IHostEnvironment environment)
     {
-        services.AddOptions<GroupTreeOptions>()
-            .Bind(configuration.GetSection("Modules:GroupTree"));
+        services.AddValidatedModuleOptions<GroupTreeOptions>(
+            configuration,
+            "Modules:GroupTree");
 
         services.AddScoped<IGroupTreeQueryService, GroupTreeQueryService>();
 
@@ -65,14 +79,20 @@ internal sealed class DevelopmentGroupTreeBootstrapService(
             using var scope = scopeFactory.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<PlatformDbContext>();
 
+            var normalizedLogin = options.Value.DevelopmentBootstrapAdminLogin.Trim().ToUpperInvariant();
+
             var adminUser = await dbContext.AuthUsers
                 .SingleOrDefaultAsync(
-                    item => item.NormalizedLogin == options.Value.DevelopmentBootstrapAdminLogin.Trim().ToUpperInvariant(),
+                    item => item.NormalizedLogin == normalizedLogin,
                     cancellationToken);
 
             if (adminUser is not null)
             {
-                var targetNodeCodes = new[] { "root", "branch-a" };
+                var targetNodeCodes = new[]
+                {
+                    options.Value.RootNodeCode,
+                    options.Value.BranchNodeCode
+                };
 
                 var nodes = await dbContext.GroupNodes
                     .Where(item => targetNodeCodes.Contains(item.Code))
