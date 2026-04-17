@@ -15,6 +15,7 @@
     <ProjectReference Include="..\Modules\Auth\Modules.Auth.csproj" />
     <ProjectReference Include="..\Modules\GroupTree\Modules.GroupTree.csproj" />
     <ProjectReference Include="..\Modules\Devices\Modules.Devices.csproj" />
+    <ProjectReference Include="..\Modules\WebsiteIntegration\Modules.WebsiteIntegration.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.4">
