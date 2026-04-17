@@ -4,6 +4,7 @@ using System.Runtime.InteropServices;
 using App.Api.Middleware;
 
 using BuildingBlocks.Contracts.Auth;
+using BuildingBlocks.Contracts.Devices;
 using BuildingBlocks.Infrastructure.AssemblyMetadata;
 using BuildingBlocks.Infrastructure.Persistence;
 
@@ -12,6 +13,10 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 using Modules.Auth;
 using Modules.Auth.Services;
+using Modules.Devices;
+using Modules.Devices;
+using Modules.GroupTree;
+using Modules.GroupTree;
 
 var startedAtUtc = DateTimeOffset.UtcNow;
 
@@ -38,6 +43,8 @@ var databaseOptions = new DatabaseOptions
 builder.Services.AddProblemDetails();
 builder.Services.AddPlatformPersistence(databaseOptions);
 builder.Services.AddAuthModule(builder.Configuration, builder.Environment);
+builder.Services.AddGroupTreeModule(builder.Configuration, builder.Environment);
+builder.Services.AddDevicesModule(builder.Configuration);
 
 builder.Services.AddHealthChecks()
     .AddCheck(
@@ -103,6 +110,8 @@ app.MapGet(
         assemblyVersion = typeof(Program).Assembly.GetName().Version?.ToString(),
         databaseProvider = "PostgreSQL / EF Core / Npgsql",
         authMode = "Opaque access token + server side refresh session",
+        groupTreeMode = "Tree nodes + branch admin escalation",
+        devicesMode = "Device registration + last known user link",
         startedAtUtc
     }));
 
@@ -126,6 +135,39 @@ app.MapPost(
     {
         var response = await authService.RefreshAsync(request, cancellationToken);
         return response is null ? Results.Unauthorized() : Results.Ok(response);
+    });
+
+app.MapGet(
+    "/api/group-tree/nodes",
+    async Task<IResult> (
+        IGroupTreeQueryService service,
+        CancellationToken cancellationToken) =>
+    {
+        var result = await service.GetNodesAsync(cancellationToken);
+        return Results.Ok(result);
+    });
+
+app.MapGet(
+    "/api/group-tree/routing-preview",
+    async Task<IResult> (
+        Guid groupNodeId,
+        Guid uploaderUserId,
+        IGroupTreeQueryService service,
+        CancellationToken cancellationToken) =>
+    {
+        var result = await service.PreviewRoutingAsync(groupNodeId, uploaderUserId, cancellationToken);
+        return result is null ? Results.NotFound() : Results.Ok(result);
+    });
+
+app.MapPost(
+    "/api/devices/register",
+    async Task<IResult> (
+        DeviceRegistrationUpsertRequestDto request,
+        IDeviceRegistrationService service,
+        CancellationToken cancellationToken) =>
+    {
+        var result = await service.UpsertAsync(request, cancellationToken);
+        return Results.Ok(result);
     });
 
 app.Logger.LogInformation(
