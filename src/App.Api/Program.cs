@@ -3,11 +3,15 @@ using System.Runtime.InteropServices;
 
 using App.Api.Middleware;
 
+using BuildingBlocks.Contracts.Auth;
 using BuildingBlocks.Infrastructure.AssemblyMetadata;
 using BuildingBlocks.Infrastructure.Persistence;
 
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+
+using Modules.Auth;
+using Modules.Auth.Services;
 
 var startedAtUtc = DateTimeOffset.UtcNow;
 
@@ -33,6 +37,8 @@ var databaseOptions = new DatabaseOptions
 
 builder.Services.AddProblemDetails();
 builder.Services.AddPlatformPersistence(databaseOptions);
+builder.Services.AddAuthModule(builder.Configuration, builder.Environment);
+
 builder.Services.AddHealthChecks()
     .AddCheck(
         "self",
@@ -96,8 +102,31 @@ app.MapGet(
         framework = RuntimeInformation.FrameworkDescription,
         assemblyVersion = typeof(Program).Assembly.GetName().Version?.ToString(),
         databaseProvider = "PostgreSQL / EF Core / Npgsql",
+        authMode = "Opaque access token + server side refresh session",
         startedAtUtc
     }));
+
+app.MapPost(
+    "/api/auth/sign-in",
+    async Task<IResult> (
+        SignInRequestDto request,
+        IAuthService authService,
+        CancellationToken cancellationToken) =>
+    {
+        var response = await authService.SignInAsync(request, cancellationToken);
+        return response is null ? Results.Unauthorized() : Results.Ok(response);
+    });
+
+app.MapPost(
+    "/api/auth/refresh",
+    async Task<IResult> (
+        RefreshSessionRequestDto request,
+        IAuthService authService,
+        CancellationToken cancellationToken) =>
+    {
+        var response = await authService.RefreshAsync(request, cancellationToken);
+        return response is null ? Results.Unauthorized() : Results.Ok(response);
+    });
 
 app.Logger.LogInformation(
     "App.Api started. Environment={Environment} StartedAtUtc={StartedAtUtc} Database={Database}",
