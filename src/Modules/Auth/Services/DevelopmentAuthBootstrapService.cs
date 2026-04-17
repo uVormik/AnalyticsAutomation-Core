@@ -1,5 +1,6 @@
 using BuildingBlocks.Infrastructure.Persistence;
 using BuildingBlocks.Infrastructure.Persistence.Entities.Auth;
+using BuildingBlocks.Infrastructure.PlatformRuntime;
 
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -16,12 +17,21 @@ public sealed class DevelopmentAuthBootstrapService(
     IServiceScopeFactory scopeFactory,
     IHostEnvironment environment,
     IOptions<AuthOptions> authOptions,
+    IFeatureFlagService featureFlags,
     ILogger<DevelopmentAuthBootstrapService> logger) : IHostedService
 {
     public async Task StartAsync(CancellationToken cancellationToken)
     {
         if (!environment.IsDevelopment())
         {
+            return;
+        }
+
+        if (!featureFlags.IsEnabled(PlatformFeatureFlags.AuthDevelopmentBootstrapEnabled))
+        {
+            logger.LogInformation(
+                "Development auth bootstrap skipped because feature flag {FeatureFlag} is disabled.",
+                PlatformFeatureFlags.AuthDevelopmentBootstrapEnabled);
             return;
         }
 

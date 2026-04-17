@@ -7,6 +7,7 @@ using BuildingBlocks.Contracts.Auth;
 using BuildingBlocks.Contracts.Devices;
 using BuildingBlocks.Infrastructure.AssemblyMetadata;
 using BuildingBlocks.Infrastructure.Persistence;
+using BuildingBlocks.Infrastructure.PlatformRuntime;
 
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -14,8 +15,6 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Modules.Auth;
 using Modules.Auth.Services;
 using Modules.Devices;
-using Modules.Devices;
-using Modules.GroupTree;
 using Modules.GroupTree;
 
 var startedAtUtc = DateTimeOffset.UtcNow;
@@ -41,6 +40,7 @@ var databaseOptions = new DatabaseOptions
 };
 
 builder.Services.AddProblemDetails();
+builder.Services.AddPlatformRuntimeFoundation(builder.Configuration);
 builder.Services.AddPlatformPersistence(databaseOptions);
 builder.Services.AddAuthModule(builder.Configuration, builder.Environment);
 builder.Services.AddGroupTreeModule(builder.Configuration, builder.Environment);
@@ -115,6 +115,22 @@ app.MapGet(
         startedAtUtc
     }));
 
+app.MapGet(
+    "/api/system/platform-foundation",
+    (IFeatureFlagService featureFlags) => Results.Ok(new
+    {
+        featureFlags = new
+        {
+            authDevelopmentBootstrapEnabled = featureFlags.IsEnabled(PlatformFeatureFlags.AuthDevelopmentBootstrapEnabled),
+            devicesDeviceRegistrationEnabled = featureFlags.IsEnabled(PlatformFeatureFlags.DevicesDeviceRegistrationEnabled)
+        },
+        optionsValidation = "ValidateOnStart",
+        internalEvents = new[]
+        {
+            "DeviceRegistrationUpsertedInternalEvent"
+        }
+    }));
+
 app.MapPost(
     "/api/auth/sign-in",
     async Task<IResult> (
@@ -166,8 +182,19 @@ app.MapPost(
         IDeviceRegistrationService service,
         CancellationToken cancellationToken) =>
     {
-        var result = await service.UpsertAsync(request, cancellationToken);
-        return Results.Ok(result);
+        try
+        {
+            var result = await service.UpsertAsync(request, cancellationToken);
+            return Results.Ok(result);
+        }
+        catch (FeatureDisabledException ex)
+        {
+            return Results.Conflict(new
+            {
+                error = "feature_disabled",
+                featureFlag = ex.FlagName
+            });
+        }
     });
 
 app.Logger.LogInformation(
