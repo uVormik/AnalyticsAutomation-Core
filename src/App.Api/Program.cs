@@ -1,3 +1,4 @@
+using Modules.VideoUpload;
 using System.Linq;
 
 using App.Api.Middleware;
@@ -48,6 +49,7 @@ builder.Services.AddAuthModule(builder.Configuration, builder.Environment);
 builder.Services.AddGroupTreeModule(builder.Configuration, builder.Environment);
 builder.Services.AddDevicesModule(builder.Configuration);
 builder.Services.AddWebsiteIntegrationModule(builder.Configuration);
+builder.Services.AddVideoUploadModule(builder.Configuration);
 
 builder.Services.AddHealthChecks()
     .AddCheck(
@@ -295,6 +297,7 @@ app.MapPost(
     });
 
 app.MapWebsiteIntegrationEndpoints();
+app.MapVideoUploadEndpoints();
 
 app.Logger.LogInformation(
     "App.Api started. Environment={Environment} StartedAtUtc={StartedAtUtc} Database={Database}",
