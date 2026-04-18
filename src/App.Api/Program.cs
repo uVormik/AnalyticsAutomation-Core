@@ -1,3 +1,4 @@
+using Modules.WorkerPipeline;
 using Modules.FraudSignals;
 using Modules.Incidents;
 using Modules.VideoDuplicates;
@@ -56,6 +57,7 @@ builder.Services.AddVideoUploadModule(builder.Configuration);
 builder.Services.AddVideoDuplicatesModule(builder.Configuration);
 builder.Services.AddIncidentsModule(builder.Configuration);
 builder.Services.AddFraudSignalsModule(builder.Configuration);
+builder.Services.AddWorkerPipelineModule(builder.Configuration);
 
 builder.Services.AddHealthChecks()
     .AddCheck(
@@ -307,6 +309,7 @@ app.MapVideoUploadEndpoints();
 app.MapVideoDuplicatesEndpoints();
 app.MapIncidentEndpoints();
 app.MapFraudSignalsEndpoints();
+app.MapWorkerPipelineEndpoints();
 
 app.Logger.LogInformation(
     "App.Api started. Environment={Environment} StartedAtUtc={StartedAtUtc} Database={Database}",
