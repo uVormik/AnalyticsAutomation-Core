@@ -16,6 +16,8 @@ using BuildingBlocks.Infrastructure.Persistence.Configurations.FraudSignals;
 using BuildingBlocks.Infrastructure.Persistence.Entities.FraudSignals;
 using BuildingBlocks.Infrastructure.Persistence.Configurations.WorkerPipeline;
 using BuildingBlocks.Infrastructure.Persistence.Entities.WorkerPipeline;
+using BuildingBlocks.Infrastructure.Persistence.Configurations.VideoDownload;
+using BuildingBlocks.Infrastructure.Persistence.Entities.VideoDownload;
 namespace BuildingBlocks.Infrastructure.Persistence;
 
 public sealed class PlatformDbContext(DbContextOptions<PlatformDbContext> options) : DbContext(options)
@@ -62,6 +64,10 @@ public sealed class PlatformDbContext(DbContextOptions<PlatformDbContext> option
     public DbSet<WorkerPipelineJobRecord> WorkerPipelineJobRecords => Set<WorkerPipelineJobRecord>();
     public DbSet<WorkerPipelineJobAuditRecord> WorkerPipelineJobAuditRecords => Set<WorkerPipelineJobAuditRecord>();
 
+    public DbSet<VideoDownloadIntent> VideoDownloadIntents => Set<VideoDownloadIntent>();
+    public DbSet<VideoDownloadReceipt> VideoDownloadReceipts => Set<VideoDownloadReceipt>();
+    public DbSet<VideoDownloadAuditRecord> VideoDownloadAuditRecords => Set<VideoDownloadAuditRecord>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema("app");
@@ -84,6 +90,9 @@ public sealed class PlatformDbContext(DbContextOptions<PlatformDbContext> option
         modelBuilder.ApplyConfiguration(new FraudSignalAuditRecordConfiguration());
         modelBuilder.ApplyConfiguration(new WorkerPipelineJobRecordConfiguration());
         modelBuilder.ApplyConfiguration(new WorkerPipelineJobAuditRecordConfiguration());
+        modelBuilder.ApplyConfiguration(new VideoDownloadIntentConfiguration());
+        modelBuilder.ApplyConfiguration(new VideoDownloadReceiptConfiguration());
+        modelBuilder.ApplyConfiguration(new VideoDownloadAuditRecordConfiguration());
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(PlatformDbContext).Assembly);
     }
 }
