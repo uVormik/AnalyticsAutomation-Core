@@ -21,6 +21,7 @@
     <ProjectReference Include="..\Modules\Incidents\Modules.Incidents.csproj" />
     <ProjectReference Include="..\Modules\FraudSignals\Modules.FraudSignals.csproj" />
     <ProjectReference Include="..\Modules\WorkerPipeline\Modules.WorkerPipeline.csproj" />
+    <ProjectReference Include="..\Modules\VideoDownload\Modules.VideoDownload.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.4">
