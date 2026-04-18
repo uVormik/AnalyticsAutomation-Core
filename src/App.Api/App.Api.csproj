@@ -17,6 +17,7 @@
     <ProjectReference Include="..\Modules\Devices\Modules.Devices.csproj" />
     <ProjectReference Include="..\Modules\WebsiteIntegration\Modules.WebsiteIntegration.csproj" />
     <ProjectReference Include="..\Modules\VideoUpload\Modules.VideoUpload.csproj" />
+    <ProjectReference Include="..\Modules\VideoDuplicates\Modules.VideoDuplicates.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.4">
