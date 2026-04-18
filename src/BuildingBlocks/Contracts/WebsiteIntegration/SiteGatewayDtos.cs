@@ -15,12 +15,43 @@ public sealed record SiteReconcileContractDto(
     string ResponseCollectionField,
     IReadOnlyCollection<string> KnownStatuses);
 
+public sealed record SiteStatusLookupContractDto(
+    string RouteTemplate,
+    string ResponseField,
+    IReadOnlyCollection<string> KnownStatuses);
+
 public sealed record SiteGatewayContractsDto(
     string Provider,
     string Mode,
     SiteUploadReceiptContractDto UploadReceipt,
     SiteDownloadIntentContractDto DownloadIntent,
-    SiteReconcileContractDto Reconcile);
+    SiteReconcileContractDto Reconcile,
+    SiteStatusLookupContractDto? StatusLookup = null);
+
+public sealed record SiteUploadReceiptPreviewRequestDto(
+    string ExternalVideoId,
+    string? StorageKey,
+    string SiteStatus,
+    DateTimeOffset UploadedAtUtc);
+
+public sealed record SiteUploadReceiptPreviewResponseDto(
+    string Provider,
+    string ExternalVideoId,
+    string StorageKey,
+    string SiteStatus,
+    bool Accepted,
+    DateTimeOffset ReceivedAtUtc);
+
+public sealed record SiteDownloadIntentPreviewRequestDto(
+    string ExternalVideoId);
+
+public sealed record SiteDownloadIntentPreviewResponseDto(
+    string Provider,
+    string ExternalVideoId,
+    string StorageKey,
+    string SiteStatus,
+    string DownloadUrl,
+    DateTimeOffset ExpiresAtUtc);
 
 public sealed record ReconcileSiteVideosRequestDto(
     IReadOnlyCollection<string> ExternalVideoIds);
