@@ -1,0 +1,19 @@
+[Unit]
+Description=AnalyticsAutomation App.Worker
+After=network.target postgresql.service
+Wants=network.target
+
+[Service]
+Type=simple
+User=analytics
+Group=analytics
+WorkingDirectory=/opt/analytics-automation/worker/current
+EnvironmentFile=/etc/analytics-automation/worker.env
+ExecStart=/usr/bin/dotnet /opt/analytics-automation/worker/current/App.Worker.dll
+Restart=always
+RestartSec=5
+KillSignal=SIGINT
+SyslogIdentifier=analytics-worker
+
+[Install]
+WantedBy=multi-user.target
