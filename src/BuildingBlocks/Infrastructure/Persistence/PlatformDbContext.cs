@@ -12,6 +12,8 @@ using BuildingBlocks.Infrastructure.Persistence.Configurations.VideoDuplicates;
 using BuildingBlocks.Infrastructure.Persistence.Entities.VideoDuplicates;
 using BuildingBlocks.Infrastructure.Persistence.Configurations.Incidents;
 using BuildingBlocks.Infrastructure.Persistence.Entities.Incidents;
+using BuildingBlocks.Infrastructure.Persistence.Configurations.FraudSignals;
+using BuildingBlocks.Infrastructure.Persistence.Entities.FraudSignals;
 namespace BuildingBlocks.Infrastructure.Persistence;
 
 public sealed class PlatformDbContext(DbContextOptions<PlatformDbContext> options) : DbContext(options)
@@ -49,6 +51,12 @@ public sealed class PlatformDbContext(DbContextOptions<PlatformDbContext> option
     public DbSet<DuplicateIncidentDecisionRecord> DuplicateIncidentDecisionRecords => Set<DuplicateIncidentDecisionRecord>();
     public DbSet<DuplicateIncidentAuditRecord> DuplicateIncidentAuditRecords => Set<DuplicateIncidentAuditRecord>();
 
+    public DbSet<FraudSignalRecord> FraudSignalRecords => Set<FraudSignalRecord>();
+    public DbSet<FraudSuspicionIncidentRecord> FraudSuspicionIncidentRecords => Set<FraudSuspicionIncidentRecord>();
+    public DbSet<FraudSuspicionIncidentAssignmentRecord> FraudSuspicionIncidentAssignmentRecords => Set<FraudSuspicionIncidentAssignmentRecord>();
+    public DbSet<FraudSuspicionIncidentDecisionRecord> FraudSuspicionIncidentDecisionRecords => Set<FraudSuspicionIncidentDecisionRecord>();
+    public DbSet<FraudSignalAuditRecord> FraudSignalAuditRecords => Set<FraudSignalAuditRecord>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema("app");
@@ -64,6 +72,11 @@ public sealed class PlatformDbContext(DbContextOptions<PlatformDbContext> option
         modelBuilder.ApplyConfiguration(new DuplicateIncidentAssignmentRecordConfiguration());
         modelBuilder.ApplyConfiguration(new DuplicateIncidentDecisionRecordConfiguration());
         modelBuilder.ApplyConfiguration(new DuplicateIncidentAuditRecordConfiguration());
+        modelBuilder.ApplyConfiguration(new FraudSignalRecordConfiguration());
+        modelBuilder.ApplyConfiguration(new FraudSuspicionIncidentRecordConfiguration());
+        modelBuilder.ApplyConfiguration(new FraudSuspicionIncidentAssignmentRecordConfiguration());
+        modelBuilder.ApplyConfiguration(new FraudSuspicionIncidentDecisionRecordConfiguration());
+        modelBuilder.ApplyConfiguration(new FraudSignalAuditRecordConfiguration());
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(PlatformDbContext).Assembly);
     }
 }

@@ -1,3 +1,4 @@
+using Modules.FraudSignals;
 using Modules.Incidents;
 using Modules.VideoDuplicates;
 using Modules.VideoUpload;
@@ -54,6 +55,7 @@ builder.Services.AddWebsiteIntegrationModule(builder.Configuration);
 builder.Services.AddVideoUploadModule(builder.Configuration);
 builder.Services.AddVideoDuplicatesModule(builder.Configuration);
 builder.Services.AddIncidentsModule(builder.Configuration);
+builder.Services.AddFraudSignalsModule(builder.Configuration);
 
 builder.Services.AddHealthChecks()
     .AddCheck(
@@ -304,6 +306,7 @@ app.MapWebsiteIntegrationEndpoints();
 app.MapVideoUploadEndpoints();
 app.MapVideoDuplicatesEndpoints();
 app.MapIncidentEndpoints();
+app.MapFraudSignalsEndpoints();
 
 app.Logger.LogInformation(
     "App.Api started. Environment={Environment} StartedAtUtc={StartedAtUtc} Database={Database}",
