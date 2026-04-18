@@ -1,0 +1,19 @@
+[Unit]
+Description=AnalyticsAutomation App.Api
+After=network.target postgresql.service
+Wants=network.target
+
+[Service]
+Type=simple
+User=analytics
+Group=analytics
+WorkingDirectory=/opt/analytics-automation/api/current
+EnvironmentFile=/etc/analytics-automation/api.env
+ExecStart=/usr/bin/dotnet /opt/analytics-automation/api/current/App.Api.dll --urls http://127.0.0.1:18080
+Restart=always
+RestartSec=5
+KillSignal=SIGINT
+SyslogIdentifier=analytics-api
+
+[Install]
+WantedBy=multi-user.target
