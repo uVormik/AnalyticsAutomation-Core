@@ -10,6 +10,8 @@ using BuildingBlocks.Infrastructure.Persistence.Configurations.VideoUpload;
 using BuildingBlocks.Infrastructure.Persistence.Entities.VideoUpload;
 using BuildingBlocks.Infrastructure.Persistence.Configurations.VideoDuplicates;
 using BuildingBlocks.Infrastructure.Persistence.Entities.VideoDuplicates;
+using BuildingBlocks.Infrastructure.Persistence.Configurations.Incidents;
+using BuildingBlocks.Infrastructure.Persistence.Entities.Incidents;
 namespace BuildingBlocks.Infrastructure.Persistence;
 
 public sealed class PlatformDbContext(DbContextOptions<PlatformDbContext> options) : DbContext(options)
@@ -42,6 +44,11 @@ public sealed class PlatformDbContext(DbContextOptions<PlatformDbContext> option
     public DbSet<VideoDuplicateCandidate> VideoDuplicateCandidates => Set<VideoDuplicateCandidate>();
     public DbSet<VideoDuplicateRegistryAuditRecord> VideoDuplicateRegistryAuditRecords => Set<VideoDuplicateRegistryAuditRecord>();
 
+    public DbSet<DuplicateIncidentRecord> DuplicateIncidentRecords => Set<DuplicateIncidentRecord>();
+    public DbSet<DuplicateIncidentAssignmentRecord> DuplicateIncidentAssignmentRecords => Set<DuplicateIncidentAssignmentRecord>();
+    public DbSet<DuplicateIncidentDecisionRecord> DuplicateIncidentDecisionRecords => Set<DuplicateIncidentDecisionRecord>();
+    public DbSet<DuplicateIncidentAuditRecord> DuplicateIncidentAuditRecords => Set<DuplicateIncidentAuditRecord>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema("app");
@@ -53,6 +60,10 @@ public sealed class PlatformDbContext(DbContextOptions<PlatformDbContext> option
         modelBuilder.ApplyConfiguration(new VideoDuplicateFingerprintConfiguration());
         modelBuilder.ApplyConfiguration(new VideoDuplicateCandidateConfiguration());
         modelBuilder.ApplyConfiguration(new VideoDuplicateRegistryAuditRecordConfiguration());
+        modelBuilder.ApplyConfiguration(new DuplicateIncidentRecordConfiguration());
+        modelBuilder.ApplyConfiguration(new DuplicateIncidentAssignmentRecordConfiguration());
+        modelBuilder.ApplyConfiguration(new DuplicateIncidentDecisionRecordConfiguration());
+        modelBuilder.ApplyConfiguration(new DuplicateIncidentAuditRecordConfiguration());
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(PlatformDbContext).Assembly);
     }
 }
