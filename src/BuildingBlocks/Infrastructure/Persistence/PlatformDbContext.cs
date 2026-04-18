@@ -6,6 +6,8 @@ using BuildingBlocks.Infrastructure.Persistence.Entities.GroupTree;
 
 using Microsoft.EntityFrameworkCore;
 
+using BuildingBlocks.Infrastructure.Persistence.Configurations.VideoUpload;
+using BuildingBlocks.Infrastructure.Persistence.Entities.VideoUpload;
 namespace BuildingBlocks.Infrastructure.Persistence;
 
 public sealed class PlatformDbContext(DbContextOptions<PlatformDbContext> options) : DbContext(options)
@@ -27,9 +29,12 @@ public sealed class PlatformDbContext(DbContextOptions<PlatformDbContext> option
 
     public DbSet<AuditRecord> AuditRecords => Set<AuditRecord>();
 
+    public DbSet<VideoUploadPreUploadCheck> VideoUploadPreUploadChecks => Set<VideoUploadPreUploadCheck>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema("app");
+        modelBuilder.ApplyConfiguration(new VideoUploadPreUploadCheckConfiguration());
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(PlatformDbContext).Assembly);
     }
 }
