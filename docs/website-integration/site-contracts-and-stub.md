@@ -1,54 +1,51 @@
 # Site contracts and integration stub
 
 ## Status
-- Stage: Sprint 0 / S0-13
+- Stage: Sprint 1 / S1-01
 - Provider mode: Stub
 - Real site API: not connected yet
 
 ## Goal
-Freeze the backend-facing contract expectations for site upload/download integration
-without blocking the rest of the solution on a live external dependency.
+Freeze backend-facing site gateway expectations and provide a stable stub path
+for future PreUploadCheck, UploadReceipt and DownloadIntent work.
+
+## Current diagnostic endpoints
+- GET `/api/system/site-gateway`
+- POST `/api/system/site-gateway/upload-receipt-preview`
+- POST `/api/system/site-gateway/download-intent-preview`
+- GET `/api/system/site-gateway/status/{externalVideoId}`
+- POST `/api/system/site-gateway/reconcile-preview`
 
 ## Frozen expectations
-### Upload receipt binding
-Required fields expected from site-facing upload flow:
+### Upload receipt preview
+Required fields:
 - provider
 - externalVideoId
 - storageKey
 - siteStatus
 
-Formats:
-- externalVideoId: `site-video-<guid>`
-- storageKey: `videos/<externalVideoId>.mp4`
+### Download intent preview
+Response fields:
+- externalVideoId
+- storageKey
+- siteStatus
+- downloadUrl
+- expiresAtUtc
 
-Known statuses:
+### Status lookup
+- route: `/api/system/site-gateway/status/{externalVideoId}`
+- response field: `siteStatus`
+
+### Reconcile lookup
+- request: `externalVideoIds`
+- response: `items[]`
+
+## Known stub statuses
 - uploaded
 - available
 - deleted
 
-### Download intent handoff
-Fields expected in future download handoff:
-- externalVideoId
-- storageKey
-- siteStatus
-- expiresAtUtc
-
-### Reconcile lookup
-Request:
-- externalVideoIds
-
-Response:
-- items[]
-  - externalVideoId
-  - storageKey
-  - status
-  - checkedAtUtc
-
-## Diagnostic endpoints
-- GET `/api/system/site-gateway`
-- POST `/api/system/site-gateway/reconcile-preview`
-
 ## Notes
-- backend compiles and runs without a real site
-- this is the agreed stub integration point for Sprint 0 freeze
-- no secrets or live site credentials are used
+- backend remains independent from a live site
+- this module is the agreed adapter boundary for Sprint 1 upload/download work
+- no secrets or live credentials are used

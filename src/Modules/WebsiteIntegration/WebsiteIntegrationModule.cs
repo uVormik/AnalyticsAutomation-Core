@@ -23,6 +23,19 @@ public sealed class WebsiteIntegrationOptions
 public interface IWebsiteVideoGateway
 {
     Task<SiteGatewayContractsDto> GetContractsAsync(CancellationToken cancellationToken);
+
+    Task<SiteUploadReceiptPreviewResponseDto> AcceptUploadReceiptPreviewAsync(
+        SiteUploadReceiptPreviewRequestDto request,
+        CancellationToken cancellationToken);
+
+    Task<SiteDownloadIntentPreviewResponseDto> CreateDownloadIntentPreviewAsync(
+        SiteDownloadIntentPreviewRequestDto request,
+        CancellationToken cancellationToken);
+
+    Task<SiteVideoStatusDto> GetStatusAsync(
+        string externalVideoId,
+        CancellationToken cancellationToken);
+
     Task<ReconcileSiteVideosResponseDto> ReconcileAsync(
         ReconcileSiteVideosRequestDto request,
         CancellationToken cancellationToken);
@@ -52,9 +65,9 @@ internal sealed class StubWebsiteVideoGateway(
 
         return Task.FromResult(
             new SiteGatewayContractsDto(
-                value.Provider,
-                value.StubMode,
-                new SiteUploadReceiptContractDto(
+                Provider: value.Provider,
+                Mode: value.StubMode,
+                UploadReceipt: new SiteUploadReceiptContractDto(
                     RequiredFields:
                     [
                         "provider",
@@ -65,47 +78,156 @@ internal sealed class StubWebsiteVideoGateway(
                     ExternalVideoIdFormat: $"{value.ExternalVideoIdPrefix}-<guid>",
                     StorageKeyFormat: $"{value.StorageKeyPrefix}/<externalVideoId>.mp4",
                     KnownStatuses: KnownStatuses),
-                new SiteDownloadIntentContractDto(
+                DownloadIntent: new SiteDownloadIntentContractDto(
                     ResponseFields:
                     [
                         "externalVideoId",
                         "storageKey",
                         "siteStatus",
+                        "downloadUrl",
                         "expiresAtUtc"
                     ],
                     KnownStatuses: KnownStatuses),
-                new SiteReconcileContractDto(
+                Reconcile: new SiteReconcileContractDto(
                     RequestField: "externalVideoIds",
                     ResponseCollectionField: "items",
+                    KnownStatuses: KnownStatuses),
+                StatusLookup: new SiteStatusLookupContractDto(
+                    RouteTemplate: "/api/system/site-gateway/status/{externalVideoId}",
+                    ResponseField: "siteStatus",
                     KnownStatuses: KnownStatuses)));
     }
 
-    public Task<ReconcileSiteVideosResponseDto> ReconcileAsync(
-        ReconcileSiteVideosRequestDto request,
+    public Task<SiteUploadReceiptPreviewResponseDto> AcceptUploadReceiptPreviewAsync(
+        SiteUploadReceiptPreviewRequestDto request,
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
         var value = options.Value;
-        var now = DateTimeOffset.UtcNow;
+        var externalVideoId = EnsureExternalVideoId(request.ExternalVideoId);
+        var storageKey = EnsureStorageKey(request.StorageKey, externalVideoId);
+        var siteStatus = NormalizeStatus(request.SiteStatus);
 
-        var items = request.ExternalVideoIds
-            .Where(item => !string.IsNullOrWhiteSpace(item))
-            .Select(item => item.Trim())
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .Select(item => new SiteVideoStatusDto(
-                ExternalVideoId: item,
-                StorageKey: $"{value.StorageKeyPrefix}/{item}.mp4",
+        logger.LogInformation(
+            "Website gateway upload receipt preview accepted. Provider={Provider} ExternalVideoId={ExternalVideoId}",
+            value.Provider,
+            externalVideoId);
+
+        return Task.FromResult(
+            new SiteUploadReceiptPreviewResponseDto(
+                Provider: value.Provider,
+                ExternalVideoId: externalVideoId,
+                StorageKey: storageKey,
+                SiteStatus: siteStatus,
+                Accepted: true,
+                ReceivedAtUtc: DateTimeOffset.UtcNow));
+    }
+
+    public Task<SiteDownloadIntentPreviewResponseDto> CreateDownloadIntentPreviewAsync(
+        SiteDownloadIntentPreviewRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var value = options.Value;
+        var externalVideoId = EnsureExternalVideoId(request.ExternalVideoId);
+        var storageKey = BuildStorageKey(externalVideoId);
+
+        logger.LogInformation(
+            "Website gateway download intent preview created. Provider={Provider} ExternalVideoId={ExternalVideoId}",
+            value.Provider,
+            externalVideoId);
+
+        return Task.FromResult(
+            new SiteDownloadIntentPreviewResponseDto(
+                Provider: value.Provider,
+                ExternalVideoId: externalVideoId,
+                StorageKey: storageKey,
+                SiteStatus: "available",
+                DownloadUrl: $"https://stub-site.invalid/download/{Uri.EscapeDataString(externalVideoId)}",
+                ExpiresAtUtc: DateTimeOffset.UtcNow.AddMinutes(30)));
+    }
+
+    public Task<SiteVideoStatusDto> GetStatusAsync(
+        string externalVideoId,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var normalizedExternalVideoId = EnsureExternalVideoId(externalVideoId);
+
+        return Task.FromResult(
+            new SiteVideoStatusDto(
+                ExternalVideoId: normalizedExternalVideoId,
+                StorageKey: BuildStorageKey(normalizedExternalVideoId),
                 Status: "available",
-                CheckedAtUtc: now))
-            .ToArray();
+                CheckedAtUtc: DateTimeOffset.UtcNow));
+    }
+
+    public async Task<ReconcileSiteVideosResponseDto> ReconcileAsync(
+        ReconcileSiteVideosRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var items = new List<SiteVideoStatusDto>();
+
+        foreach (var externalVideoId in request.ExternalVideoIds
+                     .Where(item => !string.IsNullOrWhiteSpace(item))
+                     .Select(item => item.Trim())
+                     .Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            items.Add(await GetStatusAsync(externalVideoId, cancellationToken));
+        }
 
         logger.LogInformation(
             "Website gateway reconcile preview executed. Provider={Provider} RequestedIds={RequestedIds}",
-            value.Provider,
-            items.Length);
+            options.Value.Provider,
+            items.Count);
 
-        return Task.FromResult(new ReconcileSiteVideosResponseDto(items));
+        return new ReconcileSiteVideosResponseDto(items);
+    }
+
+    private string EnsureExternalVideoId(string externalVideoId)
+    {
+        if (string.IsNullOrWhiteSpace(externalVideoId))
+        {
+            throw new ArgumentException("ExternalVideoId is required.", nameof(externalVideoId));
+        }
+
+        return externalVideoId.Trim();
+    }
+
+    private string EnsureStorageKey(string? storageKey, string externalVideoId)
+    {
+        if (!string.IsNullOrWhiteSpace(storageKey))
+        {
+            return storageKey.Trim();
+        }
+
+        return BuildStorageKey(externalVideoId);
+    }
+
+    private string BuildStorageKey(string externalVideoId)
+    {
+        return $"{options.Value.StorageKeyPrefix}/{externalVideoId}.mp4";
+    }
+
+    private static string NormalizeStatus(string siteStatus)
+    {
+        if (string.IsNullOrWhiteSpace(siteStatus))
+        {
+            return "uploaded";
+        }
+
+        var normalized = siteStatus.Trim().ToLowerInvariant();
+        if (!KnownStatuses.Contains(normalized, StringComparer.OrdinalIgnoreCase))
+        {
+            throw new ArgumentException("Unknown site status.", nameof(siteStatus));
+        }
+
+        return normalized;
     }
 }
 
@@ -122,7 +244,7 @@ public static class WebsiteIntegrationModule
                 "Modules:WebsiteIntegration:Provider is required.")
             .Validate(
                 options => string.Equals(options.Provider, "Stub", StringComparison.OrdinalIgnoreCase),
-                "Only Stub provider is supported in Sprint 0.")
+                "Only Stub provider is supported in Sprint 1 baseline.")
             .Validate(
                 options => !string.IsNullOrWhiteSpace(options.ExternalVideoIdPrefix),
                 "Modules:WebsiteIntegration:ExternalVideoIdPrefix is required.")
@@ -146,6 +268,39 @@ public static class WebsiteIntegrationModule
                 CancellationToken cancellationToken) =>
             {
                 var result = await gateway.GetContractsAsync(cancellationToken);
+                return Results.Ok(result);
+            });
+
+        endpoints.MapPost(
+            "/api/system/site-gateway/upload-receipt-preview",
+            async Task<IResult> (
+                SiteUploadReceiptPreviewRequestDto request,
+                IWebsiteVideoGateway gateway,
+                CancellationToken cancellationToken) =>
+            {
+                var result = await gateway.AcceptUploadReceiptPreviewAsync(request, cancellationToken);
+                return Results.Ok(result);
+            });
+
+        endpoints.MapPost(
+            "/api/system/site-gateway/download-intent-preview",
+            async Task<IResult> (
+                SiteDownloadIntentPreviewRequestDto request,
+                IWebsiteVideoGateway gateway,
+                CancellationToken cancellationToken) =>
+            {
+                var result = await gateway.CreateDownloadIntentPreviewAsync(request, cancellationToken);
+                return Results.Ok(result);
+            });
+
+        endpoints.MapGet(
+            "/api/system/site-gateway/status/{externalVideoId}",
+            async Task<IResult> (
+                string externalVideoId,
+                IWebsiteVideoGateway gateway,
+                CancellationToken cancellationToken) =>
+            {
+                var result = await gateway.GetStatusAsync(externalVideoId, cancellationToken);
                 return Results.Ok(result);
             });
 
