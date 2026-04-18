@@ -1,3 +1,5 @@
+using Modules.WorkerPipeline;
+
 using App.Worker.Queues;
 
 using BuildingBlocks.Infrastructure.Persistence;
@@ -23,7 +25,9 @@ var databaseOptions = new DatabaseOptions
 };
 
 builder.Services.AddPlatformPersistence(databaseOptions);
-
+
+builder.Services.AddWorkerPipelineModule(builder.Configuration);
+builder.Services.AddHostedService<WorkerPipelineHostedService>();
 builder.Services.Configure<HostOptions>(options =>
 {
     options.BackgroundServiceExceptionBehavior = BackgroundServiceExceptionBehavior.StopHost;

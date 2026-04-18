@@ -20,6 +20,7 @@
     <ProjectReference Include="..\Modules\VideoDuplicates\Modules.VideoDuplicates.csproj" />
     <ProjectReference Include="..\Modules\Incidents\Modules.Incidents.csproj" />
     <ProjectReference Include="..\Modules\FraudSignals\Modules.FraudSignals.csproj" />
+    <ProjectReference Include="..\Modules\WorkerPipeline\Modules.WorkerPipeline.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.4">

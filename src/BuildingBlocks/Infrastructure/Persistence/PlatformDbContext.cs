@@ -14,6 +14,8 @@ using BuildingBlocks.Infrastructure.Persistence.Configurations.Incidents;
 using BuildingBlocks.Infrastructure.Persistence.Entities.Incidents;
 using BuildingBlocks.Infrastructure.Persistence.Configurations.FraudSignals;
 using BuildingBlocks.Infrastructure.Persistence.Entities.FraudSignals;
+using BuildingBlocks.Infrastructure.Persistence.Configurations.WorkerPipeline;
+using BuildingBlocks.Infrastructure.Persistence.Entities.WorkerPipeline;
 namespace BuildingBlocks.Infrastructure.Persistence;
 
 public sealed class PlatformDbContext(DbContextOptions<PlatformDbContext> options) : DbContext(options)
@@ -57,6 +59,9 @@ public sealed class PlatformDbContext(DbContextOptions<PlatformDbContext> option
     public DbSet<FraudSuspicionIncidentDecisionRecord> FraudSuspicionIncidentDecisionRecords => Set<FraudSuspicionIncidentDecisionRecord>();
     public DbSet<FraudSignalAuditRecord> FraudSignalAuditRecords => Set<FraudSignalAuditRecord>();
 
+    public DbSet<WorkerPipelineJobRecord> WorkerPipelineJobRecords => Set<WorkerPipelineJobRecord>();
+    public DbSet<WorkerPipelineJobAuditRecord> WorkerPipelineJobAuditRecords => Set<WorkerPipelineJobAuditRecord>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema("app");
@@ -77,6 +82,8 @@ public sealed class PlatformDbContext(DbContextOptions<PlatformDbContext> option
         modelBuilder.ApplyConfiguration(new FraudSuspicionIncidentAssignmentRecordConfiguration());
         modelBuilder.ApplyConfiguration(new FraudSuspicionIncidentDecisionRecordConfiguration());
         modelBuilder.ApplyConfiguration(new FraudSignalAuditRecordConfiguration());
+        modelBuilder.ApplyConfiguration(new WorkerPipelineJobRecordConfiguration());
+        modelBuilder.ApplyConfiguration(new WorkerPipelineJobAuditRecordConfiguration());
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(PlatformDbContext).Assembly);
     }
 }
