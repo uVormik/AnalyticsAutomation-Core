@@ -31,10 +31,17 @@ public sealed class PlatformDbContext(DbContextOptions<PlatformDbContext> option
 
     public DbSet<VideoUploadPreUploadCheck> VideoUploadPreUploadChecks => Set<VideoUploadPreUploadCheck>();
 
+    public DbSet<VideoUploadReceipt> VideoUploadReceipts => Set<VideoUploadReceipt>();
+    public DbSet<VideoUploadReceiptAnalysisJob> VideoUploadReceiptAnalysisJobs => Set<VideoUploadReceiptAnalysisJob>();
+    public DbSet<VideoUploadReceiptAuditRecord> VideoUploadReceiptAuditRecords => Set<VideoUploadReceiptAuditRecord>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema("app");
         modelBuilder.ApplyConfiguration(new VideoUploadPreUploadCheckConfiguration());
+        modelBuilder.ApplyConfiguration(new VideoUploadReceiptConfiguration());
+        modelBuilder.ApplyConfiguration(new VideoUploadReceiptAnalysisJobConfiguration());
+        modelBuilder.ApplyConfiguration(new VideoUploadReceiptAuditRecordConfiguration());
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(PlatformDbContext).Assembly);
     }
 }
