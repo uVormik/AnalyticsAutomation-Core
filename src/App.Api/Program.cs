@@ -324,3 +324,5 @@ app.Logger.LogInformation(
     databaseOptions.Database);
 
 app.Run();
+
+public partial class Program { }
