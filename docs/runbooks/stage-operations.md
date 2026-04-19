@@ -1,25 +1,15 @@
-# Stage operations
-
-## Health
-- `curl -f https://stage.example.com/health/live`
-- `curl -f https://stage.example.com/health/ready`
-- `curl -f https://stage.example.com/api/system/version`
-
-## Service status
-- `sudo systemctl status analytics-api`
-- `sudo systemctl status analytics-worker`
-
-## Restart
-- `sudo systemctl restart analytics-api`
-- `sudo systemctl restart analytics-worker`
-
-## Logs
-- `sudo journalctl -u analytics-api -n 200 --no-pager`
-- `sudo journalctl -u analytics-worker -n 200 --no-pager`
-- `sudo tail -n 200 /var/log/nginx/access.log`
-- `sudo tail -n 200 /var/log/nginx/error.log`
-
-## Incident hints
-- if API readiness is red, check PostgreSQL connectivity and env files
-- if Worker lags, inspect worker journal and retry pipeline state
-- if Nginx fails, run `sudo nginx -t`
+# Stage operations v1
+Health:
+curl -fsS http://127.0.0.1:5000/health/live
+curl -fsS http://127.0.0.1:5000/health/ready
+Services:
+sudo systemctl status analytics-api
+sudo systemctl status analytics-worker
+sudo systemctl restart analytics-api
+sudo systemctl restart analytics-worker
+Logs:
+journalctl -u analytics-api -f
+journalctl -u analytics-worker -f
+Nginx:
+sudo nginx -t
+sudo systemctl reload nginx
