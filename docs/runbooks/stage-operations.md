@@ -2,6 +2,8 @@
 Health:
 curl -fsS http://127.0.0.1:5000/health/live
 curl -fsS http://127.0.0.1:5000/health/ready
+Smoke:
+BASE_URL=http://127.0.0.1:5000 bash infra/deploy/stage-smoke.sh
 Services:
 sudo systemctl status analytics-api
 sudo systemctl status analytics-worker
@@ -13,3 +15,7 @@ journalctl -u analytics-worker -f
 Nginx:
 sudo nginx -t
 sudo systemctl reload nginx
+Database:
+bash infra/deploy/stage-apply-migrations.sh
+Rollback:
+bash infra/deploy/stage-rollback.sh /opt/analytics-automation/releases/<previous-release-id>
