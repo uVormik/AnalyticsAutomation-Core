@@ -7,6 +7,7 @@ using BuildingBlocks.Infrastructure.Persistence;
 
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -15,8 +16,7 @@ namespace Modules.Auth.Authentication;
 public sealed class OpaqueBearerAuthenticationHandler(
     IOptionsMonitor<AuthenticationSchemeOptions> options,
     ILoggerFactory logger,
-    UrlEncoder encoder,
-    PlatformDbContext dbContext) : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
+    UrlEncoder encoder) : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
 {
     private const string BearerPrefix = "Bearer ";
 
@@ -42,6 +42,8 @@ public sealed class OpaqueBearerAuthenticationHandler(
         }
 
         var accessTokenHash = ComputeHash(accessToken);
+
+        PlatformDbContext dbContext = Context.RequestServices.GetRequiredService<PlatformDbContext>();
 
         var session = await dbContext.AuthSessions
             .AsNoTracking()

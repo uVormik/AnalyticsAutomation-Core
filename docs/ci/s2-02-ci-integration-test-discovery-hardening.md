@@ -92,3 +92,11 @@ Observed case:
 S2-02 therefore hardens both:
 - test failure propagation in CI loops;
 - App.Api host test isolation from external database availability.
+## Auth handler follow-up
+
+PR CI also proved that App.Api host tests must not require database resolution for anonymous requests.
+
+Auth hardening update:
+- opaque bearer handler no longer constructor-injects PlatformDbContext;
+- PlatformDbContext is resolved only after a non-empty Bearer token is present;
+- anonymous health and anonymous authorization-challenge paths stay independent from database availability.
