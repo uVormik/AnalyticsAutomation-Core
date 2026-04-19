@@ -240,7 +240,8 @@ app.MapGet(
     {
         var result = await service.GetNodesAsync(cancellationToken);
         return Results.Ok(result);
-    });
+    })
+    .RequireAuthorization();
 
 app.MapGet(
     "/api/group-tree/routing-preview",

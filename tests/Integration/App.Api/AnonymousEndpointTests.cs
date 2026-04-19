@@ -13,4 +13,14 @@ public sealed class AnonymousEndpointTests(AppApiFactory factory) : IClassFixtur
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
+
+    [Fact]
+    public async Task GroupTreeNodesRejectsAnonymous()
+    {
+        using HttpClient client = factory.CreateClient();
+
+        using HttpResponseMessage response = await client.GetAsync("/api/group-tree/nodes");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
 }
