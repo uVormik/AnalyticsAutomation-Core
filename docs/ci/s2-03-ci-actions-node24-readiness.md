@@ -82,3 +82,15 @@ No production deploy included.
   - feature flag: none;
   - rollback: revert PR;
   - production deploy: not included.
+## Inventory update
+
+Current workflow inventory:
+- `.github/workflows/ci-pr.yml` used `actions/checkout@v4`.
+- CI annotations reported Node.js 20 deprecation for `actions/checkout@v4`.
+- Official `actions/checkout@v5` release notes state that v5 uses Node 24.
+- Official `actions/checkout@v5` requires Actions Runner `v2.327.1+`.
+- Existing GitHub-hosted runner log showed runner `2.333.1`, which satisfies the minimum runner requirement.
+
+S2-03 change:
+- update `actions/checkout@v4` to `actions/checkout@v5`;
+- keep restore, format, build, unit-tests and integration-tests behavior unchanged.
