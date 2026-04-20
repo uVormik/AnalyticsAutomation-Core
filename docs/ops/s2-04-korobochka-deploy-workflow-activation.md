@@ -137,3 +137,22 @@ Decision:
   - `http://127.0.0.1/api/system/version`.
 
 A separate follow-up PR is required before enabling automatic deploy on `push` to `main`.
+## Manual deploy verification
+
+Manual workflow_dispatch deploy was executed after PR #57 was merged.
+
+Evidence:
+
+- main commit: `3687c3b S2-04 Manual Korobochka Deploy Workflow`;
+- workflow: `deploy-korobochka.yml`;
+- run: `24657466137`;
+- result: success;
+- release: `20260420-105341`;
+- LAN health: healthy;
+- version endpoint: `Production`, `.NET 10.0.6`, `1.0.0+3687c3b...`;
+- server check: `V1_CHECK_OK`.
+
+Decision remains:
+
+- auto-deploy on push to main is not enabled in S2-04;
+- enabling auto-deploy requires a separate task card / PR / approval.

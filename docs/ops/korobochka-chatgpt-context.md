@@ -25,7 +25,7 @@
 - Main branch: main
 - Direct push to main запрещён.
 - Изменения идут через короткие ветки и Pull Request.
-- Merge в main запускает автоматический деплой на Коробочку через GitHub Actions self-hosted runner.
+- Текущее состояние: merge в main НЕ запускает deploy автоматически. Deploy на Коробочку сейчас выполняется вручную через GitHub Actions workflow_dispatch. Автоматический deploy на push в main требует отдельного PR и явного решения владельца проекта.
 
 ## Технологический baseline
 
@@ -111,10 +111,11 @@ GitHub main
 -> restart App.Api / App.Worker
 -> healthcheck
 
-Workflow должен запускаться только на:
+Актуальный workflow сейчас запускается только на:
 
-- push в main
 - manual workflow_dispatch
+
+Push в main auto-deploy пока не включен. Включение push-trigger требует отдельного PR, CI и явного approval.
 
 Не запускать self-hosted runner на недоверенных Pull Request.
 
@@ -199,3 +200,18 @@ Workflow должен запускаться только на:
 2. PR в GitHub;
 3. merge в main;
 4. GitHub Actions деплоит на Коробочку.
+## S2-04 manual deploy verification
+
+На 2026-04-20 проверено:
+
+- `.github/workflows/deploy-korobochka.yml` существует в main.
+- Workflow запускается вручную через `workflow_dispatch`.
+- Manual deploy run `24657466137` завершился success.
+- Deploy выполнил `sudo /usr/local/bin/v1-deploy`.
+- Smoke-check внутри workflow прошел.
+- LAN `http://192.168.1.66/health/ready` вернул healthy.
+- LAN `http://192.168.1.66/api/system/version` вернул `Production` и версию `1.0.0+3687c3b...`.
+- `v1-check` завершился `V1_CHECK_OK`.
+- Release после проверки: `20260420-105341`.
+
+Auto-deploy on push to main is not enabled yet.
