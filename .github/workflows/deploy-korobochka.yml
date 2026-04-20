@@ -1,0 +1,40 @@
+name: Deploy Korobochka
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: korobochka-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy to Korobochka
+    runs-on:
+      - self-hosted
+      - linux
+      - korobochka
+
+    steps:
+      - name: Show runner
+        shell: bash
+        run: |
+          hostname
+          whoami
+          date
+          pwd
+
+      - name: Deploy
+        shell: bash
+        run: sudo /usr/local/bin/v1-deploy
+
+      - name: Smoke check
+        shell: bash
+        run: |
+          curl -fsS http://127.0.0.1/health/ready
+          echo
+          curl -fsS http://127.0.0.1/api/system/version
+          echo

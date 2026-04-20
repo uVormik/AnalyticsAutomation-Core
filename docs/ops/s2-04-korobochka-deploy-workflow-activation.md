@@ -1,4 +1,4 @@
-﻿# S2-04 Korobochka Deploy Workflow Activation
+# S2-04 Korobochka Deploy Workflow Activation
 
 Status: Draft
 Owner: Coder 1 / Platform Owner
@@ -118,3 +118,22 @@ The follow-up implementation PR must explicitly state whether `push` to `main` d
 - workflow behavior is documented in PR;
 - PR passes CI;
 - production/stage deployment behavior is explicitly approved before merge if `push: main` trigger is enabled.
+## Implementation update
+
+The first clean implementation PR adds `.github/workflows/deploy-korobochka.yml` as `workflow_dispatch` only.
+
+Decision:
+
+- no automatic deploy on `push` to `main` in the first implementation;
+- no deploy from pull_request;
+- deploy runs only when manually dispatched by an authorized maintainer;
+- workflow targets only the Korobochka self-hosted runner labels:
+  - self-hosted;
+  - linux;
+  - korobochka;
+- workflow calls existing `sudo /usr/local/bin/v1-deploy`;
+- workflow performs smoke checks:
+  - `http://127.0.0.1/health/ready`;
+  - `http://127.0.0.1/api/system/version`.
+
+A separate follow-up PR is required before enabling automatic deploy on `push` to `main`.
