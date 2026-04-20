@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -38,7 +39,9 @@ public sealed class AppApiFactory : WebApplicationFactory<global::Program>
                 services.Remove(serviceDescriptor);
             }
 
+            services.RemoveAll<IDbContextOptionsConfiguration<PlatformDbContext>>();
             services.RemoveAll<DbContextOptions<PlatformDbContext>>();
+            services.RemoveAll<DbContextOptions>();
             services.RemoveAll<PlatformDbContext>();
 
             services.AddDbContext<PlatformDbContext>(options =>
