@@ -1,4 +1,4 @@
-﻿# S2 Platform AuthZ / CI Hardening Handoff
+# S2 Platform AuthZ / CI Hardening Handoff
 
 Status: Ready for team consumption
 Owner: Coder 1 / Platform Owner
