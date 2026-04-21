@@ -540,7 +540,8 @@ public static class VideoUploadModule
                         message = exception.Message
                     });
                 }
-            });
+            })
+            .RequireAuthorization();
 
         endpoints.MapPost(
             "/api/video/upload-receipt",
@@ -569,7 +570,8 @@ public static class VideoUploadModule
                         message = exception.Message
                     });
                 }
-            });
+            })
+            .RequireAuthorization();
 
         return endpoints;
     }
