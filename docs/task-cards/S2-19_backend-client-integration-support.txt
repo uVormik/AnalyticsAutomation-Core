@@ -1,0 +1,125 @@
+S2-19 Backend Client Integration Support
+
+Status: Draft
+Owner: Coder 1 / Platform Owner
+Module: App.Api / Auth / VideoUpload / GroupTree / Web / Android Integration
+Type: docs / handoff / backend-platform support / integration triage baseline
+Production deploy: not included
+
+GOAL
+
+Create a backend/platform support artifact for S2-18 Web/PWA and Android upload control plane integration without changing runtime API/contracts.
+
+CONTEXT
+
+- Canonical repo: uVormik/AnalyticsAutomation-Core
+- main baseline: 8846fde S2-17 Client Upload Control Plane Handoff
+- S2-17 is merged and CI succeeded
+- Korobochka API root: http://192.168.1.66/
+- Korobochka health: http://192.168.1.66/health/ready
+- Korobochka version: http://192.168.1.66/api/system/version
+- Current LAN checks on 2026-04-21 confirmed:
+  - health ready returned healthy
+  - version returned 1.0.0+c0fc31d688f725e07629f8503a0e99a8034fb307
+- S2-17 was docs-only, so the runtime version remains the previously deployed backend build
+- Integration login: integration-web-android
+- Password is provided out-of-band only and must never be written to chat, docs, logs, PRs, screenshots, terminal transcripts, or source control
+
+OUTCOME
+
+- create this task card in docs/task-cards
+- create docs/handoffs/S2_19_BACKEND_CLIENT_INTEGRATION_SUPPORT.md
+- freeze the S2-18 upload control plane sequence:
+  - POST /api/auth/sign-in
+  - GET /api/group-tree/nodes
+  - POST /api/video/pre-upload-check
+  - direct client/site upload boundary
+  - POST /api/video/upload-receipt
+- record the backend smoke matrix for Web and Android
+- define triage categories and a sanitized evidence format for Coder 2 and Coder 3
+- record known deferred points and NO-GO boundaries
+- confirm that backend remains the control plane and video bytes must not go through App.Api as a required proxy
+
+SCOPE AND GUARDRAILS
+
+- docs-only change in docs/task-cards and docs/handoffs
+- no runtime endpoint additions
+- no App.Api route changes
+- no shared DTO, contract, enum, or status changes
+- no App.Worker runtime logic changes
+- no module runtime code changes
+- no database migration changes
+- no deploy workflow or GitHub Actions changes
+- do not touch App.Web, App.Mobile.Android, or App.UI.Shared
+- do not publish password, accessToken, refreshToken, GitHub tokens, or any secret material
+- do not SSH to Korobochka unless backend diagnosis is truly required
+- if backend diagnosis becomes necessary later, start with v1-check, v1-status, and v1-logs and keep secrets out of published evidence
+
+FROZEN BACKEND ENDPOINTS FOR S2-18
+
+- POST /api/auth/sign-in
+- GET /api/group-tree/nodes
+- POST /api/video/pre-upload-check
+- POST /api/video/upload-receipt
+
+VERIFIED BASELINE TO CARRY FORWARD
+
+- POST /api/auth/sign-in returns 200
+- GET /api/group-tree/nodes with bearer returns 200
+- POST /api/video/pre-upload-check with bearer returns 200 and decision ALLOW
+- POST /api/video/upload-receipt with bearer returns 200 and status ACCEPTED
+- repeated upload receipt with the same idempotency key returns 200 and status ALREADY_ACCEPTED
+- anonymous pre-upload-check and upload-receipt calls return 401
+
+TRIAGE REQUIREMENTS
+
+Support note must define these categories:
+
+- CLIENT_BUG
+- BACKEND_BUG
+- ENVIRONMENT_OR_AUTH_ISSUE
+- EXPECTED_DUPLICATE_OR_FRAUD_DECISION
+- DEFERRED_SCOPE
+
+Support note must require exact sanitized evidence:
+
+- endpoint
+- status code
+- sanitized request shape
+- sanitized response body
+- correlation/id if present
+- client platform
+- git branch/commit
+- no tokens/passwords
+
+KNOWN DEFERRED
+
+- full authz middleware hardening
+- real site provider beyond stub-compatible baseline
+- ffprobe/ffmpeg/Chromaprint deep media payload
+- worker-to-incident fan-out from deep result
+- final mobile offline cache policy
+
+NO-GO
+
+- no backend route changes
+- no shared DTO changes
+- no invented statuses
+- no video bytes through App.Api as a required proxy
+- no secrets in logs, docs, PRs, or chat
+
+VALIDATION
+
+- docs-only local validation
+- confirm changed files stay under docs/task-cards and docs/handoffs only
+- health/version checks are sufficient for this docs task
+- do not run deploy workflow manually for this change
+- CI remains the PR validation path
+
+DEFINITION OF DONE
+
+- docs/task-cards/S2-19_backend-client-integration-support.txt exists
+- docs/handoffs/S2_19_BACKEND_CLIENT_INTEGRATION_SUPPORT.md exists
+- support note records the frozen S2-18 flow, smoke matrix, triage rules, evidence format, deferred items, and NO-GO boundaries
+- no runtime endpoints, DTOs, contracts, statuses, migrations, deploy workflows, or client code are changed
+- local verification confirms docs-only scope
