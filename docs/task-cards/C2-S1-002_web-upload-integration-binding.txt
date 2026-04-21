@@ -1,0 +1,130 @@
+﻿Название:
+C2-S1-002 web upload integration binding
+
+Кодер:
+2
+
+Модуль:
+App.Web
+App.UI.Shared
+
+Тип задачи:
+- расширение модуля
+- новый adapter
+- новый UI capability
+
+Цель:
+Начать реальную web-интеграцию upload flow по frozen Sprint 1 backend handoff docs:
+PreUploadCheck -> direct site upload adapter boundary -> UploadReceipt.
+Работать строго по существующим shared contracts и handoff docs, без invent новых DTO/statuses.
+
+Что меняется:
+- backend:
+нет
+
+- web:
+добавляются/подключаются web adapters для upload integration:
+POST /api/video/pre-upload-check
+POST /api/video/upload-receipt
+site gateway / WebsiteIntegration surfaces только через adapter boundary
+
+upload screen должен показывать PreUploadCheck decision до direct site upload;
+UploadReceipt отправляется только по frozen contract;
+unknown statuses отображаются как unsupported и логируются;
+download/admin/fraud/worker UI не входят в этот bounded step
+
+- mobile:
+нет
+
+- worker:
+нет
+
+- db:
+нет
+
+- audit:
+новый frontend audit не добавляется; backend audit остается источником истины
+
+- flags:
+использовать backend-driven platform-foundation gating;
+новый local flag не вводить без необходимости
+
+- events:
+нет
+
+Новые или измененные contracts:
+- входящие:
+docs/handoffs/s1-11-coder2-web-integration.md
+docs/handoffs/s1-11-backend-integration-note.md
+docs/handoffs/s1-12-sprint1-quality-gate.md
+
+- исходящие:
+нет
+
+- shared DTO:
+без изменений
+
+- internal events:
+нет
+
+Миграция:
+- не нужна
+
+Offline-поведение:
+- existing restricted shell сохраняется
+- production offline upload completion не реализуется в этом step
+- local outbox/final sync не расширять без отдельного handoff
+
+Security:
+- auth/authz изменения:
+использовать существующий auth/session foundation из backend handoff
+
+- device/user scope:
+использовать current session/user/device fields только как описано в contracts
+
+- audit requirements:
+business-critical receipt audit делает backend
+
+Observability:
+- какие логи:
+pre-upload check call failure
+unsupported pre-upload decision
+direct site upload adapter failure
+upload receipt call failure
+unsupported receipt status
+
+- какие health checks / metrics / counters:
+не добавляются в этом bounded step
+
+- какой инцидентный сценарий:
+backend upload contract returned unsupported status or upload adapter cannot complete
+
+Rollback:
+- как выключить флагом:
+через backend-driven platform-foundation gating, если соответствующий flag предусмотрен handoff docs
+
+- как отключить UI:
+revert PR / hide upload integration route behind existing shell gating
+
+- что происходит с уже созданными данными:
+web не создает новые persistent domain data beyond backend API calls
+
+Definition of done:
+- web shell собирается
+- unit tests проходят
+- upload adapter вызывает POST /api/video/pre-upload-check по frozen contract
+- UI отображает только frozen decision vocabulary:
+  ALLOW
+  BLOCK_HARD_DUPLICATE
+  ALLOW_WITH_REVIEW
+  BLOCK_POSSIBLE_FALSIFICATION
+- upload receipt adapter вызывает POST /api/video/upload-receipt по frozen contract
+- UI обрабатывает receipt statuses:
+  ACCEPTED
+  ALREADY_ACCEPTED
+  REJECTED
+- unsupported statuses не мапятся в придуманные состояния, а отображаются как unsupported и логируются
+- shared contracts не менялись
+- production download flow не реализован
+- duplicate/fraud/admin decisions не изобретались
+- handoff note описывает оставшиеся integration points

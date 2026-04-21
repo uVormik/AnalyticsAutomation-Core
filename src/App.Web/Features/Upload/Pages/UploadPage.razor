@@ -1,0 +1,166 @@
+@page "/upload"
+@using Microsoft.AspNetCore.Components.Forms
+
+<div class="container py-4">
+    <div class="mb-4">
+        <h1 class="h3">Upload</h1>
+        <p class="text-body-secondary mb-0">Pre-upload check, direct site upload boundary, and upload receipt boundary.</p>
+    </div>
+
+    <div class="alert alert-info" role="alert">
+        This screen runs PreUploadCheck and prepares UploadReceipt only after a direct site upload adapter reports success.
+        The registered direct upload adapter is still disabled in this bounded step.
+    </div>
+
+    <EditForm Model="_form" OnValidSubmit="RunPreUploadCheckAsync">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-12 col-lg-4">
+                        <label class="form-label" for="upload-user-id">UserId</label>
+                        <InputText id="upload-user-id" class="form-control" @bind-Value="_form.UserId" />
+                    </div>
+
+                    <div class="col-12 col-lg-4">
+                        <label class="form-label" for="upload-device-id">DeviceId</label>
+                        <InputText id="upload-device-id" class="form-control" @bind-Value="_form.DeviceId" />
+                    </div>
+
+                    <div class="col-12 col-lg-4">
+                        <label class="form-label" for="upload-group-node-id">GroupNodeId</label>
+                        <InputText id="upload-group-node-id" class="form-control" @bind-Value="_form.GroupNodeId" />
+                    </div>
+
+                    <div class="col-12 col-lg-4">
+                        <label class="form-label" for="upload-business-object-key">BusinessObjectKey</label>
+                        <InputText id="upload-business-object-key" class="form-control" @bind-Value="_form.BusinessObjectKey" />
+                    </div>
+
+                    <div class="col-12 col-lg-4">
+                        <label class="form-label" for="upload-file-name">FileName</label>
+                        <InputText id="upload-file-name" class="form-control" @bind-Value="_form.FileName" />
+                    </div>
+
+                    <div class="col-12 col-lg-4">
+                        <label class="form-label" for="upload-size-bytes">SizeBytes</label>
+                        <InputNumber id="upload-size-bytes" class="form-control" @bind-Value="_form.SizeBytes" />
+                    </div>
+
+                    <div class="col-12 col-lg-8">
+                        <label class="form-label" for="upload-byte-sha256">ByteSha256</label>
+                        <InputText id="upload-byte-sha256" class="form-control" @bind-Value="_form.ByteSha256" />
+                    </div>
+
+                    <div class="col-12 col-lg-4">
+                        <label class="form-label" for="upload-content-type">ContentType</label>
+                        <InputText id="upload-content-type" class="form-control" @bind-Value="_form.ContentType" />
+                    </div>
+
+                    <div class="col-12 col-lg-6">
+                        <label class="form-label" for="upload-captured-at-utc">CapturedAtUtc</label>
+                        <InputText id="upload-captured-at-utc" class="form-control" @bind-Value="_form.CapturedAtUtc" />
+                    </div>
+                </div>
+
+                <div class="d-flex align-items-center gap-2 mt-4">
+                    <button type="submit" class="btn btn-primary" disabled="@_isSubmitting">
+                        @(_isSubmitting ? "Checking..." : "Run pre-upload check")
+                    </button>
+
+                    <button type="button" class="btn btn-outline-secondary" @onclick="ResetResult" disabled="@_isSubmitting">
+                        Clear result
+                    </button>
+                </div>
+            </div>
+        </div>
+    </EditForm>
+
+    @if (!string.IsNullOrWhiteSpace(_errorMessage))
+    {
+        <div class="alert alert-danger mt-3" role="alert">
+            <div class="fw-semibold">Upload flow step failed</div>
+            <div>@_errorMessage</div>
+        </div>
+    }
+
+    @if (_decisionModel is not null)
+    {
+        <div class="@AlertClass(_decisionModel.Tone)" role="alert">
+            <div class="fw-semibold">@_decisionModel.Title</div>
+            <div>@_decisionModel.Message</div>
+        </div>
+
+        <div class="card border-0 shadow-sm mt-3">
+            <div class="card-body d-grid gap-2">
+                <div class="d-flex align-items-start justify-content-between gap-3">
+                    <div>
+                        <div class="fw-semibold">Backend decision</div>
+                        <div class="text-body-secondary small">@_decisionModel.Decision</div>
+                    </div>
+
+                    <span class="@(_decisionModel.CanContinue ? "badge text-bg-success" : "badge text-bg-danger")">
+                        @(_decisionModel.CanContinue ? "Can continue" : "Stop")
+                    </span>
+                </div>
+
+                @if (_preUploadResponse is not null)
+                {
+                    <dl class="row mb-0">
+                        <dt class="col-12 col-md-4">PreUploadCheckId</dt>
+                        <dd class="col-12 col-md-8">@_preUploadResponse.PreUploadCheckId</dd>
+                    </dl>
+                }
+
+                <button type="button" class="btn btn-outline-primary" disabled="@(!CanRunDirectUploadBoundary)" @onclick="RunDirectSiteUploadBoundaryAsync">
+                    Run direct site upload adapter boundary
+                </button>
+            </div>
+        </div>
+    }
+
+    @if (_directUploadResult is not null)
+    {
+        <div class="@AlertClass(_directUploadResult.Succeeded ? "success" : "warning")" role="alert">
+            <div class="fw-semibold">Direct site upload adapter boundary</div>
+            <div>@_directUploadResult.Message</div>
+        </div>
+    }
+
+    @if (_receiptForm is not null)
+    {
+        <div class="card border-0 shadow-sm mt-3">
+            <div class="card-body d-grid gap-2">
+                <div class="fw-semibold">UploadReceipt boundary payload</div>
+
+                <dl class="row mb-0">
+                    <dt class="col-12 col-md-4">PreUploadCheckId</dt>
+                    <dd class="col-12 col-md-8">@_receiptForm.PreUploadCheckId</dd>
+
+                    <dt class="col-12 col-md-4">ExternalVideoId</dt>
+                    <dd class="col-12 col-md-8">@_receiptForm.ExternalVideoId</dd>
+
+                    <dt class="col-12 col-md-4">StorageKey</dt>
+                    <dd class="col-12 col-md-8">@_receiptForm.StorageKey</dd>
+
+                    <dt class="col-12 col-md-4">SiteStatus</dt>
+                    <dd class="col-12 col-md-8">@_receiptForm.SiteStatus</dd>
+
+                    <dt class="col-12 col-md-4">IdempotencyKey</dt>
+                    <dd class="col-12 col-md-8">@_receiptForm.IdempotencyKey</dd>
+                </dl>
+
+                <button type="button" class="btn btn-success" disabled="@(!CanSubmitUploadReceipt)" @onclick="SubmitUploadReceiptAsync">
+                    Submit UploadReceipt
+                </button>
+            </div>
+        </div>
+    }
+
+    @if (_receiptModel is not null)
+    {
+        <div class="@AlertClass(_receiptModel.Tone)" role="alert">
+            <div class="fw-semibold">@_receiptModel.Title</div>
+            <div>@_receiptModel.Message</div>
+        </div>
+    }
+</div>
