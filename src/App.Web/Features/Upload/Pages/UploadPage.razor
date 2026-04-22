@@ -1,20 +1,117 @@
 @page "/upload"
+@using global::App.Web.Features.Upload.ControlPlane
 @using Microsoft.AspNetCore.Components.Forms
 
 <div class="container py-4">
     <div class="mb-4">
         <h1 class="h3">Upload</h1>
-        <p class="text-body-secondary mb-0">Pre-upload check, direct site upload boundary, and upload receipt boundary.</p>
+        <p class="text-body-secondary mb-0">Control plane sign-in, group selection, PreUploadCheck, direct site upload boundary, and UploadReceipt boundary.</p>
     </div>
 
     <div class="alert alert-info" role="alert">
-        This screen runs PreUploadCheck and prepares UploadReceipt only after a direct site upload adapter reports success.
-        The registered direct upload adapter is still disabled in this bounded step.
+        This screen uses the backend as a control plane only. Video bytes must not be sent through App.Api.
+        The direct site upload adapter remains an explicit local/client boundary until a real site provider is configured.
     </div>
+
+    <section class="card border-0 shadow-sm mb-4">
+        <div class="card-body">
+            <h2 class="h5">Control plane session</h2>
+            <p class="text-body-secondary">
+                Sign in stores a temporary in-memory session for this page flow. Token values are never displayed.
+            </p>
+
+            <EditForm Model="_signInForm" OnValidSubmit="SignInControlPlaneAsync">
+                <div class="row g-3">
+                    <div class="col-12 col-lg-4">
+                        <label class="form-label" for="control-plane-login">Login</label>
+                        <InputText id="control-plane-login" class="form-control" @bind-Value="_signInForm.Login" autocomplete="username" />
+                    </div>
+
+                    <div class="col-12 col-lg-4">
+                        <label class="form-label" for="control-plane-password">Password</label>
+                        <input id="control-plane-password" type="password" class="form-control" @bind="_signInForm.Password" autocomplete="current-password" />
+                    </div>
+
+                    <div class="col-12 col-lg-4 d-flex align-items-end gap-2">
+                        <button type="submit" class="btn btn-primary" disabled="@_isControlPlaneSubmitting">
+                            @(_isControlPlaneSubmitting ? "Signing in..." : "Sign in")
+                        </button>
+
+                        <button type="button" class="btn btn-outline-secondary" @onclick="ClearControlPlaneSessionAsync" disabled="@_isControlPlaneSubmitting">
+                            Clear
+                        </button>
+                    </div>
+                </div>
+            </EditForm>
+
+            @if (_sessionSummary is not null)
+            {
+                <div class="alert alert-success mt-3" role="alert">
+                    <div class="fw-semibold">Session ready</div>
+                    <div>UserId: @_sessionSummary.UserId</div>
+                    <div>DisplayName: @_sessionSummary.DisplayName</div>
+                    <div>Access token available: @_sessionSummary.HasAccessToken</div>
+                    <div>Refresh token available: @_sessionSummary.HasRefreshToken</div>
+                </div>
+
+                <button type="button" class="btn btn-outline-primary" @onclick="LoadGroupTreeNodesAsync" disabled="@_isControlPlaneSubmitting">
+                    Load group tree
+                </button>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(_controlPlaneMessage))
+            {
+                <div class="alert alert-info mt-3" role="alert">@_controlPlaneMessage</div>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(_controlPlaneErrorMessage))
+            {
+                <div class="alert alert-danger mt-3" role="alert">
+                    <div class="fw-semibold">Control plane step failed</div>
+                    <div>@_controlPlaneErrorMessage</div>
+                </div>
+            }
+
+            @if (_groupNodes.Count > 0)
+            {
+                <div class="table-responsive mt-3">
+                    <table class="table table-sm align-middle">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Code</th>
+                                <th>Path</th>
+                                <th>Selectable</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var node in _groupNodes)
+                            {
+                                <tr>
+                                    <td>@node.Name</td>
+                                    <td>@node.Code</td>
+                                    <td>@node.Path</td>
+                                    <td>@node.IsSelectable</td>
+                                    <td>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" disabled="@(!node.Id.HasValue)" @onclick="() => UseGroupNode(node)">
+                                            Use
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    </section>
 
     <EditForm Model="_form" OnValidSubmit="RunPreUploadCheckAsync">
         <div class="card border-0 shadow-sm">
             <div class="card-body">
+                <h2 class="h5">PreUploadCheck</h2>
+
                 <div class="row g-3">
                     <div class="col-12 col-lg-4">
                         <label class="form-label" for="upload-user-id">UserId</label>
