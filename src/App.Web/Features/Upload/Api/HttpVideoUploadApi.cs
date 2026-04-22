@@ -1,5 +1,8 @@
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+
+using App.Web.Features.Upload.ControlPlane;
 
 using BuildingBlocks.Contracts.VideoUpload;
 
@@ -25,11 +28,16 @@ public sealed class HttpVideoUploadApi : IVideoUploadApi
 
     private readonly HttpClient _httpClient;
     private readonly ILogger<HttpVideoUploadApi> _logger;
+    private readonly IUploadControlPlaneSessionStore _sessionStore;
 
-    public HttpVideoUploadApi(HttpClient httpClient, ILogger<HttpVideoUploadApi> logger)
+    public HttpVideoUploadApi(
+        HttpClient httpClient,
+        ILogger<HttpVideoUploadApi> logger,
+        IUploadControlPlaneSessionStore sessionStore)
     {
         _httpClient = httpClient;
         _logger = logger;
+        _sessionStore = sessionStore;
     }
 
     public async Task<VideoPreUploadCheckResponseDto> CheckPreUploadAsync(
@@ -40,18 +48,20 @@ public sealed class HttpVideoUploadApi : IVideoUploadApi
 
         try
         {
-            using var response = await _httpClient.PostAsJsonAsync(
+            using var httpRequest = await CreateJsonRequestAsync(
+                HttpMethod.Post,
                 UploadApiEndpoints.PreUploadCheck,
                 request,
-                JsonOptions,
                 cancellationToken);
 
-            return await ReadRequiredJsonAsync<VideoPreUploadCheckResponseDto>(
+            using var response = await _httpClient.SendAsync(httpRequest, cancellationToken);
+
+            return await ReadJsonOrThrowAsync<VideoPreUploadCheckResponseDto>(
                 response,
                 UploadApiEndpoints.PreUploadCheck,
                 cancellationToken);
         }
-        catch (Exception exception) when (exception is not OperationCanceledException)
+        catch (Exception exception) when (exception is not HttpRequestException)
         {
             LogPreUploadCheckApiCallFailed(_logger, exception);
             throw;
@@ -66,38 +76,76 @@ public sealed class HttpVideoUploadApi : IVideoUploadApi
 
         try
         {
-            using var response = await _httpClient.PostAsJsonAsync(
+            using var httpRequest = await CreateJsonRequestAsync(
+                HttpMethod.Post,
                 UploadApiEndpoints.UploadReceipt,
                 request,
-                JsonOptions,
                 cancellationToken);
 
-            return await ReadRequiredJsonAsync<VideoUploadReceiptResponseDto>(
+            using var response = await _httpClient.SendAsync(httpRequest, cancellationToken);
+
+            return await ReadJsonOrThrowAsync<VideoUploadReceiptResponseDto>(
                 response,
                 UploadApiEndpoints.UploadReceipt,
                 cancellationToken);
         }
-        catch (Exception exception) when (exception is not OperationCanceledException)
+        catch (Exception exception) when (exception is not HttpRequestException)
         {
             LogUploadReceiptApiCallFailed(_logger, exception);
             throw;
         }
     }
 
-    private static async Task<TResponse> ReadRequiredJsonAsync<TResponse>(
+    private async Task<HttpRequestMessage> CreateJsonRequestAsync<T>(
+        HttpMethod method,
+        string endpoint,
+        T payload,
+        CancellationToken cancellationToken)
+    {
+        var request = new HttpRequestMessage(method, endpoint)
+        {
+            Content = JsonContent.Create(payload, options: JsonOptions)
+        };
+
+        var session = await _sessionStore.GetAsync(cancellationToken);
+
+        if (session is not null && !string.IsNullOrWhiteSpace(session.AccessToken))
+        {
+            request.Headers.Authorization = new AuthenticationHeaderValue(
+                "Bearer",
+                session.AccessToken);
+        }
+
+        return request;
+    }
+
+    private static async Task<T> ReadJsonOrThrowAsync<T>(
         HttpResponseMessage response,
         string endpoint,
         CancellationToken cancellationToken)
-        where TResponse : class
     {
         if (!response.IsSuccessStatusCode)
         {
-            var body = await response.Content.ReadAsStringAsync(cancellationToken);
-            var message = $"Upload API call to {endpoint} failed with HTTP {(int)response.StatusCode} {response.ReasonPhrase}: {body}";
-            throw new HttpRequestException(message, null, response.StatusCode);
+            var rawBody = await response.Content.ReadAsStringAsync(cancellationToken);
+            var sanitizedBody = UploadControlPlaneErrorRedactor.Redact(rawBody);
+            var statusCode = (int)response.StatusCode;
+
+            throw new HttpRequestException(
+                $"Upload API request failed for {endpoint}. Status={statusCode}. Body={sanitizedBody}",
+                inner: null,
+                response.StatusCode);
         }
 
-        var result = await response.Content.ReadFromJsonAsync<TResponse>(JsonOptions, cancellationToken);
-        return result ?? throw new InvalidOperationException($"Upload API call to {endpoint} returned an empty response body.");
+        var payload = await response.Content.ReadFromJsonAsync<T>(
+            JsonOptions,
+            cancellationToken);
+
+        if (payload is not null)
+        {
+            return payload;
+        }
+
+        throw new InvalidOperationException(
+            $"Upload API response for {endpoint} was empty.");
     }
 }
