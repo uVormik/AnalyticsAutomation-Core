@@ -1,0 +1,81 @@
+TASK CARD: C2-S2-18 Web/PWA Upload Control Plane Integration Increment 1
+
+Owner:
+Coder 2 / Web
+
+Branch:
+feature/web-upload-control-plane-s2-18
+
+Base:
+main after PR #74 merge and S2-17/S2-19/S2-21 backend handoffs present in main.
+
+Goal:
+Implement Web/PWA client-side upload control plane baseline:
+sign-in -> group tree -> pre-upload check -> local/direct-site adapter boundary -> upload receipt.
+
+Korobochka LAN API:
+- API root: http://192.168.1.66/
+- health: http://192.168.1.66/health/ready
+- version: http://192.168.1.66/api/system/version
+
+Integration account:
+- login: integration-web-android
+- password: out-of-band only
+
+Security:
+- do not write password to GitHub, ChatGPT, logs, screenshots, or docs
+- do not print accessToken or refreshToken
+- redact tokens in all errors
+- report only status codes and sanitized response bodies
+
+Required Web flow:
+1. POST /api/auth/sign-in
+2. Store/use bearer token only in safe dev/session path
+3. GET /api/group-tree/nodes with bearer
+4. Build minimal pre-upload request from local metadata:
+   - userId
+   - deviceId
+   - groupNodeId
+   - businessObjectKey
+   - fileName
+   - sizeBytes
+   - byteSha256
+   - contentType
+   - capturedAtUtc
+5. POST /api/video/pre-upload-check with bearer
+6. Display decision and sitePlan safely
+7. Do not send video bytes through App.Api
+8. If direct-site upload adapter is not ready, keep direct-site step as local/client stub only
+9. POST /api/video/upload-receipt with bearer after direct-site step/stub
+10. Verify idempotent repeat with same idempotencyKey if practical
+
+In scope:
+- App.Web client-side upload control plane baseline
+- reuse existing App.Web upload adapter/UI structure
+- web-side smoke/dev notes if suitable docs area exists
+- tests only if existing App.Web test structure supports them without new infrastructure
+
+Out of scope:
+- backend routes
+- BuildingBlocks.Contracts changes
+- App.Api changes
+- DB migrations
+- deploy-korobochka workflow
+- Android code
+- SSH to Korobochka
+- production site video byte proxy through App.Api
+- unapproved packages
+
+Checks:
+- dotnet build affected Web/shared UI projects
+- dotnet format whitespace AnalyticsAutomation-Core.sln --verify-no-changes --no-restore when applicable
+- git diff --check
+
+Definition of done:
+- App.Web upload control plane baseline compiles
+- token/password redaction rules respected
+- video bytes are not routed through App.Api
+- direct-site step remains explicit local/client stub if adapter is not ready
+- upload receipt submission is wired only after control-plane/direct-site boundary
+- manual smoke notes include sanitized outputs only
+- no backend/contracts/migrations/deploy/Android changes
