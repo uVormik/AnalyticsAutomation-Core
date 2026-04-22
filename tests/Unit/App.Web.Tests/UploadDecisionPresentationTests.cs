@@ -9,7 +9,7 @@ namespace App.Web.Tests;
 public sealed class UploadDecisionPresentationTests
 {
     [Fact]
-    public void Frozen_pre_upload_decisions_map_to_expected_continue_rules()
+    public void FrozenPreUploadDecisionsMapToExpectedContinueRules()
     {
         Assert.True(UploadDecisionPresentation.FromDecision(PreUploadCheckDecisions.Allow).CanContinue);
         Assert.True(UploadDecisionPresentation.FromDecision(PreUploadCheckDecisions.AllowWithReview).CanContinue);
@@ -18,7 +18,7 @@ public sealed class UploadDecisionPresentationTests
     }
 
     [Fact]
-    public void Unsupported_pre_upload_decision_is_not_mapped_to_a_fake_state()
+    public void UnsupportedPreUploadDecisionIsNotMappedToAFakeState()
     {
         var model = UploadDecisionPresentation.FromDecision("NEW_BACKEND_DECISION");
 

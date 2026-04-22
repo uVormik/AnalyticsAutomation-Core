@@ -7,7 +7,7 @@ namespace App.Web.Tests;
 public sealed class DirectSiteVideoUploadAdapterTests
 {
     [Fact]
-    public async Task Disabled_adapter_does_not_claim_production_site_upload_success()
+    public async Task DisabledAdapterDoesNotClaimProductionSiteUploadSuccess()
     {
         var adapter = new DisabledDirectSiteVideoUploadAdapter();
         var draft = new DirectSiteVideoUploadDraft(
@@ -30,7 +30,7 @@ public sealed class DirectSiteVideoUploadAdapterTests
     }
 
     [Fact]
-    public async Task Disabled_adapter_still_validates_that_stream_is_readable()
+    public async Task DisabledAdapterStillValidatesThatStreamIsReadable()
     {
         var adapter = new DisabledDirectSiteVideoUploadAdapter();
         var draft = new DirectSiteVideoUploadDraft(
