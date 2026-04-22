@@ -1,0 +1,143 @@
+Название:
+S2-25 Late Sync Upload Receipt Intake Task Card
+
+Кодер:
+Coder 1 / Platform Owner
+
+Модуль:
+App.Api / VideoUpload / Sync foundation / WorkerPipeline / VideoDuplicates / Incidents / Mobile integration
+
+Тип задачи:
+backend sync foundation / additive API contract planning / offline upload continuation
+
+Цель:
+Подготовить implementation PR для безопасного приема late/offline UploadReceipt после восстановления связи, чтобы можно было проверить duplicate incident path без скрытого обхода PreUploadCheck и без отправки видео-байтов через App.Api.
+
+Контекст:
+S2-24 readiness audit показал, что текущий online UploadReceipt endpoint требует существующий successful PreUploadCheck и сверяет user/device/group/hash/size/site fields с ним.
+Это правильно для online path, но не покрывает offline path, где сервер был недоступен во время pre-upload check.
+
+S2-22 уже добавил post-receipt worker bridge:
+UploadReceipt accepted
+-> queued analysis job
+-> worker processing
+-> exact duplicate registry update
+-> duplicate incident foundation when duplicate candidates exist.
+
+Остающийся разрыв:
+- online repeat exact hash обычно блокируется PreUploadCheck до UploadReceipt;
+- duplicate incident runtime path нельзя честно проверить только через approved public endpoints;
+- нужен утвержденный late/offline sync intake, который принимает receipt/sync payload после reconnect и затем использует уже существующий post-receipt pipeline.
+
+Что меняется:
+- backend:
+  - planned implementation should add a narrow late sync upload receipt intake path;
+  - it must reuse existing VideoUpload receipt validation as much as possible;
+  - it must create or reconcile the necessary server-side receipt/precheck/sync state additively;
+  - it must enqueue the same durable analysis job as normal UploadReceipt;
+  - it must allow exact duplicate incident runtime smoke through an approved sync path.
+- web:
+  - no change in this task-card PR.
+- mobile:
+  - no runtime change in this task-card PR;
+  - implementation must be backward-compatible and support future Android offline outbox.
+- worker:
+  - no new bridge in this task-card PR;
+  - implementation should reuse S2-22 bridge.
+- db:
+  - task-card PR has no migration;
+  - implementation must confirm whether existing tables are sufficient;
+  - if new state is required, migration must be additive-first.
+- audit:
+  - implementation must audit late sync receipt accepted/rejected and analysis enqueue.
+- flags:
+  - implementation needs either existing module flag reuse or a new kill switch if endpoint/runtime behavior is risky.
+- events:
+  - preferred event: UploadReceiptSyncAccepted or reuse UploadReceiptAccepted with explicit sync source metadata if compatible.
+
+Новые или измененные contracts:
+Task-card PR:
+- no shared DTO changes.
+- no API route changes.
+
+Implementation PR must decide one of these approved options:
+
+Option A — new additive public sync endpoint:
+- POST /api/video/upload-receipt-sync
+- authenticated bearer required;
+- accepts late/offline receipt sync payload;
+- does not route video bytes through App.Api;
+- returns accepted/rejected/idempotent status compatible with existing receipt concepts.
+
+Option B — existing endpoint accepts additive sync metadata:
+- not preferred unless compatibility is clear;
+- must not weaken normal online UploadReceipt validation;
+- must not silently accept invalid online receipts.
+
+Option C — internal maintenance-only duplicate incident smoke:
+- allowed only as a temporary ops/test aid;
+- not sufficient as final offline sync foundation;
+- must not become a hidden production bypass.
+
+Preferred direction:
+Option A, because it creates the missing late/offline sync intake explicitly and keeps the normal online UploadReceipt contract strict.
+
+Миграция:
+Task-card PR: no migration.
+Implementation PR:
+- additive-first only;
+- likely candidates if needed:
+  - sync source/status field;
+  - late sync correlation/idempotency field;
+  - PendingSyncItem foundation table;
+  - audit/read model additions.
+- no destructive migration.
+
+Offline-поведение:
+Target behavior for later implementation:
+- client can operate only under last active account;
+- client stores upload receipt/outbox item locally;
+- on reconnect client sends late sync receipt payload;
+- server performs dedupe/fraud analysis after sync;
+- duplicate prevention is not guaranteed while server is offline.
+
+Security:
+- bearer auth required;
+- no password/token logs;
+- no hidden auth bypass;
+- no video bytes through App.Api as required proxy;
+- endpoint must validate user/device/group scope;
+- idempotency must prevent duplicate receipt/job/incident spam;
+- if uploader is branch admin, incident routing must escalate upward using existing routing rules.
+
+Observability:
+Implementation PR should provide safe evidence for:
+- late sync receipt accepted/rejected;
+- idempotency hit;
+- analysis job enqueued;
+- worker processed job;
+- duplicate registry updated;
+- duplicate incident created when exact duplicate exists;
+- no tokens/passwords printed.
+
+Rollback:
+Task-card PR rollback: revert PR.
+Implementation PR rollback:
+- revert code PR;
+- disable via feature flag/kill switch if introduced;
+- keep additive DB data;
+- no destructive rollback.
+
+Definition of done:
+- task card merged;
+- implementation scope is explicit and narrow;
+- no video byte proxy through App.Api;
+- no shared DTO/route change without explicit additive contract plan;
+- no hidden bypass;
+- PR CI passes;
+- implementation PR must include tests for:
+  - anonymous late sync endpoint returns 401;
+  - authenticated late sync unique receipt accepted;
+  - repeated same idempotency key is idempotent;
+  - two late sync receipts with same ByteSha256 + SizeBytes can trigger duplicate candidate/incident path;
+  - normal online UploadReceipt strict validation remains unchanged.
