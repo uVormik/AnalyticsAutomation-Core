@@ -1,0 +1,50 @@
+TASK CARD: C2-OPS-001 Codex Automation Prompt Pack
+
+Module:
+repo/process
+
+Owner:
+Coder 2 / Web process support
+
+Goal:
+Codify repeatable CODEX -> PowerShell prompts for repository operations:
+- branch/task-card bootstrap
+- implementation gates
+- PR readiness checks
+- push + PR body preparation
+- GitHub CI/check-runs/annotations verification
+- review-only validation
+- merge verification and local main sync
+- live smoke gate rules
+
+Contracts:
+No shared DTO / API contract change.
+
+Feature flag:
+Not needed.
+
+Migration:
+No migration.
+
+Events:
+None.
+
+Offline behavior:
+No runtime/offline behavior change.
+
+Rollback:
+Revert docs-only commit.
+
+Scope:
+Docs only:
+- docs/task-cards/C2-OPS-001_codex-automation-prompts.txt
+- docs/operations/C2_CODEX_AUTOMATION_PROMPTS.md
+
+Out of scope:
+- production code
+- App.Api
+- backend modules
+- shared contracts
+- Android code
+- deploy workflow
+- server operations
