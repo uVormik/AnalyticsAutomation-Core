@@ -14,6 +14,42 @@ namespace App.Web.Features.Upload.Pages;
 
 public partial class UploadPage
 {
+    private static readonly Action<ILogger, string, Exception?> LogUnsupportedPreUploadDecision =
+        LoggerMessage.Define<string>(
+            LogLevel.Warning,
+            new EventId(2001, nameof(LogUnsupportedPreUploadDecision)),
+            "Unsupported pre-upload decision returned by backend: {Decision}");
+
+    private static readonly Action<ILogger, Exception?> LogUploadScreenPreUploadCheckFailed =
+        LoggerMessage.Define(
+            LogLevel.Error,
+            new EventId(2002, nameof(LogUploadScreenPreUploadCheckFailed)),
+            "Upload screen pre-upload check failed.");
+
+    private static readonly Action<ILogger, string, Exception?> LogDirectSiteUploadAdapterDidNotComplete =
+        LoggerMessage.Define<string>(
+            LogLevel.Information,
+            new EventId(2003, nameof(LogDirectSiteUploadAdapterDidNotComplete)),
+            "Direct site upload adapter did not complete: {Message}");
+
+    private static readonly Action<ILogger, Exception?> LogDirectSiteUploadAdapterBoundaryFailed =
+        LoggerMessage.Define(
+            LogLevel.Error,
+            new EventId(2004, nameof(LogDirectSiteUploadAdapterBoundaryFailed)),
+            "Direct site upload adapter boundary failed.");
+
+    private static readonly Action<ILogger, string, Exception?> LogUnsupportedUploadReceiptStatus =
+        LoggerMessage.Define<string>(
+            LogLevel.Warning,
+            new EventId(2005, nameof(LogUnsupportedUploadReceiptStatus)),
+            "Unsupported upload receipt status returned by backend: {Status}");
+
+    private static readonly Action<ILogger, Exception?> LogUploadReceiptSubmissionFailed =
+        LoggerMessage.Define(
+            LogLevel.Error,
+            new EventId(2006, nameof(LogUploadReceiptSubmissionFailed)),
+            "Upload receipt submission failed.");
+
     private readonly UploadPreCheckFormModel _form = new()
     {
         UserId = "11111111-1111-1111-1111-111111111111",
@@ -43,7 +79,7 @@ public partial class UploadPage
     public IDirectSiteVideoUploadAdapter DirectSiteVideoUploadAdapter { get; set; } = default!;
 
     [Inject]
-    public ILoggerFactory LoggerFactory { get; set; } = default!;
+    public ILogger<UploadPage> Logger { get; set; } = default!;
 
     private bool CanRunDirectUploadBoundary =>
         !_isSubmitting &&
@@ -76,18 +112,12 @@ public partial class UploadPage
 
             if (_decisionModel.IsUnsupported)
             {
-                LoggerFactory
-                    .CreateLogger<UploadPage>()
-                    .LogWarning(
-                        "Unsupported pre-upload decision returned by backend: {Decision}",
-                        response.Decision);
+                LogUnsupportedPreUploadDecision(Logger, response.Decision, null);
             }
         }
         catch (Exception exception)
         {
-            LoggerFactory
-                .CreateLogger<UploadPage>()
-                .LogError(exception, "Upload screen pre-upload check failed.");
+            LogUploadScreenPreUploadCheckFailed(Logger, exception);
 
             _errorMessage = exception.Message;
         }
@@ -132,16 +162,12 @@ public partial class UploadPage
             }
             else
             {
-                LoggerFactory
-                    .CreateLogger<UploadPage>()
-                    .LogInformation("Direct site upload adapter did not complete: {Message}", uploadResult.Message);
+                LogDirectSiteUploadAdapterDidNotComplete(Logger, uploadResult.Message, null);
             }
         }
         catch (Exception exception)
         {
-            LoggerFactory
-                .CreateLogger<UploadPage>()
-                .LogError(exception, "Direct site upload adapter boundary failed.");
+            LogDirectSiteUploadAdapterBoundaryFailed(Logger, exception);
 
             _errorMessage = exception.Message;
         }
@@ -174,18 +200,12 @@ public partial class UploadPage
 
             if (_receiptModel.IsUnsupported)
             {
-                LoggerFactory
-                    .CreateLogger<UploadPage>()
-                    .LogWarning(
-                        "Unsupported upload receipt status returned by backend: {Status}",
-                        response.Status);
+                LogUnsupportedUploadReceiptStatus(Logger, response.Status, null);
             }
         }
         catch (Exception exception)
         {
-            LoggerFactory
-                .CreateLogger<UploadPage>()
-                .LogError(exception, "Upload receipt submission failed.");
+            LogUploadReceiptSubmissionFailed(Logger, exception);
 
             _errorMessage = exception.Message;
         }
@@ -203,15 +223,11 @@ public partial class UploadPage
         return new UploadReceiptFormModel
         {
             PreUploadCheckId = _preUploadResponse?.PreUploadCheckId.ToString() ?? string.Empty,
-            ClientReceiptKey = idempotencyKey,
             IdempotencyKey = idempotencyKey,
             UserId = _form.UserId,
             DeviceId = _form.DeviceId,
             GroupNodeId = _form.GroupNodeId,
-            BusinessObjectKey = _form.BusinessObjectKey,
             ExternalVideoId = uploadResult.ExternalVideoId ?? "site-video-not-configured",
-            FileName = _form.FileName,
-            ContentType = _form.ContentType,
             StorageKey = uploadResult.StorageKey ?? "videos/site-video-not-configured.mp4",
             SiteStatus = uploadResult.SiteStatus ?? "uploaded",
             SizeBytes = _form.SizeBytes,
