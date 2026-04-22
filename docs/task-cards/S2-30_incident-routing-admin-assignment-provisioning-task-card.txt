@@ -1,0 +1,132 @@
+Название:
+S2-30 Incident Routing Admin Assignment Provisioning Task Card
+
+Кодер:
+Coder 1 / Platform Owner
+
+Модуль:
+GroupTree / Incidents / WorkerPipeline / App.Maintenance / Korobochka
+
+Тип задачи:
+ops provisioning / runtime data baseline / incident routing enablement
+
+Цель:
+Подготовить безопасный и воспроизводимый способ создать baseline admin routing на Коробочке, чтобы duplicate incident runtime smoke мог завершиться созданием incident/assignment, а не только duplicate candidate.
+
+Контекст:
+S2-28 duplicate runtime smoke подтвердил:
+- late-sync duplicate path работает;
+- worker bridge обрабатывает receipts;
+- duplicate registry создает duplicate candidate;
+- incident не создается, потому что admin routing не resolved.
+
+S2-29 readonly audit подтвердил:
+- Korobochka healthy;
+- runtime version: 1.0.0+007c59b...;
+- group nodes существуют: root, branch-a, branch-a-sub;
+- integration account существует: integration-web-android;
+- integration account активен и находится в root;
+- integration account имеет роль platform_owner;
+- group_admin_assignments имеет только колонки:
+  - group_node_id;
+  - user_id;
+  - assigned_at_utc;
+- group_admin_assignments пустая: 0 rows;
+- routing-preview для root + integration-web-android возвращает resolvedAdminUserIds = [];
+- worker log подтверждает skipped incident routing because no admin routing was resolved.
+
+Что меняется:
+- backend:
+  - в этой task-card PR код не меняется.
+  - следующий implementation/ops PR должен выбрать безопасный способ provisioning group admin assignment.
+- web:
+  - no change.
+- mobile:
+  - no change.
+- worker:
+  - no runtime code change in this task card.
+- db:
+  - no direct DB write in this task-card PR.
+  - future provisioning must be reproducible and documented.
+- audit:
+  - future provisioning must record safe audit/log evidence.
+- flags:
+  - no new feature flag in this docs PR.
+- events:
+  - no internal event in this docs PR.
+
+Новые или измененные contracts:
+- No shared DTO changes.
+- No public API route changes.
+- No status/enum changes.
+- If a maintenance command is added, it is not a public client API contract.
+
+Миграция:
+- Task-card PR: no migration.
+- Expected implementation: no migration, because group_admin_assignments table already exists.
+- If implementation discovers missing columns/constraints, any migration must be additive-first.
+
+Offline-поведение:
+- No offline behavior change in this task.
+- This step enables server-side incident routing after late/offline sync produces duplicate candidate.
+- Final mobile offline cache/outbox policy remains separate.
+
+Security:
+- Do not store passwords/tokens/secrets in repo, docs, PRs, screenshots, logs, or ChatGPT.
+- Do not publish /opt/v1-pyton/secrets.
+- Do not create hidden auth bypass.
+- Do not route video bytes through App.Api as required proxy.
+- Do not manually patch production DB without recording a reproducible runbook or maintenance command.
+- Avoid assigning duplicate incident to the same uploader unless routing policy explicitly allows it.
+
+Provisioning decision to make:
+Option A:
+- Create/assign a dedicated root/supervisory admin user for incident routing.
+- Preferred for policy correctness because integration-web-android is the uploader in smoke tests.
+
+Option B:
+- Assign integration-web-android as root admin only for temporary smoke.
+- Risk: if routing excludes uploader-as-admin, incident still may not be created; also policy may be weaker.
+
+Preferred direction:
+- Prefer Option A or a documented equivalent that produces a root/supervisory admin distinct from the uploader.
+- Use an approved maintenance command/runbook.
+- Password, if any account is created, must be supplied out-of-band and never printed.
+- If no password is needed for a non-login assignment target, document why it is safe.
+
+Runtime smoke expected after provisioning:
+1. Run routing-preview for root + integration-web-android.
+2. Expect resolvedAdminUserIds not empty.
+3. Run duplicate late-sync smoke again.
+4. Expect duplicate candidate count > 0.
+5. Expect duplicate incident count > 0.
+6. Expect duplicate incident assignment to resolved admin.
+7. No passwords/tokens printed.
+
+Observability:
+Required safe evidence:
+- group_admin_assignments count before/after;
+- routing-preview before/after;
+- duplicate candidate created;
+- duplicate incident created;
+- duplicate incident assignment created;
+- worker logs sanitized;
+- no secrets printed.
+
+Rollback:
+- Remove/deactivate the test admin assignment through approved runbook or maintenance command.
+- If a dedicated admin account is created, disable it or rotate/remove credentials through approved operational procedure.
+- Revert docs PR if wording is wrong.
+- No destructive migration rollback.
+
+Definition of done:
+- Task card merged.
+- Next implementation/ops step selected.
+- No runtime code changed in this PR.
+- No direct DB mutation in this PR.
+- PR CI passes:
+  - restore;
+  - format;
+  - build;
+  - unit-tests;
+  - integration-tests.

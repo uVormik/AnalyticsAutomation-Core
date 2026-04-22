@@ -13,12 +13,14 @@ public static class AuditCategories
     public const string Authentication = "authentication";
     public const string Devices = "devices";
     public const string GroupTree = "group_tree";
+    public const string VideoUpload = "video_upload";
 
     public static readonly IReadOnlyCollection<string> All =
     [
         Authentication,
         Devices,
-        GroupTree
+        GroupTree,
+        VideoUpload
     ];
 }
 
