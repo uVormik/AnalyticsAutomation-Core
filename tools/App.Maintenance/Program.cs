@@ -1,4 +1,5 @@
 using App.Maintenance.Configuration;
+using App.Maintenance.IncidentRoutingAdmins;
 using App.Maintenance.IntegrationAccounts;
 
 using BuildingBlocks.Infrastructure.Persistence;
@@ -13,37 +14,66 @@ return await AppMaintenanceProgram.RunAsync(args);
 
 internal static class AppMaintenanceProgram
 {
-    public static async Task<int> RunAsync(string[] args)
+    public static Task<int> RunAsync(string[] args)
     {
-        if (!IsIntegrationAccountUpsertCommand(args))
+        return RunAsync(
+            args,
+            CreateHost,
+            Console.Out,
+            Console.Error,
+            CancellationToken.None);
+    }
+
+    internal static async Task<int> RunAsync(
+        string[] args,
+        Func<IHost> hostFactory,
+        TextWriter standardOutput,
+        TextWriter errorOutput,
+        CancellationToken cancellationToken)
+    {
+        if (!TryParseCommand(args, out var command))
         {
-            WriteUsage(Console.Error);
+            WriteUsage(errorOutput);
             return 1;
         }
 
         try
         {
-            using IHost host = CreateHost();
+            using IHost host = hostFactory();
             using IServiceScope scope = host.Services.CreateScope();
 
-            var service = scope.ServiceProvider.GetRequiredService<IntegrationAccountMaintenanceService>();
-            var result = await service.UpsertAsync(CancellationToken.None);
+            switch (command)
+            {
+                case MaintenanceCommand.IntegrationAccountUpsert:
+                    {
+                        var service = scope.ServiceProvider.GetRequiredService<IntegrationAccountMaintenanceService>();
+                        var result = await service.UpsertAsync(cancellationToken);
 
-            Console.Out.WriteLine($"login: {result.Login}");
-            Console.Out.WriteLine($"status: {(result.WasCreated ? "created" : "updated")}");
-            Console.Out.WriteLine($"role: {result.AssignedRoleCode}");
-            Console.Out.WriteLine($"group-node: {result.AssignedGroupNodeCode}");
+                        WriteIntegrationAccountResult(standardOutput, result);
+                        return 0;
+                    }
 
-            return 0;
+                case MaintenanceCommand.IncidentRoutingAdminUpsert:
+                    {
+                        var service = scope.ServiceProvider.GetRequiredService<IncidentRoutingAdminMaintenanceService>();
+                        var result = await service.UpsertAsync(cancellationToken);
+
+                        WriteIncidentRoutingAdminResult(standardOutput, result);
+                        return 0;
+                    }
+
+                default:
+                    throw new InvalidOperationException("Maintenance command is not supported.");
+            }
         }
         catch (InvalidOperationException ex)
         {
-            Console.Error.WriteLine(ex.Message);
+            errorOutput.WriteLine(ex.Message);
             return 1;
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"Maintenance command failed: {ex.Message}");
+            errorOutput.WriteLine($"Maintenance command failed: {ex.Message}");
             return 1;
         }
     }
@@ -57,21 +87,66 @@ internal static class AppMaintenanceProgram
         builder.Logging.ClearProviders();
         builder.Services.AddPlatformPersistence(databaseOptions);
         builder.Services.AddSingleton<IPasswordHasher<AuthUser>, PasswordHasher<AuthUser>>();
+        builder.Services.AddScoped<IncidentRoutingAdminMaintenanceService>();
         builder.Services.AddScoped<IntegrationAccountMaintenanceService>();
 
         return builder.Build();
     }
 
-    private static bool IsIntegrationAccountUpsertCommand(string[] args)
+    private static bool TryParseCommand(string[] args, out MaintenanceCommand command)
     {
-        return args.Length == 2
+        if (args.Length == 2
             && string.Equals(args[0], "integration-account", StringComparison.OrdinalIgnoreCase)
-            && string.Equals(args[1], "upsert", StringComparison.OrdinalIgnoreCase);
+            && string.Equals(args[1], "upsert", StringComparison.OrdinalIgnoreCase))
+        {
+            command = MaintenanceCommand.IntegrationAccountUpsert;
+            return true;
+        }
+
+        if (args.Length == 2
+            && string.Equals(args[0], "incident-routing-admin", StringComparison.OrdinalIgnoreCase)
+            && string.Equals(args[1], "upsert", StringComparison.OrdinalIgnoreCase))
+        {
+            command = MaintenanceCommand.IncidentRoutingAdminUpsert;
+            return true;
+        }
+
+        command = default;
+        return false;
+    }
+
+    private static void WriteIntegrationAccountResult(
+        TextWriter writer,
+        IntegrationAccountUpsertResult result)
+    {
+        writer.WriteLine($"login: {result.Login}");
+        writer.WriteLine($"status: {(result.WasCreated ? "created" : "updated")}");
+        writer.WriteLine($"role: {result.AssignedRoleCode}");
+        writer.WriteLine($"group-node: {result.AssignedGroupNodeCode}");
+    }
+
+    private static void WriteIncidentRoutingAdminResult(
+        TextWriter writer,
+        IncidentRoutingAdminUpsertResult result)
+    {
+        writer.WriteLine($"login: {result.Login}");
+        writer.WriteLine($"status: {(result.WasCreated ? "created" : "updated")}");
+        writer.WriteLine($"role: {result.AssignedRoleCode}");
+        writer.WriteLine($"role-link: {(result.WasRoleLinkCreated ? "created" : "exists")}");
+        writer.WriteLine($"group-node: {result.AssignedGroupNodeCode}");
+        writer.WriteLine($"assignment: {(result.WasAssignmentCreated ? "created" : "exists")}");
     }
 
     private static void WriteUsage(TextWriter writer)
     {
         writer.WriteLine("Usage:");
         writer.WriteLine("  dotnet run --project tools\\App.Maintenance\\App.Maintenance.csproj -- integration-account upsert");
+        writer.WriteLine("  dotnet run --project tools\\App.Maintenance\\App.Maintenance.csproj -- incident-routing-admin upsert");
+    }
+
+    private enum MaintenanceCommand
+    {
+        IntegrationAccountUpsert,
+        IncidentRoutingAdminUpsert
     }
 }
