@@ -1,0 +1,150 @@
+Название:
+S2-35 Admin Review API AuthZ / Scope Task Card
+
+Кодер:
+Coder 1 / Platform Owner
+
+Модуль:
+Incidents / Auth / GroupTree / App.Api / App.Web handoff
+
+Тип задачи:
+backend API authz hardening / admin review foundation / task card
+
+Цель:
+Подготовить implementation PR для безопасного admin review backend API, чтобы созданные duplicate incidents можно было читать и закрывать только назначенным или допустимым админом, без возможности подставить чужой admin/user id из клиента.
+
+Контекст:
+S2-31 provisioning создал dedicated incident-routing-admin и root group admin assignment.
+S2-32 runtime smoke подтвердил:
+- late/offline upload receipt sync работает;
+- duplicate registry создает duplicate candidate;
+- DuplicateIncident создается;
+- analysis job завершает DuplicateCandidateCount=1 и IncidentCount=1.
+S2-33 зафиксировал runtime evidence.
+S2-34 readiness audit показал:
+- backend Incidents foundation уже содержит DuplicateIncidentRoutingService;
+- сервис уже умеет GetAssignedAsync(assignedAdminUserId);
+- сервис уже умеет RecordDecisionAsync(incidentId, request);
+- endpoint map уже содержит duplicate incident paths;
+- следующий риск: admin review API должен быть bearer-protected и scoped к текущему пользователю/админу.
+
+Почему задача нужна:
+Первый production-срез должен дойти до:
+desktop upload -> precheck -> direct site upload -> upload receipt -> server sync -> duplicate/fraud incident -> admin review.
+
+Backend уже доказал duplicate incident creation.
+Следующий минимальный gap — безопасный admin review access/decision API.
+
+Что меняется:
+- backend:
+  - task-card PR: код не меняется.
+  - будущий implementation PR должен harden admin review endpoints.
+  - preferred implementation should derive current user from bearer claims, not from caller-provided user id.
+- web:
+  - task-card PR: no change.
+  - future handoff can expose minimal admin review API to Coder 2.
+- mobile:
+  - no change.
+- worker:
+  - no change.
+- db:
+  - task-card PR: no migration.
+  - implementation should avoid migration unless proven needed.
+- audit:
+  - future decision recording must keep duplicate incident audit.
+- flags:
+  - implementation must decide whether existing Incidents flag is enough or add a dedicated admin review flag.
+- events:
+  - no new event in this task card.
+
+Новые или измененные contracts:
+Task-card PR:
+- no shared DTO changes;
+- no public API route changes.
+
+Implementation PR expected options:
+Option A, preferred:
+- Additive endpoint:
+  - GET /api/incidents/duplicates/assigned/me
+- It derives assignedAdminUserId from bearer user claims.
+- It returns existing AssignedDuplicateIncidentsResponseV1Dto.
+- Keep existing GET /api/incidents/duplicates/assigned/{assignedAdminUserId} only if safely protected or explicitly deprecated for internal/testing use.
+
+Decision endpoint:
+- POST /api/incidents/duplicates/{incidentId:guid}/decision
+- Must require bearer auth.
+- Must validate that current bearer user is assigned to this incident, or is allowed by explicit platform-owner/supervisory policy.
+- Must not trust request.DecidedByUserId if that field exists.
+- Preferred:
+  - set DecidedByUserId from bearer claims; or
+  - validate request.DecidedByUserId == current user id and reject mismatch.
+- Do not invent new statuses.
+- Do not change existing response DTO shape unless additive and explicitly documented.
+
+Миграция:
+- Task-card PR: no migration.
+- Implementation should not need migration because duplicate_incidents, duplicate_incident_assignments and duplicate_incident_decisions already exist.
+- If migration is required, it must be additive-first.
+
+Offline-поведение:
+- No offline behavior change.
+- Admin review is online backend/admin scope.
+- Mobile offline outbox policy remains separate.
+
+Security:
+- All admin review endpoints must require bearer authentication.
+- Anonymous access to incident list/detail/decision must be 401.
+- Caller must not be able to read incidents assigned to another admin by changing route id.
+- Caller must not be able to submit a decision on behalf of another user.
+- No hidden auth bypass.
+- No password/token logging.
+- No secrets in docs, PRs, logs, screenshots, terminal transcripts.
+- Do not publish /opt/v1-pyton/secrets.
+
+Authorization requirements:
+Minimum implementation acceptance:
+1. anonymous assigned/me -> 401;
+2. anonymous decision -> 401;
+3. authenticated assigned/me returns only current user's assigned incidents;
+4. authenticated assigned/{otherAdminUserId}, if retained, rejects mismatch unless explicitly allowed;
+5. decision by non-assigned user is rejected;
+6. decision by assigned admin succeeds;
+7. decision request with mismatched DecidedByUserId is rejected or ignored safely in favor of bearer user;
+8. no existing upload/receipt route behavior changes.
+
+Observability:
+Future implementation must provide safe evidence:
+- endpoint called;
+- incident id;
+- current user id;
+- decision recorded;
+- unauthorized attempt rejected;
+- no token/password printed.
+
+Rollback:
+- Task-card rollback: revert docs PR.
+- Implementation rollback:
+  - revert PR;
+  - or disable via Incidents/admin-review feature flag if introduced;
+  - no destructive DB rollback.
+
+Definition of done:
+- Task card merged.
+- Implementation scope is clear and narrow.
+- No runtime code changed by this PR.
+- PR CI passes:
+  - restore;
+  - format;
+  - build;
+  - unit-tests;
+  - integration-tests.
+
+Follow-up implementation tests:
+- anonymous assigned/me rejects with 401;
+- anonymous decision rejects with 401;
+- current assigned admin can list assigned duplicate incidents;
+- route/user mismatch rejected;
+- assigned admin can record decision;
+- non-assigned user cannot record decision;
+- mismatched DecidedByUserId cannot spoof another admin;
+- existing upload control plane tests remain green.
