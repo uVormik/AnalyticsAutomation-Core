@@ -10,7 +10,7 @@
 
     <div class="alert alert-info" role="alert">
         This screen uses the backend as a control plane only. Video bytes must not be sent through App.Api.
-        The direct site upload adapter remains an explicit local/client boundary until a real site provider is configured.
+        The direct site upload adapter is currently an explicit local/client stub boundary until a real site provider is configured.
     </div>
 
     <section class="card border-0 shadow-sm mb-4">
@@ -209,7 +209,7 @@
                 }
 
                 <button type="button" class="btn btn-outline-primary" disabled="@(!CanRunDirectUploadBoundary)" @onclick="RunDirectSiteUploadBoundaryAsync">
-                    Run direct site upload adapter boundary
+                    Run local direct-site upload stub boundary
                 </button>
             </div>
         </div>
@@ -228,6 +228,7 @@
         <div class="card border-0 shadow-sm mt-3">
             <div class="card-body d-grid gap-2">
                 <div class="fw-semibold">UploadReceipt boundary payload</div>
+                <div class="text-body-secondary small">Submitting again reuses the same idempotency key until the result is cleared.</div>
 
                 <dl class="row mb-0">
                     <dt class="col-12 col-md-4">PreUploadCheckId</dt>

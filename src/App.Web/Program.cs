@@ -15,6 +15,6 @@ builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.
 builder.Services.AddScoped<IVideoUploadApi, HttpVideoUploadApi>();
 builder.Services.AddScoped<IUploadControlPlaneApi, HttpUploadControlPlaneApi>();
 builder.Services.AddScoped<IUploadControlPlaneSessionStore, InMemoryUploadControlPlaneSessionStore>();
-builder.Services.AddScoped<IDirectSiteVideoUploadAdapter, DisabledDirectSiteVideoUploadAdapter>();
+builder.Services.AddScoped<IDirectSiteVideoUploadAdapter, LocalStubDirectSiteVideoUploadAdapter>();
 
 await builder.Build().RunAsync();
