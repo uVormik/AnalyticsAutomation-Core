@@ -11,6 +11,18 @@ public sealed class HttpVideoUploadApi : IVideoUploadApi
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
+    private static readonly Action<ILogger, Exception?> LogPreUploadCheckApiCallFailed =
+        LoggerMessage.Define(
+            LogLevel.Error,
+            new EventId(1001, nameof(LogPreUploadCheckApiCallFailed)),
+            "Pre-upload check API call failed.");
+
+    private static readonly Action<ILogger, Exception?> LogUploadReceiptApiCallFailed =
+        LoggerMessage.Define(
+            LogLevel.Error,
+            new EventId(1002, nameof(LogUploadReceiptApiCallFailed)),
+            "Upload receipt API call failed.");
+
     private readonly HttpClient _httpClient;
     private readonly ILogger<HttpVideoUploadApi> _logger;
 
@@ -41,7 +53,7 @@ public sealed class HttpVideoUploadApi : IVideoUploadApi
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            _logger.LogError(exception, "Pre-upload check API call failed.");
+            LogPreUploadCheckApiCallFailed(_logger, exception);
             throw;
         }
     }
@@ -67,7 +79,7 @@ public sealed class HttpVideoUploadApi : IVideoUploadApi
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            _logger.LogError(exception, "Upload receipt API call failed.");
+            LogUploadReceiptApiCallFailed(_logger, exception);
             throw;
         }
     }
