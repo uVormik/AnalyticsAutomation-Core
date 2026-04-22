@@ -1,3 +1,5 @@
+using System.Globalization;
+
 using App.Web.Features.Upload.ControlPlane;
 
 using Xunit;
@@ -15,7 +17,7 @@ public sealed class UploadControlPlaneSessionStoreTests
             DisplayName: "Integration Web",
             AccessToken: "alpha-sensitive-value",
             RefreshToken: "beta-sensitive-value",
-            CreatedAtUtc: DateTimeOffset.Parse("2026-04-22T12:00:00Z"));
+            CreatedAtUtc: DateTimeOffset.Parse("2026-04-22T12:00:00Z", CultureInfo.InvariantCulture));
 
         await store.SetAsync(session);
 
@@ -39,7 +41,7 @@ public sealed class UploadControlPlaneSessionStoreTests
             DisplayName: "Integration Web",
             AccessToken: "alpha-sensitive-value",
             RefreshToken: "beta-sensitive-value",
-            CreatedAtUtc: DateTimeOffset.Parse("2026-04-22T12:00:00Z"));
+            CreatedAtUtc: DateTimeOffset.Parse("2026-04-22T12:00:00Z", CultureInfo.InvariantCulture));
 
         var sanitized = session.ToSanitized();
         var serialized = sanitized.ToString();
