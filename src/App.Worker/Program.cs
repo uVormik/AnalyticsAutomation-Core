@@ -1,3 +1,6 @@
+using Modules.GroupTree;
+using Modules.Incidents;
+using Modules.VideoDuplicates;
 using Modules.WorkerPipeline;
 
 using App.Worker.Queues;
@@ -26,7 +29,11 @@ var databaseOptions = new DatabaseOptions
 
 builder.Services.AddPlatformPersistence(databaseOptions);
 
+builder.Services.AddGroupTreeModule(builder.Configuration, builder.Environment);
+builder.Services.AddVideoDuplicatesModule(builder.Configuration);
+builder.Services.AddIncidentsModule(builder.Configuration);
 builder.Services.AddWorkerPipelineModule(builder.Configuration);
+builder.Services.AddHostedService<UploadReceiptPipelineBridgeHostedService>();
 builder.Services.AddHostedService<WorkerPipelineHostedService>();
 builder.Services.Configure<HostOptions>(options =>
 {

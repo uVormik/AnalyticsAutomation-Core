@@ -453,6 +453,14 @@ public static class WorkerPipelineModule
             .ValidateOnStart();
 
         services.AddScoped<IWorkerPipelineService, WorkerPipelineService>();
+        services.AddScoped<IUploadReceiptPipelineBridgeService>(
+            serviceProvider => new UploadReceiptPipelineBridgeService(
+                serviceProvider.GetRequiredService<PlatformDbContext>(),
+                serviceProvider.GetRequiredService<Modules.VideoDuplicates.IVideoDuplicateRegistryService>(),
+                serviceProvider.GetRequiredService<Modules.GroupTree.IGroupTreeQueryService>(),
+                serviceProvider.GetRequiredService<Modules.Incidents.IDuplicateIncidentRoutingService>(),
+                serviceProvider.GetRequiredService<IOptions<WorkerPipelineOptions>>(),
+                serviceProvider.GetRequiredService<ILogger<UploadReceiptPipelineBridgeService>>()));
 
         return services;
     }

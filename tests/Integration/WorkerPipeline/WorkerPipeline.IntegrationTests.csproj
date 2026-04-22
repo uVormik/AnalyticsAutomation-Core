@@ -11,6 +11,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\..\src\Modules\GroupTree\Modules.GroupTree.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\Incidents\Modules.Incidents.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\VideoDuplicates\Modules.VideoDuplicates.csproj" />
+    <ProjectReference Include="..\..\..\src\Modules\VideoUpload\Modules.VideoUpload.csproj" />
     <ProjectReference Include="..\..\..\src\Modules\WorkerPipeline\Modules.WorkerPipeline.csproj" />
   </ItemGroup>
 

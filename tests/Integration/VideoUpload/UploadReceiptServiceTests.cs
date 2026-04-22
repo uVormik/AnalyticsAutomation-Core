@@ -53,10 +53,13 @@ public sealed class UploadReceiptServiceTests
 
         var precheckResult = await precheck.CheckAsync(CreatePrecheckRequest("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"), CancellationToken.None);
         var receipt = await receipts.AcceptAsync(CreateReceiptRequest(precheckResult, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "idem-1"), CancellationToken.None);
+        var job = await db.VideoUploadReceiptAnalysisJobs.SingleAsync();
 
         Assert.Equal(VideoUploadReceiptStatuses.Accepted, receipt.Status);
         Assert.True(receipt.Accepted);
         Assert.False(receipt.WasAlreadyAccepted);
+        Assert.Equal("video-upload.deep-analysis", job.CommandName);
+        Assert.Equal("queued", job.Status);
         Assert.Equal(1, await db.VideoUploadReceipts.CountAsync());
         Assert.Equal(1, await db.VideoUploadReceiptAnalysisJobs.CountAsync());
         Assert.Equal(1, await db.VideoUploadReceiptAuditRecords.CountAsync());

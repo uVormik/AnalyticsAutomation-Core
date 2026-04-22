@@ -1,0 +1,133 @@
+Название:
+S2-21 Post-Receipt Pipeline Bridge Task Card
+
+Кодер:
+Coder 1 / Platform Owner
+
+Модуль:
+App.Api / App.Worker / VideoUpload / WorkerPipeline / VideoDuplicates / FraudSignals / Incidents
+
+Тип задачи:
+backend integration bridge / worker pipeline hardening / vertical slice continuation
+
+Цель:
+Подготовить implementation PR, который соединит уже подтвержденный UploadReceipt flow с post-receipt backend pipeline:
+UploadReceipt accepted
+-> durable queued analysis job
+-> worker processing
+-> exact duplicate registry update
+-> possible duplicate/fraud decision
+-> incident/admin assignment foundation.
+
+Контекст:
+S2-16 подтвердил authenticated upload control plane LAN smoke:
+- sign-in -> 200;
+- group tree -> 200;
+- pre-upload-check -> 200, ALLOW;
+- upload-receipt -> 200, ACCEPTED;
+- repeated upload-receipt -> 200, ALREADY_ACCEPTED;
+- anonymous upload endpoints -> 401.
+
+S2-20 readiness audit showed:
+- UploadReceipt creates VideoUploadReceipt with AnalysisJobStatus = queued;
+- UploadReceipt creates VideoUploadReceiptAnalysisJob with CommandName = video-upload.deep-analysis and Status = queued;
+- UploadReceipt writes audit record;
+- WorkerPipeline has queue/job foundation and tests;
+- docs still defer ffprobe/ffmpeg/Chromaprint adapters, deep media fingerprint extraction, and automatic duplicate/fraud event fan-out.
+
+The next implementation must be narrow and exact-hash based. Do not start deep media science yet.
+
+Что меняется:
+- backend:
+  - define the narrow post-receipt bridge scope;
+  - prepare implementation for consuming queued receipt analysis jobs;
+  - update receipt analysis status safely;
+  - update exact duplicate registry using ByteSha256 + SizeBytes;
+  - create duplicate/fraud incident only when existing foundation supports it without contract break.
+- web:
+  - no change in this task card.
+- mobile:
+  - no change in this task card.
+- worker:
+  - planned implementation should process queued receipt analysis jobs.
+- db:
+  - no migration expected for task-card step.
+  - implementation PR must confirm whether existing tables are sufficient.
+  - any DB change must be additive-first.
+- audit:
+  - planned implementation must keep upload receipt audit and add/confirm worker/analysis transition audit.
+- flags:
+  - use existing module flags if available.
+  - if new runtime behavior is user-visible/risky, implementation must add or document a feature flag.
+- events:
+  - preferred bridge uses internal event/read-model/service boundary rather than hidden direct cross-module coupling.
+
+Новые или измененные contracts:
+- No shared DTO changes in this task-card PR.
+- Implementation should avoid changing public API routes or client DTOs.
+- If internal event contract is needed, it must be explicitly named and documented.
+- Candidate internal event:
+  - UploadReceiptAccepted
+  - fields: uploadReceiptId, preUploadCheckId, userId, deviceId, groupNodeId, byteSha256, sizeBytes, externalVideoId, storageKey, receivedAtUtc.
+- Public API contract remains frozen for S2-18 Web/Android.
+
+Миграция:
+- Task-card PR: no migration.
+- Implementation PR: migration only if existing tables cannot support processing status/audit safely.
+- Any migration must be additive-first.
+
+Offline-поведение:
+- No offline behavior change in this task card.
+- Offline upload remains later scope:
+  - client stores UploadReceipt in local outbox/PendingSyncItem;
+  - on reconnect client sends receipt;
+  - server performs dedupe/fraud analysis after sync.
+- This task should not implement final mobile offline cache policy.
+
+Security:
+- No password/token/secrets in docs, logs, PRs, screenshots, or transcripts.
+- Do not log accessToken or refreshToken.
+- Do not log password.
+- Do not create hidden auth bypass.
+- Do not route video bytes through App.Api as required proxy.
+- Do not publish /opt/v1-pyton/secrets or DB secrets.
+
+Observability:
+Implementation PR should provide safe evidence for:
+- queued receipt analysis job count;
+- job leased/processed status;
+- receipt analysis status transition;
+- exact duplicate registry write;
+- incident creation if duplicate/fraud path is triggered;
+- no tokens/passwords printed.
+Logs must be structured and sanitized.
+
+Rollback:
+- Task-card PR rollback: revert PR.
+- Implementation PR rollback:
+  - revert code PR;
+  - keep additive DB data;
+  - disable via feature flag if introduced;
+  - no destructive migration rollback.
+- Any production deploy must include health/version smoke and post-receipt smoke.
+
+Definition of done:
+- Task card merged.
+- Implementation scope is limited to exact-hash post-receipt bridge.
+- No public API route changes.
+- No shared DTO changes.
+- No ffprobe/ffmpeg/Chromaprint payload yet.
+- No final offline cache policy yet.
+- No worker-to-incident deep media fan-out beyond exact-hash foundation unless already safely supported.
+- PR CI passes:
+  - restore;
+  - format;
+  - build;
+  - unit-tests;
+  - integration-tests.
+- Follow-up implementation PR must include tests for:
+  - UploadReceipt enqueues durable job;
+  - worker processes queued job;
+  - duplicate registry exact-hash update;
+  - idempotent duplicate handling;
+  - incident path if supported.
