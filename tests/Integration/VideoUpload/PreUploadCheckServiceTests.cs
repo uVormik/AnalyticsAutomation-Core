@@ -1,4 +1,5 @@
 using BuildingBlocks.Contracts.VideoUpload;
+using BuildingBlocks.Infrastructure.Observability;
 using BuildingBlocks.Infrastructure.Persistence;
 
 using Microsoft.EntityFrameworkCore;
@@ -16,6 +17,7 @@ public sealed class PreUploadCheckServiceTests
         var settings = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase)
         {
             ["Modules:VideoUpload:PreUploadCheckEnabled"] = "true",
+            ["Modules:VideoUpload:UploadReceiptSyncEnabled"] = "true",
             ["Modules:VideoUpload:MaxFastAllowSizeBytes"] = "5368709120",
             ["Modules:VideoUpload:SiteProvider"] = "Stub",
             ["Modules:VideoUpload:ExternalVideoIdPrefix"] = "site-video",
@@ -30,6 +32,7 @@ public sealed class PreUploadCheckServiceTests
         services.AddLogging();
         services.AddDbContext<PlatformDbContext>(
             options => options.UseInMemoryDatabase(Guid.NewGuid().ToString("N")));
+        services.AddAuditObservabilityFoundation();
         services.AddVideoUploadModule(configuration);
 
         return services.BuildServiceProvider(

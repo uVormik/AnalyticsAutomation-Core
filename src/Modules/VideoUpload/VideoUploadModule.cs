@@ -22,6 +22,7 @@ public sealed class VideoUploadOptions
 
     public bool PreUploadCheckEnabled { get; set; } = true;
     public bool UploadReceiptEnabled { get; set; } = true;
+    public bool UploadReceiptSyncEnabled { get; set; } = true;
     public long MaxFastAllowSizeBytes { get; set; } = 5L * 1024L * 1024L * 1024L;
     public string SiteProvider { get; set; } = "Stub";
     public string ExternalVideoIdPrefix { get; set; } = "site-video";
@@ -190,41 +191,13 @@ public sealed class PreUploadCheckService(
 
     private static void ValidateRequest(VideoPreUploadCheckRequestDto request, VideoUploadOptions options)
     {
-        if (request.UserId == Guid.Empty)
-        {
-            throw new ArgumentException("UserId is required.", nameof(request));
-        }
-
-        if (string.IsNullOrWhiteSpace(request.BusinessObjectKey))
-        {
-            throw new ArgumentException("BusinessObjectKey is required.", nameof(request));
-        }
-
-        if (string.IsNullOrWhiteSpace(request.FileName))
-        {
-            throw new ArgumentException("FileName is required.", nameof(request));
-        }
-
-        if (request.SizeBytes <= 0)
-        {
-            throw new ArgumentException("SizeBytes must be positive.", nameof(request));
-        }
-
-        if (request.SizeBytes > options.MaxFastAllowSizeBytes)
-        {
-            throw new ArgumentException("SizeBytes exceeds the configured PreUploadCheck limit.", nameof(request));
-        }
-
-        if (string.IsNullOrWhiteSpace(request.ByteSha256))
-        {
-            throw new ArgumentException("ByteSha256 is required.", nameof(request));
-        }
-
-        var normalizedHash = request.ByteSha256.Trim();
-        if (normalizedHash.Length != 64 || !normalizedHash.All(Uri.IsHexDigit))
-        {
-            throw new ArgumentException("ByteSha256 must be a 64-character hexadecimal SHA-256 value.", nameof(request));
-        }
+        VideoUploadRequestSupport.ValidatePreUploadRequest(
+            request.UserId,
+            request.BusinessObjectKey,
+            request.FileName,
+            request.SizeBytes,
+            request.ByteSha256,
+            options);
     }
 }
 
@@ -243,13 +216,13 @@ public sealed class UploadReceiptService(
             throw new InvalidOperationException("UploadReceipt is disabled.");
         }
 
-        ValidateRequest(request);
+        VideoUploadRequestSupport.ValidateUploadReceiptRequest(request);
 
-        var normalizedHash = request.ByteSha256.Trim().ToLowerInvariant();
-        var normalizedIdempotencyKey = request.IdempotencyKey.Trim();
-        var normalizedExternalVideoId = request.ExternalVideoId.Trim();
-        var normalizedStorageKey = request.StorageKey.Trim();
-        var normalizedSiteStatus = request.SiteStatus.Trim().ToLowerInvariant();
+        var normalizedHash = VideoUploadRequestSupport.NormalizeHash(request.ByteSha256);
+        var normalizedIdempotencyKey = VideoUploadRequestSupport.NormalizeRequired(request.IdempotencyKey);
+        var normalizedExternalVideoId = VideoUploadRequestSupport.NormalizeRequired(request.ExternalVideoId);
+        var normalizedStorageKey = VideoUploadRequestSupport.NormalizeRequired(request.StorageKey);
+        var normalizedSiteStatus = VideoUploadRequestSupport.NormalizeRequired(request.SiteStatus).ToLowerInvariant();
 
         var existing = await dbContext.VideoUploadReceipts
             .AsNoTracking()
@@ -264,15 +237,9 @@ public sealed class UploadReceiptService(
                 existing.Id,
                 existing.PreUploadCheckId);
 
-            return new VideoUploadReceiptResponseDto(
-                UploadReceiptId: existing.Id,
-                PreUploadCheckId: existing.PreUploadCheckId,
-                Status: VideoUploadReceiptStatuses.AlreadyAccepted,
-                Accepted: true,
-                WasAlreadyAccepted: true,
-                Message: "Upload receipt already accepted.",
-                AnalysisJobStatus: existing.AnalysisJobStatus,
-                ReceivedAtUtc: existing.ReceivedAtUtc);
+            return VideoUploadRequestSupport.CreateAlreadyAcceptedResponse(
+                existing,
+                "Upload receipt already accepted.");
         }
 
         var preUploadCheck = await dbContext.VideoUploadPreUploadChecks
@@ -318,133 +285,32 @@ public sealed class UploadReceiptService(
             throw new InvalidOperationException("UploadReceipt storage key does not match PreUploadCheck.");
         }
 
-        var receivedAtUtc = DateTimeOffset.UtcNow;
-        var receiptId = Guid.NewGuid();
-        var correlationId = $"upload-receipt-{receiptId:N}";
-
-        var receipt = new VideoUploadReceipt
-        {
-            Id = receiptId,
-            PreUploadCheckId = request.PreUploadCheckId,
-            UserId = request.UserId,
-            DeviceId = request.DeviceId,
-            GroupNodeId = request.GroupNodeId,
-            ExternalVideoId = normalizedExternalVideoId,
-            StorageKey = normalizedStorageKey,
-            SiteStatus = normalizedSiteStatus,
-            SizeBytes = request.SizeBytes,
-            ByteSha256 = normalizedHash,
-            IdempotencyKey = normalizedIdempotencyKey,
-            ReceiptStatus = VideoUploadReceiptStatuses.Accepted,
-            AnalysisJobStatus = "queued",
-            UploadedAtUtc = request.UploadedAtUtc,
-            ReceivedAtUtc = receivedAtUtc
-        };
-
-        var job = new VideoUploadReceiptAnalysisJob
-        {
-            Id = Guid.NewGuid(),
-            UploadReceiptId = receiptId,
-            PreUploadCheckId = request.PreUploadCheckId,
-            CommandName = "video-upload.deep-analysis",
-            Status = "queued",
-            EnqueuedAtUtc = receivedAtUtc
-        };
-
-        var auditPayload = JsonSerializer.Serialize(new
-        {
-            receipt.Id,
-            receipt.PreUploadCheckId,
-            receipt.UserId,
-            receipt.DeviceId,
-            receipt.GroupNodeId,
-            receipt.ExternalVideoId,
-            receipt.StorageKey,
-            receipt.ByteSha256,
-            receipt.SizeBytes
-        });
-
-        var audit = new VideoUploadReceiptAuditRecord
-        {
-            Id = Guid.NewGuid(),
-            UploadReceiptId = receiptId,
-            Category = "video_upload",
-            Action = "upload_receipt_accepted",
-            CorrelationId = correlationId,
-            PayloadJson = auditPayload,
-            CreatedAtUtc = receivedAtUtc
-        };
-
-        dbContext.VideoUploadReceipts.Add(receipt);
-        dbContext.VideoUploadReceiptAnalysisJobs.Add(job);
-        dbContext.VideoUploadReceiptAuditRecords.Add(audit);
-
-        await dbContext.SaveChangesAsync(cancellationToken);
+        var persisted = await VideoUploadRequestSupport.PersistAcceptedReceiptAsync(
+            dbContext,
+            new UploadReceiptPersistRequest(
+                PreUploadCheckId: request.PreUploadCheckId,
+                UserId: request.UserId,
+                DeviceId: request.DeviceId,
+                GroupNodeId: request.GroupNodeId,
+                ExternalVideoId: normalizedExternalVideoId,
+                StorageKey: normalizedStorageKey,
+                SiteStatus: normalizedSiteStatus,
+                SizeBytes: request.SizeBytes,
+                ByteSha256: normalizedHash,
+                IdempotencyKey: normalizedIdempotencyKey,
+                UploadedAtUtc: request.UploadedAtUtc,
+                AuditAction: "upload_receipt_accepted",
+                AcceptedMessage: "Upload receipt accepted and analysis job queued."),
+            preUploadCheckToCreate: null,
+            cancellationToken);
 
         logger.LogInformation(
             "UploadReceipt accepted. UploadReceiptId={UploadReceiptId} PreUploadCheckId={PreUploadCheckId} ExternalVideoId={ExternalVideoId}",
-            receipt.Id,
-            receipt.PreUploadCheckId,
-            receipt.ExternalVideoId);
+            persisted.UploadReceiptId,
+            persisted.PreUploadCheckId,
+            normalizedExternalVideoId);
 
-        return new VideoUploadReceiptResponseDto(
-            UploadReceiptId: receipt.Id,
-            PreUploadCheckId: receipt.PreUploadCheckId,
-            Status: VideoUploadReceiptStatuses.Accepted,
-            Accepted: true,
-            WasAlreadyAccepted: false,
-            Message: "Upload receipt accepted and analysis job queued.",
-            AnalysisJobStatus: receipt.AnalysisJobStatus,
-            ReceivedAtUtc: receipt.ReceivedAtUtc);
-    }
-
-    private static void ValidateRequest(VideoUploadReceiptRequestDto request)
-    {
-        if (request.PreUploadCheckId == Guid.Empty)
-        {
-            throw new ArgumentException("PreUploadCheckId is required.", nameof(request));
-        }
-
-        if (request.UserId == Guid.Empty)
-        {
-            throw new ArgumentException("UserId is required.", nameof(request));
-        }
-
-        if (string.IsNullOrWhiteSpace(request.ExternalVideoId))
-        {
-            throw new ArgumentException("ExternalVideoId is required.", nameof(request));
-        }
-
-        if (string.IsNullOrWhiteSpace(request.StorageKey))
-        {
-            throw new ArgumentException("StorageKey is required.", nameof(request));
-        }
-
-        if (string.IsNullOrWhiteSpace(request.SiteStatus))
-        {
-            throw new ArgumentException("SiteStatus is required.", nameof(request));
-        }
-
-        if (request.SizeBytes <= 0)
-        {
-            throw new ArgumentException("SizeBytes must be positive.", nameof(request));
-        }
-
-        if (string.IsNullOrWhiteSpace(request.ByteSha256))
-        {
-            throw new ArgumentException("ByteSha256 is required.", nameof(request));
-        }
-
-        var normalizedHash = request.ByteSha256.Trim();
-        if (normalizedHash.Length != 64 || !normalizedHash.All(Uri.IsHexDigit))
-        {
-            throw new ArgumentException("ByteSha256 must be a 64-character hexadecimal SHA-256 value.", nameof(request));
-        }
-
-        if (string.IsNullOrWhiteSpace(request.IdempotencyKey))
-        {
-            throw new ArgumentException("IdempotencyKey is required.", nameof(request));
-        }
+        return persisted.Response;
     }
 }
 
@@ -467,6 +333,11 @@ public static class VideoUploadModule
                 if (bool.TryParse(section["UploadReceiptEnabled"], out var uploadReceiptEnabled))
                 {
                     options.UploadReceiptEnabled = uploadReceiptEnabled;
+                }
+
+                if (bool.TryParse(section["UploadReceiptSyncEnabled"], out var uploadReceiptSyncEnabled))
+                {
+                    options.UploadReceiptSyncEnabled = uploadReceiptSyncEnabled;
                 }
 
                 if (long.TryParse(
@@ -506,6 +377,7 @@ public static class VideoUploadModule
 
         services.AddScoped<IPreUploadCheckService, PreUploadCheckService>();
         services.AddScoped<IUploadReceiptService, UploadReceiptService>();
+        services.AddScoped<IUploadReceiptSyncService, UploadReceiptSyncService>();
 
         return services;
     }
@@ -537,6 +409,46 @@ public static class VideoUploadModule
                     return Results.BadRequest(new
                     {
                         error = "invalid_pre_upload_check_request",
+                        message = exception.Message
+                    });
+                }
+            })
+            .RequireAuthorization();
+
+        endpoints.MapPost(
+            "/api/video/upload-receipt-sync",
+            async Task<IResult> (
+                VideoUploadReceiptSyncRequestDto request,
+                HttpContext httpContext,
+                IUploadReceiptSyncService service,
+                CancellationToken cancellationToken) =>
+            {
+                try
+                {
+                    var authenticatedScope = AuthenticatedVideoUploadScope.FromClaimsPrincipal(httpContext.User);
+                    var result = await service.AcceptAsync(request, authenticatedScope, cancellationToken);
+                    return Results.Ok(result);
+                }
+                catch (InvalidOperationException exception)
+                    when (exception.Message.Contains("disabled", StringComparison.OrdinalIgnoreCase))
+                {
+                    return Results.Problem(
+                        detail: exception.Message,
+                        statusCode: StatusCodes.Status503ServiceUnavailable,
+                        title: "UploadReceiptSync unavailable");
+                }
+                catch (InvalidOperationException exception)
+                {
+                    return Results.Problem(
+                        detail: exception.Message,
+                        statusCode: StatusCodes.Status409Conflict,
+                        title: "UploadReceiptSync rejected");
+                }
+                catch (ArgumentException exception)
+                {
+                    return Results.BadRequest(new
+                    {
+                        error = "invalid_upload_receipt_sync_request",
                         message = exception.Message
                     });
                 }

@@ -2,6 +2,7 @@ using System.Globalization;
 
 using BuildingBlocks.Contracts.WorkerPipeline;
 using BuildingBlocks.Contracts.VideoUpload;
+using BuildingBlocks.Infrastructure.Observability;
 using BuildingBlocks.Infrastructure.Persistence;
 using BuildingBlocks.Infrastructure.Persistence.Entities.GroupTree;
 using BuildingBlocks.Infrastructure.Persistence.Entities.VideoUpload;
@@ -225,6 +226,7 @@ public sealed class UploadReceiptPipelineBridgeTests
         {
             ["Modules:VideoUpload:PreUploadCheckEnabled"] = "true",
             ["Modules:VideoUpload:UploadReceiptEnabled"] = "true",
+            ["Modules:VideoUpload:UploadReceiptSyncEnabled"] = "true",
             ["Modules:VideoUpload:MaxFastAllowSizeBytes"] = "5368709120",
             ["Modules:VideoUpload:SiteProvider"] = "Stub",
             ["Modules:VideoUpload:ExternalVideoIdPrefix"] = "site-video",
@@ -247,6 +249,7 @@ public sealed class UploadReceiptPipelineBridgeTests
         services.AddLogging();
         services.AddDbContext<PlatformDbContext>(
             options => options.UseInMemoryDatabase(databaseName));
+        services.AddAuditObservabilityFoundation();
         services.AddGroupTreeModule(configuration, new TestHostEnvironment());
         services.AddVideoUploadModule(configuration);
         services.AddVideoDuplicatesModule(configuration);

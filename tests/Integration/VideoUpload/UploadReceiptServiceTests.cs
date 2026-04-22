@@ -1,4 +1,5 @@
 using BuildingBlocks.Contracts.VideoUpload;
+using BuildingBlocks.Infrastructure.Observability;
 using BuildingBlocks.Infrastructure.Persistence;
 
 using Microsoft.EntityFrameworkCore;
@@ -17,6 +18,7 @@ public sealed class UploadReceiptServiceTests
         {
             ["Modules:VideoUpload:PreUploadCheckEnabled"] = "true",
             ["Modules:VideoUpload:UploadReceiptEnabled"] = "true",
+            ["Modules:VideoUpload:UploadReceiptSyncEnabled"] = "true",
             ["Modules:VideoUpload:MaxFastAllowSizeBytes"] = "5368709120",
             ["Modules:VideoUpload:SiteProvider"] = "Stub",
             ["Modules:VideoUpload:ExternalVideoIdPrefix"] = "site-video",
@@ -31,6 +33,7 @@ public sealed class UploadReceiptServiceTests
         services.AddLogging();
         services.AddDbContext<PlatformDbContext>(
             options => options.UseInMemoryDatabase(Guid.NewGuid().ToString("N")));
+        services.AddAuditObservabilityFoundation();
         services.AddVideoUploadModule(configuration);
 
         return services.BuildServiceProvider(
@@ -113,6 +116,72 @@ public sealed class UploadReceiptServiceTests
             () => receipts.AcceptAsync(request, CancellationToken.None));
     }
 
+    [Fact]
+    public async Task AcceptSyncAsyncCreatesPreUploadReceiptJobAndAudit()
+    {
+        using var provider = CreateProvider();
+        using var scope = provider.CreateScope();
+
+        var syncReceipts = scope.ServiceProvider.GetRequiredService<IUploadReceiptSyncService>();
+        var db = scope.ServiceProvider.GetRequiredService<PlatformDbContext>();
+
+        var request = CreateSyncRequest(
+            hash: "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+            idempotencyKey: "sync-idem-1");
+
+        var receipt = await syncReceipts.AcceptAsync(
+            request,
+            new AuthenticatedVideoUploadScope(UserId, DeviceId, null),
+            CancellationToken.None);
+
+        var precheck = await db.VideoUploadPreUploadChecks.SingleAsync();
+        var job = await db.VideoUploadReceiptAnalysisJobs.SingleAsync();
+
+        Assert.Equal(VideoUploadReceiptStatuses.Accepted, receipt.Status);
+        Assert.Equal(precheck.Id, receipt.PreUploadCheckId);
+        Assert.Equal(PreUploadCheckDecisions.Allow, precheck.Decision);
+        Assert.Equal("late_sync_reconciled", precheck.ReasonCode);
+        Assert.Equal("video-upload.deep-analysis", job.CommandName);
+        Assert.Equal(1, await db.VideoUploadReceipts.CountAsync());
+        Assert.Equal(1, await db.VideoUploadReceiptAnalysisJobs.CountAsync());
+        Assert.Equal(1, await db.VideoUploadReceiptAuditRecords.CountAsync());
+        Assert.Equal(2, await db.AuditRecords.CountAsync());
+    }
+
+    [Fact]
+    public async Task AcceptSyncAsyncIsIdempotentByNaturalReceiptKey()
+    {
+        using var provider = CreateProvider();
+        using var scope = provider.CreateScope();
+
+        var syncReceipts = scope.ServiceProvider.GetRequiredService<IUploadReceiptSyncService>();
+        var db = scope.ServiceProvider.GetRequiredService<PlatformDbContext>();
+
+        var request = CreateSyncRequest(
+            hash: "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+            idempotencyKey: "sync-idem-2");
+
+        var first = await syncReceipts.AcceptAsync(
+            request,
+            new AuthenticatedVideoUploadScope(UserId, DeviceId, null),
+            CancellationToken.None);
+
+        var second = await syncReceipts.AcceptAsync(
+            request with
+            {
+                IdempotencyKey = "sync-idem-3"
+            },
+            new AuthenticatedVideoUploadScope(UserId, DeviceId, null),
+            CancellationToken.None);
+
+        Assert.Equal(first.UploadReceiptId, second.UploadReceiptId);
+        Assert.Equal(VideoUploadReceiptStatuses.AlreadyAccepted, second.Status);
+        Assert.True(second.WasAlreadyAccepted);
+        Assert.Equal(1, await db.VideoUploadPreUploadChecks.CountAsync());
+        Assert.Equal(1, await db.VideoUploadReceipts.CountAsync());
+        Assert.Equal(1, await db.VideoUploadReceiptAnalysisJobs.CountAsync());
+    }
+
     private static readonly Guid UserId = Guid.Parse("11111111-1111-1111-1111-111111111111");
     private static readonly Guid DeviceId = Guid.Parse("22222222-2222-2222-2222-222222222222");
     private static readonly Guid GroupNodeId = Guid.Parse("33333333-3333-3333-3333-333333333333");
@@ -150,6 +219,27 @@ public sealed class UploadReceiptServiceTests
             SizeBytes: 12345,
             ByteSha256: hash,
             IdempotencyKey: idempotencyKey,
+            UploadedAtUtc: FixedTime);
+    }
+
+    private static VideoUploadReceiptSyncRequestDto CreateSyncRequest(string hash, string idempotencyKey)
+    {
+        var externalVideoId = $"site-video-sync-{Guid.NewGuid():N}";
+
+        return new VideoUploadReceiptSyncRequestDto(
+            UserId: UserId,
+            DeviceId: DeviceId,
+            GroupNodeId: GroupNodeId,
+            BusinessObjectKey: "demo-business-object",
+            FileName: "offline-demo.mp4",
+            ContentType: "video/mp4",
+            ExternalVideoId: externalVideoId,
+            StorageKey: $"videos/{externalVideoId}.mp4",
+            SiteStatus: "uploaded",
+            SizeBytes: 12345,
+            ByteSha256: hash,
+            IdempotencyKey: idempotencyKey,
+            CapturedAtUtc: FixedTime,
             UploadedAtUtc: FixedTime);
     }
 }

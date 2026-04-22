@@ -8,16 +8,25 @@ using System.Text.RegularExpressions;
 
 using BuildingBlocks.Contracts.Auth;
 using BuildingBlocks.Contracts.VideoUpload;
+using BuildingBlocks.Contracts.WorkerPipeline;
 using BuildingBlocks.Infrastructure.Persistence;
 using BuildingBlocks.Infrastructure.Persistence.Entities.Auth;
+using BuildingBlocks.Infrastructure.Persistence.Entities.GroupTree;
 
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+
+using Modules.WorkerPipeline;
 
 namespace App.Api.IntegrationTests;
 
 public sealed class UploadControlPlaneAuthorizationTests(AppApiFactory factory) : IClassFixture<AppApiFactory>
 {
+    private static readonly Guid BranchGroupNodeId = Guid.Parse("D4D74008-0ED5-4E46-B0A1-91E0628079C0");
+    private static readonly Guid RootGroupNodeId = Guid.Parse("C15EE7FE-7C9A-4B31-8B7E-C278B59F318C");
+    private static readonly Guid BranchAdminUserId = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
+
     [Fact]
     public async Task PreUploadCheckRejectsAnonymous()
     {
@@ -38,6 +47,18 @@ public sealed class UploadControlPlaneAuthorizationTests(AppApiFactory factory) 
         using HttpResponseMessage response = await client.PostAsJsonAsync(
             "/api/video/upload-receipt",
             CreateAnonymousUploadReceiptRequest());
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task UploadReceiptSyncRejectsAnonymous()
+    {
+        using HttpClient client = factory.CreateClient();
+
+        using HttpResponseMessage response = await client.PostAsJsonAsync(
+            "/api/video/upload-receipt-sync",
+            CreateAnonymousUploadReceiptSyncRequest());
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
@@ -129,10 +150,185 @@ public sealed class UploadControlPlaneAuthorizationTests(AppApiFactory factory) 
         Assert.Equal(firstBody.AnalysisJobStatus, secondBody.AnalysisJobStatus);
     }
 
+    [Fact]
+    public async Task UploadReceiptSyncAllowsAuthenticatedLateSyncReceipt()
+    {
+        using HttpClient client = factory.CreateClient();
+        var auth = await SignInWithContextAsync(client);
+
+        VideoUploadReceiptSyncRequestDto request = CreateUploadReceiptSyncRequest(
+            auth,
+            CreateHex64(),
+            Guid.NewGuid().ToString("N"));
+
+        using HttpResponseMessage response = await client.PostAsJsonAsync(
+            "/api/video/upload-receipt-sync",
+            request);
+
+        await AssertStatusCodeAsync("upload receipt sync", HttpStatusCode.OK, response);
+
+        VideoUploadReceiptResponseDto? body =
+            await response.Content.ReadFromJsonAsync<VideoUploadReceiptResponseDto>();
+
+        Assert.NotNull(body);
+        Assert.Equal(VideoUploadReceiptStatuses.Accepted, body.Status);
+        Assert.True(body.Accepted);
+        Assert.False(body.WasAlreadyAccepted);
+
+        using IServiceScope scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<PlatformDbContext>();
+        var precheck = await db.VideoUploadPreUploadChecks.SingleAsync(item => item.Id == body.PreUploadCheckId);
+
+        Assert.Equal("late_sync_reconciled", precheck.ReasonCode);
+        Assert.Equal(1, await db.VideoUploadReceipts.CountAsync(item => item.Id == body.UploadReceiptId));
+        Assert.Equal(1, await db.VideoUploadReceiptAnalysisJobs.CountAsync(item => item.UploadReceiptId == body.UploadReceiptId));
+    }
+
+    [Fact]
+    public async Task UploadReceiptSyncIsIdempotentByIdempotencyKey()
+    {
+        using HttpClient client = factory.CreateClient();
+        var auth = await SignInWithContextAsync(client);
+
+        string idempotencyKey = Guid.NewGuid().ToString("N");
+        VideoUploadReceiptSyncRequestDto request = CreateUploadReceiptSyncRequest(
+            auth,
+            CreateHex64(),
+            idempotencyKey);
+
+        using HttpResponseMessage firstResponse = await client.PostAsJsonAsync(
+            "/api/video/upload-receipt-sync",
+            request);
+
+        await AssertStatusCodeAsync("first upload receipt sync", HttpStatusCode.OK, firstResponse);
+
+        using HttpResponseMessage secondResponse = await client.PostAsJsonAsync(
+            "/api/video/upload-receipt-sync",
+            request);
+
+        await AssertStatusCodeAsync("second upload receipt sync", HttpStatusCode.OK, secondResponse);
+
+        VideoUploadReceiptResponseDto? firstBody =
+            await firstResponse.Content.ReadFromJsonAsync<VideoUploadReceiptResponseDto>();
+        VideoUploadReceiptResponseDto? secondBody =
+            await secondResponse.Content.ReadFromJsonAsync<VideoUploadReceiptResponseDto>();
+
+        Assert.NotNull(firstBody);
+        Assert.NotNull(secondBody);
+        Assert.Equal(VideoUploadReceiptStatuses.Accepted, firstBody.Status);
+        Assert.Equal(VideoUploadReceiptStatuses.AlreadyAccepted, secondBody.Status);
+        Assert.Equal(firstBody.UploadReceiptId, secondBody.UploadReceiptId);
+
+        using IServiceScope scope = factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<PlatformDbContext>();
+
+        Assert.Equal(1, await db.VideoUploadReceipts.CountAsync(item => item.IdempotencyKey == idempotencyKey));
+        Assert.Equal(1, await db.VideoUploadReceiptAnalysisJobs.CountAsync(item => item.UploadReceiptId == firstBody.UploadReceiptId));
+    }
+
+    [Fact]
+    public async Task UploadReceiptSyncCanTriggerDuplicateCandidateAndIncidentPath()
+    {
+        await EnsureBranchAdminRoutingAsync();
+
+        using HttpClient client = factory.CreateClient();
+        var auth = await SignInWithContextAsync(client);
+        string duplicateHash = CreateHex64();
+
+        VideoUploadReceiptSyncRequestDto firstRequest = CreateUploadReceiptSyncRequest(
+            auth,
+            duplicateHash,
+            idempotencyKey: "sync-duplicate-1",
+            groupNodeId: BranchGroupNodeId,
+            businessObjectKey: $"business-object-{Guid.NewGuid():N}");
+
+        VideoUploadReceiptSyncRequestDto secondRequest = CreateUploadReceiptSyncRequest(
+            auth,
+            duplicateHash,
+            idempotencyKey: "sync-duplicate-2",
+            groupNodeId: BranchGroupNodeId,
+            businessObjectKey: $"business-object-{Guid.NewGuid():N}");
+
+        using HttpResponseMessage firstResponse = await client.PostAsJsonAsync(
+            "/api/video/upload-receipt-sync",
+            firstRequest);
+        using HttpResponseMessage secondResponse = await client.PostAsJsonAsync(
+            "/api/video/upload-receipt-sync",
+            secondRequest);
+
+        await AssertStatusCodeAsync("first duplicate upload receipt sync", HttpStatusCode.OK, firstResponse);
+        await AssertStatusCodeAsync("second duplicate upload receipt sync", HttpStatusCode.OK, secondResponse);
+
+        VideoUploadReceiptResponseDto? firstBody =
+            await firstResponse.Content.ReadFromJsonAsync<VideoUploadReceiptResponseDto>();
+        VideoUploadReceiptResponseDto? secondBody =
+            await secondResponse.Content.ReadFromJsonAsync<VideoUploadReceiptResponseDto>();
+
+        Assert.NotNull(firstBody);
+        Assert.NotNull(secondBody);
+
+        using IServiceScope scope = factory.Services.CreateScope();
+        var bridge = scope.ServiceProvider.GetRequiredService<IUploadReceiptPipelineBridgeService>();
+        var db = scope.ServiceProvider.GetRequiredService<PlatformDbContext>();
+        var targetReceiptIds = new[] { firstBody.UploadReceiptId, secondBody.UploadReceiptId };
+
+        for (var attempt = 0; attempt < 16; attempt++)
+        {
+            _ = await bridge.ProcessNextQueuedAsync(CancellationToken.None);
+
+            var completedTargetCount = await db.VideoUploadReceipts
+                .CountAsync(
+                    item => targetReceiptIds.Contains(item.Id) &&
+                        item.AnalysisJobStatus == WorkerPipelineJobStatusesV1.Completed);
+
+            if (completedTargetCount == targetReceiptIds.Length)
+            {
+                break;
+            }
+        }
+
+        var targetAssetIds = await db.VideoDuplicateAssets
+            .Where(item => targetReceiptIds.Contains(item.UploadReceiptId))
+            .Select(item => item.Id)
+            .ToArrayAsync();
+
+        var duplicateCandidate = await db.VideoDuplicateCandidates.SingleAsync(
+            item => targetAssetIds.Contains(item.SourceVideoAssetId) || targetAssetIds.Contains(item.MatchedVideoAssetId));
+        var incident = await db.DuplicateIncidentRecords.SingleAsync(item => item.DuplicateCandidateId == duplicateCandidate.Id);
+        var assignment = await db.DuplicateIncidentAssignmentRecords.SingleAsync(item => item.IncidentId == incident.Id);
+
+        Assert.Equal(2, targetAssetIds.Length);
+        Assert.Equal(duplicateCandidate.Id, incident.DuplicateCandidateId);
+        Assert.Equal(BranchAdminUserId, assignment.AssignedAdminUserId);
+        Assert.Equal(2, await db.VideoUploadReceipts.CountAsync(item => item.ByteSha256 == duplicateHash));
+    }
+
+    [Fact]
+    public async Task UploadReceiptOnlinePathStrictValidationRemainsUnchanged()
+    {
+        using HttpClient client = factory.CreateClient();
+        var auth = await SignInWithContextAsync(client);
+
+        using HttpResponseMessage response = await client.PostAsJsonAsync(
+            "/api/video/upload-receipt",
+            CreateInvalidOnlineUploadReceiptRequest(auth));
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+
+        string responseBody = await response.Content.ReadAsStringAsync();
+        Assert.Contains("PreUploadCheck was not found.", responseBody, StringComparison.Ordinal);
+    }
+
     private async Task<Guid> SignInAsync(HttpClient client)
+    {
+        return (await SignInWithContextAsync(client)).UserId;
+    }
+
+    private async Task<AuthenticatedClientContext> SignInWithContextAsync(HttpClient client)
     {
         string login = $"s2-15-user-{Guid.NewGuid():N}";
         const string password = "S2-15-test-password!";
+        Guid deviceId = Guid.NewGuid();
 
         await SeedUserAsync(login, password);
 
@@ -141,7 +337,7 @@ public sealed class UploadControlPlaneAuthorizationTests(AppApiFactory factory) 
             new SignInRequestDto(
                 Login: login,
                 Password: password,
-                DeviceId: Guid.NewGuid()));
+                DeviceId: deviceId));
 
         await AssertStatusCodeAsync("sign in", HttpStatusCode.OK, signInResponse);
 
@@ -153,7 +349,7 @@ public sealed class UploadControlPlaneAuthorizationTests(AppApiFactory factory) 
 
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
 
-        return signInBody.User.UserId;
+        return new AuthenticatedClientContext(signInBody.User.UserId, deviceId);
     }
 
     private async Task SeedUserAsync(string login, string password)
@@ -236,9 +432,119 @@ public sealed class UploadControlPlaneAuthorizationTests(AppApiFactory factory) 
             UploadedAtUtc: DateTimeOffset.UtcNow);
     }
 
+    private static VideoUploadReceiptSyncRequestDto CreateAnonymousUploadReceiptSyncRequest()
+    {
+        return new VideoUploadReceiptSyncRequestDto(
+            UserId: Guid.NewGuid(),
+            DeviceId: Guid.NewGuid(),
+            GroupNodeId: Guid.NewGuid(),
+            BusinessObjectKey: $"business-object-{Guid.NewGuid():N}",
+            FileName: $"offline-{Guid.NewGuid():N}.mp4",
+            ContentType: "video/mp4",
+            ExternalVideoId: $"site-video-{Guid.NewGuid():N}",
+            StorageKey: $"videos/site-video-{Guid.NewGuid():N}.mp4",
+            SiteStatus: "uploaded",
+            SizeBytes: 1024,
+            ByteSha256: CreateHex64(),
+            IdempotencyKey: Guid.NewGuid().ToString("N"),
+            CapturedAtUtc: DateTimeOffset.UtcNow,
+            UploadedAtUtc: DateTimeOffset.UtcNow);
+    }
+
+    private static VideoUploadReceiptSyncRequestDto CreateUploadReceiptSyncRequest(
+        AuthenticatedClientContext auth,
+        string hash,
+        string idempotencyKey,
+        Guid? groupNodeId = null,
+        string? businessObjectKey = null)
+    {
+        string externalVideoId = $"site-video-sync-{Guid.NewGuid():N}";
+
+        return new VideoUploadReceiptSyncRequestDto(
+            UserId: auth.UserId,
+            DeviceId: auth.DeviceId,
+            GroupNodeId: groupNodeId ?? Guid.NewGuid(),
+            BusinessObjectKey: businessObjectKey ?? $"business-object-{Guid.NewGuid():N}",
+            FileName: $"offline-{Guid.NewGuid():N}.mp4",
+            ContentType: "video/mp4",
+            ExternalVideoId: externalVideoId,
+            StorageKey: $"videos/{externalVideoId}.mp4",
+            SiteStatus: "uploaded",
+            SizeBytes: 1024,
+            ByteSha256: hash,
+            IdempotencyKey: idempotencyKey,
+            CapturedAtUtc: DateTimeOffset.UtcNow,
+            UploadedAtUtc: DateTimeOffset.UtcNow);
+    }
+
+    private static VideoUploadReceiptRequestDto CreateInvalidOnlineUploadReceiptRequest(
+        AuthenticatedClientContext auth)
+    {
+        string externalVideoId = $"site-video-{Guid.NewGuid():N}";
+
+        return new VideoUploadReceiptRequestDto(
+            PreUploadCheckId: Guid.NewGuid(),
+            UserId: auth.UserId,
+            DeviceId: auth.DeviceId,
+            GroupNodeId: Guid.NewGuid(),
+            ExternalVideoId: externalVideoId,
+            StorageKey: $"videos/{externalVideoId}.mp4",
+            SiteStatus: "uploaded",
+            SizeBytes: 1024,
+            ByteSha256: CreateHex64(),
+            IdempotencyKey: Guid.NewGuid().ToString("N"),
+            UploadedAtUtc: DateTimeOffset.UtcNow);
+    }
+
     private static string CreateHex64()
     {
         return $"{Guid.NewGuid():N}{Guid.NewGuid():N}";
+    }
+
+    private async Task EnsureBranchAdminRoutingAsync()
+    {
+        using IServiceScope scope = factory.Services.CreateScope();
+
+        var db = scope.ServiceProvider.GetRequiredService<PlatformDbContext>();
+
+        if (!await db.GroupNodes.AnyAsync(item => item.Id == RootGroupNodeId))
+        {
+            db.GroupNodes.Add(new GroupNode
+            {
+                Id = RootGroupNodeId,
+                ParentNodeId = null,
+                Code = "root",
+                Name = "Root",
+                Depth = 0,
+                IsActive = true
+            });
+        }
+
+        if (!await db.GroupNodes.AnyAsync(item => item.Id == BranchGroupNodeId))
+        {
+            db.GroupNodes.Add(new GroupNode
+            {
+                Id = BranchGroupNodeId,
+                ParentNodeId = RootGroupNodeId,
+                Code = "branch-a",
+                Name = "Branch A",
+                Depth = 1,
+                IsActive = true
+            });
+        }
+
+        if (!await db.GroupAdminAssignments.AnyAsync(
+                item => item.GroupNodeId == BranchGroupNodeId && item.UserId == BranchAdminUserId))
+        {
+            db.GroupAdminAssignments.Add(new GroupAdminAssignment
+            {
+                GroupNodeId = BranchGroupNodeId,
+                UserId = BranchAdminUserId,
+                AssignedAtUtc = DateTimeOffset.UtcNow
+            });
+        }
+
+        await db.SaveChangesAsync();
     }
 
     private static async Task AssertStatusCodeAsync(
@@ -335,4 +641,6 @@ public sealed class UploadControlPlaneAuthorizationTests(AppApiFactory factory) 
         return string.Equals(propertyName, "accessToken", StringComparison.OrdinalIgnoreCase)
             || string.Equals(propertyName, "refreshToken", StringComparison.OrdinalIgnoreCase);
     }
+
+    private sealed record AuthenticatedClientContext(Guid UserId, Guid DeviceId);
 }
