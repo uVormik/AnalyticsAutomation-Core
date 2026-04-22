@@ -1,10 +1,17 @@
 ## Related issue / task card
 Closes #
+Task card:
 
-## Goal
-Кратко опишите, зачем нужен этот PR и какой результат он дает.
+## Purpose
+Briefly describe why this PR exists and what outcome it unlocks.
 
-## Module / area
+## Coder
+-
+
+## Task ID
+-
+
+## Module
 - [ ] repo/process
 - [ ] backend/platform
 - [ ] infra/deploy
@@ -13,17 +20,23 @@ Closes #
 - [ ] mobile
 - [ ] docs
 
-## What changed
-- backend:
-- web:
-- mobile:
-- worker:
-- db:
-- audit:
-- flags:
-- events:
+## Scope
+Describe the exact scope and guardrails for this PR.
 
-## Contracts impact
+## Changed areas
+- .github/workflows:
+- docs:
+- src/App.Api:
+- src/App.Worker:
+- src/App.Web:
+- src/App.Mobile.Android:
+- src/App.UI.Shared:
+- src/BuildingBlocks.Contracts:
+- src/Modules:
+- tests:
+- other:
+
+## Contracts
 - [ ] no contract change
 - [ ] shared DTO changed
 - [ ] API request/response changed
@@ -31,47 +44,69 @@ Closes #
 
 Details:
 
-## Migration
+## Migrations
 - [ ] no migration
 - [ ] additive migration required
 - [ ] follow-up cleanup migration will be needed later
 
 Details:
 
-## Feature flag
+## Feature flags
 - [ ] not needed
 - [ ] existing flag used
 - [ ] new flag required
 
-Flag name / rationale:
+Details:
+
+## API impact
+- [ ] none
+- [ ] additive
+- [ ] breaking
+
+Details:
+
+## Web impact
+- [ ] none
+- [ ] UI/behavior changed
+- [ ] handoff only
+
+Details:
+
+## Android impact
+- [ ] none
+- [ ] UI/behavior changed
+- [ ] handoff only
+
+Details:
 
 ## Offline behavior
-Что меняется в offline-поведении? Что запрещено? Нужны ли outbox / receipt / late sync?
+Describe offline/outbox/receipt/late-sync impact, or state that there is none.
 
-## Audit / observability
-Какие критичные логи, audit points, health checks или counters затронуты?
+## Rollback
+Describe how to revert safely. For docs/workflow-only PRs, prefer `revert PR` or `disable workflow`.
 
-## Manual verification
+## Validation
 1.
 2.
 3.
 
-## Tests
-- [ ] no tests needed with explanation
-- [ ] unit tests added/updated
-- [ ] integration tests added/updated
-- [ ] contract tests added/updated
+## Handoff docs
+- none
+
+## Next step
+- none
+
+## NO-GO / Deferred
+- none
+
+## Security notes
+Describe authz/secrets/logging/deploy considerations, or state that there are none.
+
+## Tests / build applicability
+- [ ] docs/workflow-only change; build/test not applicable locally
+- [ ] runtime change; relevant checks listed below
 
 Details:
 
-## Rollback
-Как откатить изменение безопасно?
-
-## Breaking change / ADR
-- [ ] no breaking change
-- [ ] breaking change explicitly documented
-- [ ] ADR update included
-- [ ] follow-up coordination needed
-
 ## Notes for reviewers
-На что смотреть особенно внимательно?
+Call out anything that deserves extra attention.

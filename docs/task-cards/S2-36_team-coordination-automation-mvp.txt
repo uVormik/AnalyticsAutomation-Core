@@ -1,0 +1,155 @@
+Название:
+S2-36 Team Coordination Automation MVP
+
+Кодер:
+Coder 1 / Repo Process Owner
+
+Модуль:
+Repo process / GitHub coordination / docs / .github workflows
+
+Owner:
+Platform owner / repo maintainers
+
+Тип задачи:
+infra automation / coordination workflow / docs + workflow only
+
+Цель:
+Перевести командную координацию на GitHub-centered flow, где GitHub остается source of truth для handoff и next-step контекста, а Telegram используется только как notification channel при наличии secrets.
+
+Контекст:
+- S2-35 закрыт и смержен в main.
+- Canonical main commit for this task base: 8518f7a.
+- Историческая постановка называла задачу S2-20, но этот номер уже занят; для текущей последовательности используется S2-36.
+- Команда не должна стартовать новую задачу из Telegram screenshot или устного пересказа.
+- После merge нельзя делать auto-commit в main.
+- Нельзя менять runtime API/contracts, runtime code, DB migrations или deploy workflow.
+
+Почему задача нужна:
+Сейчас coordination context может теряться между PR, Telegram и handoff заметками. Нужен минимальный, безопасный и воспроизводимый flow, в котором:
+- merged PR добавляет запись в один стабильный GitHub coordination log;
+- следующий coder начинает работу с GitHub issue и связанных handoff docs;
+- Telegram остается только коротким уведомлением и не становится source of truth.
+
+Что меняется:
+- backend:
+  - no change;
+  - App.Api runtime code is untouched.
+- worker:
+  - no change;
+  - App.Worker runtime code is untouched.
+- web:
+  - no change;
+  - App.Web is untouched.
+- mobile:
+  - no change;
+  - App.Mobile.Android is untouched.
+- shared/UI/modules:
+  - App.UI.Shared, BuildingBlocks.Contracts and src/Modules are untouched.
+- db:
+  - no migration;
+  - no DB scripts or schema changes.
+- deploy:
+  - deploy-korobochka workflow and deployment scripts are untouched.
+- docs/process:
+  - add task card;
+  - add runbook;
+  - update PR template so merge automation can extract handoff metadata;
+  - add merge workflow that comments into a fixed GitHub issue without checking out PR code.
+
+Contracts:
+- No shared DTO changes.
+- No public API route changes.
+- No runtime API contract changes.
+- PR template fields are repo-process metadata only.
+
+Migration:
+- No migration.
+- No additive or destructive DB changes.
+
+Feature flag:
+- No runtime feature flag required.
+- Telegram notification is optional based on GitHub secrets presence, not on an application feature flag.
+
+Events:
+- No product/runtime event changes.
+- Repo-process events introduced by this task:
+  - merged PR -> comment in fixed GitHub coordination issue;
+  - optional Telegram notification when secrets are configured.
+
+Offline behavior:
+- No offline behavior change.
+- No outbox, receipt, late-sync or mobile cache behavior changes.
+
+Security:
+- GitHub-hosted runner only; no self-hosted runner in pull_request context.
+- No checkout of PR code.
+- No build, test or deploy execution in the coordination workflow.
+- No calls to deploy-korobochka.
+- Minimal permissions only:
+  - contents: read
+  - pull-requests: read
+  - issues: write
+- No secrets in repo.
+- No Telegram token/chat id printing in logs.
+- No writes back to main.
+- No direct push to main.
+- No generated coordination logs committed back to the repository.
+
+Workflow behavior expected:
+1. Trigger on pull_request closed.
+2. Continue only when the PR was merged.
+3. Read PR metadata and changed files through GitHub APIs.
+4. Find the fixed issue titled exactly:
+   TEAM COORDINATION LOG — AnalyticsAutomation-Core
+5. If the issue exists and is open, comment into it.
+6. If the issue exists but is closed, reopen it and comment.
+7. If the issue does not exist, create it with the exact title and a short source-of-truth description, then comment.
+8. Never create a new issue per PR unless reopening is not possible and a replacement is required.
+9. Mark CI/build status as `not evaluated by coordination workflow`.
+10. If Telegram secrets exist, send a short notification linking back to GitHub PR and coordination issue.
+11. If Telegram secrets are missing, skip notification without failing the workflow.
+
+Comment payload required:
+- PR number and title;
+- merged commit SHA;
+- author;
+- labels if available;
+- changed areas summary from pull request files API;
+- total changed files count;
+- contracts, migrations, feature flags, handoff docs and next step from PR body when present;
+- PR link;
+- CI/build status marked as `not evaluated by coordination workflow`.
+
+Rollback:
+- Revert the PR if the automation/comment format is wrong.
+- Or disable/remove `.github/workflows/coordination-on-merge.yml`.
+- GitHub issue comments remain as audit/history and do not require destructive cleanup.
+- No DB rollback.
+- No deploy rollback.
+
+NO-GO / Deferred:
+- No runtime API/code changes.
+- No shared contracts changes.
+- No DB migrations.
+- No deploy workflow changes.
+- No auto-commit or write-back to main after merge.
+- No Telegram-first coordination model.
+- No advanced CI status fan-out requiring extra permissions.
+- No automatic task branching from Telegram.
+- No parsing of code diffs by checkout or local build in the coordination workflow.
+
+Validation:
+- `git diff --check`
+- `dotnet format whitespace AnalyticsAutomation-Core.sln --verify-no-changes --no-restore`
+- Local workflow YAML parse only if available without adding dependencies.
+- Otherwise: workflow parse will be validated by GitHub when PR is opened.
+- Do not run deploy workflow.
+
+Definition of done:
+- `docs/task-cards/S2-36_team-coordination-automation-mvp.txt` added.
+- `docs/runbooks/team-coordination-automation.md` added.
+- PR template contains the required coordination metadata fields.
+- `.github/workflows/coordination-on-merge.yml` exists and does not checkout/build/test/deploy.
+- Telegram step is optional and skip-safe.
+- Local formatting and whitespace checks pass for the touched files.
+- No runtime API/contracts/migrations/deploy workflow changes are included in this PR.

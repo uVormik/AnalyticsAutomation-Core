@@ -1,0 +1,268 @@
+name: coordination-on-merge
+
+on:
+  pull_request:
+    types:
+      - closed
+
+permissions:
+  contents: read
+  pull-requests: read
+  issues: write
+
+concurrency:
+  group: coordination-on-merge
+  cancel-in-progress: false
+
+jobs:
+  coordinate:
+    name: coordination / on-merge
+    if: ${{ github.event.pull_request.merged == true }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Record merged PR in coordination log
+        id: coordinate
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const coordinationIssueTitle = 'TEAM COORDINATION LOG — AnalyticsAutomation-Core';
+            const pr = context.payload.pull_request;
+
+            function normalizeHeading(value) {
+              return value.trim().replace(/[:：]+$/, '').toLowerCase();
+            }
+
+            function extractSection(markdown, headings) {
+              const lines = (markdown || '').split(/\r?\n/);
+              const normalizedHeadings = headings.map(normalizeHeading);
+              let capture = false;
+              const captured = [];
+
+              for (const line of lines) {
+                const headingMatch = line.match(/^#{2,6}\s*(.+?)\s*$/);
+                if (headingMatch) {
+                  const heading = normalizeHeading(headingMatch[1]);
+                  if (capture) {
+                    break;
+                  }
+
+                  if (normalizedHeadings.includes(heading)) {
+                    capture = true;
+                    continue;
+                  }
+                }
+
+                if (capture) {
+                  captured.push(line.trimEnd());
+                }
+              }
+
+              const content = captured.join('\n').trim();
+              return content || 'not provided in PR body';
+            }
+
+            function trimBlock(value) {
+              const normalized = value.trim();
+              if (normalized.length <= 1200) {
+                return normalized;
+              }
+
+              return `${normalized.slice(0, 1197)}...`;
+            }
+
+            function classifyArea(path) {
+              const knownPrefixes = [
+                '.github/workflows',
+                'docs',
+                'src/App.Api',
+                'src/App.Worker',
+                'src/App.Web',
+                'src/App.Mobile.Android',
+                'src/App.UI.Shared',
+                'src/BuildingBlocks.Contracts',
+                'tests'
+              ];
+
+              for (const prefix of knownPrefixes) {
+                if (path === prefix || path.startsWith(`${prefix}/`)) {
+                  return prefix;
+                }
+              }
+
+              const moduleMatch = path.match(/^src\/Modules\/([^/]+)/);
+              if (moduleMatch) {
+                return `src/Modules/${moduleMatch[1]}`;
+              }
+
+              const segments = path.split('/');
+              if (segments.length >= 2 && segments[0] === 'src') {
+                return `src/${segments[1]}`;
+              }
+
+              return segments[0] || path;
+            }
+
+            const files = await github.paginate(github.rest.pulls.listFiles, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number,
+              per_page: 100
+            });
+
+            const areaCounts = new Map();
+            for (const file of files) {
+              const area = classifyArea(file.filename);
+              areaCounts.set(area, (areaCounts.get(area) || 0) + 1);
+            }
+
+            const changedAreas = Array.from(areaCounts.entries())
+              .sort((left, right) => {
+                if (right[1] !== left[1]) {
+                  return right[1] - left[1];
+                }
+
+                return left[0].localeCompare(right[0]);
+              })
+              .map(([area, count]) => `- ${area} (${count} ${count === 1 ? 'file' : 'files'})`);
+
+            const labels = pr.labels && pr.labels.length > 0
+              ? pr.labels.map((label) => `\`${label.name}\``).join(', ')
+              : 'none';
+
+            const contracts = trimBlock(extractSection(pr.body, ['Contracts', 'Contracts impact']));
+            const migrations = trimBlock(extractSection(pr.body, ['Migrations', 'Migration']));
+            const featureFlags = trimBlock(extractSection(pr.body, ['Feature flags', 'Feature flag']));
+            const handoffDocs = trimBlock(extractSection(pr.body, ['Handoff docs']));
+            const nextStep = trimBlock(extractSection(pr.body, ['Next step']));
+
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'all',
+              per_page: 100
+            });
+
+            const matchingIssues = issues.filter((issue) =>
+              !issue.pull_request && issue.title === coordinationIssueTitle
+            );
+
+            let coordinationIssue =
+              matchingIssues.find((issue) => issue.state === 'open') ||
+              matchingIssues[0];
+
+            if (!coordinationIssue) {
+              const createdIssue = await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: coordinationIssueTitle,
+                body: [
+                  'GitHub source-of-truth coordination log for AnalyticsAutomation-Core.',
+                  '',
+                  'Merged PR automation appends one comment per merged PR.',
+                  'Telegram notifications are optional and never replace GitHub.'
+                ].join('\n')
+              });
+
+              coordinationIssue = createdIssue.data;
+            } else if (coordinationIssue.state !== 'open') {
+              try {
+                const reopenedIssue = await github.rest.issues.update({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: coordinationIssue.number,
+                  state: 'open'
+                });
+
+                coordinationIssue = reopenedIssue.data;
+              } catch (error) {
+                const replacementIssue = await github.rest.issues.create({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  title: coordinationIssueTitle,
+                  body: [
+                    'GitHub source-of-truth coordination log for AnalyticsAutomation-Core.',
+                    '',
+                    `Previous coordination issue #${coordinationIssue.number} could not be reopened.`,
+                    'This replacement issue continues the stable coordination log.'
+                  ].join('\n')
+                });
+
+                coordinationIssue = replacementIssue.data;
+              }
+            }
+
+            const changedAreaLines = changedAreas.length > 0
+              ? changedAreas
+              : ['- no files reported by pull request files API'];
+
+            const commentBody = [
+              `## Merge recorded: #${pr.number} ${pr.title}`,
+              '',
+              `- PR number/title: #${pr.number} ${pr.title}`,
+              `- PR link: ${pr.html_url}`,
+              `- Merged commit SHA: \`${pr.merge_commit_sha || 'not available'}\``,
+              `- Author: @${pr.user.login}`,
+              `- Labels: ${labels}`,
+              '- CI/build status: `not evaluated by coordination workflow`',
+              '',
+              '### Changed areas summary',
+              `- Total changed files: ${files.length}`,
+              ...changedAreaLines,
+              '',
+              '### Contracts',
+              contracts,
+              '',
+              '### Migrations',
+              migrations,
+              '',
+              '### Feature flags',
+              featureFlags,
+              '',
+              '### Handoff docs',
+              handoffDocs,
+              '',
+              '### Next step',
+              nextStep
+            ].join('\n');
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: coordinationIssue.number,
+              body: commentBody
+            });
+
+            core.setOutput('coordination_issue_url', coordinationIssue.html_url);
+            core.setOutput('pr_number', String(pr.number));
+            core.setOutput('pr_title', pr.title);
+            core.setOutput('pr_url', pr.html_url);
+
+      - name: Send optional Telegram notification
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          COORDINATION_ISSUE_URL: ${{ steps.coordinate.outputs.coordination_issue_url }}
+          PR_NUMBER: ${{ steps.coordinate.outputs.pr_number }}
+          PR_TITLE: ${{ steps.coordinate.outputs.pr_title }}
+          PR_URL: ${{ steps.coordinate.outputs.pr_url }}
+        shell: bash
+        run: |
+          if [ -z "${TELEGRAM_BOT_TOKEN}" ] || [ -z "${TELEGRAM_CHAT_ID}" ]; then
+            echo "Telegram secrets are not configured; skipping notification."
+            exit 0
+          fi
+
+          message=$(printf 'Merged PR #%s: %s\nPR: %s\nCoordination log: %s\nGitHub remains the source of truth.' \
+            "${PR_NUMBER}" \
+            "${PR_TITLE}" \
+            "${PR_URL}" \
+            "${COORDINATION_ISSUE_URL}")
+
+          curl --fail --silent --show-error \
+            --request POST \
+            "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${TELEGRAM_CHAT_ID}" \
+            --data-urlencode "text=${message}" \
+            --data-urlencode "disable_web_page_preview=true" \
+            > /dev/null
