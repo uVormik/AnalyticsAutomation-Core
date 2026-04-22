@@ -1,22 +1,23 @@
 using BuildingBlocks.Infrastructure.Persistence;
 using BuildingBlocks.Infrastructure.Persistence.Entities.Auth;
+using BuildingBlocks.Infrastructure.Persistence.Entities.GroupTree;
 
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
-namespace App.Maintenance.IntegrationAccounts;
+namespace App.Maintenance.IncidentRoutingAdmins;
 
-public sealed class IntegrationAccountMaintenanceService(
+public sealed class IncidentRoutingAdminMaintenanceService(
     PlatformDbContext dbContext,
     IPasswordHasher<AuthUser> passwordHasher)
 {
-    public const string PasswordEnvironmentVariableName = "AA_INTEGRATION_ACCOUNT_PASSWORD";
-    public const string IntegrationAccountLogin = "integration-web-android";
-    public const string IntegrationAccountDisplayName = "Web/Android Integration Account";
+    public const string PasswordEnvironmentVariableName = "AA_INCIDENT_ROUTING_ADMIN_PASSWORD";
+    public const string IncidentRoutingAdminLogin = "incident-routing-admin";
+    public const string IncidentRoutingAdminDisplayName = "Incident Routing Admin";
     public const string PlatformOwnerRoleCode = "platform_owner";
     public const string RootGroupNodeCode = "root";
 
-    public async Task<IntegrationAccountUpsertResult> UpsertAsync(CancellationToken cancellationToken)
+    public async Task<IncidentRoutingAdminUpsertResult> UpsertAsync(CancellationToken cancellationToken)
     {
         var password = ReadRequiredPassword();
         var role = await dbContext.AuthRoles
@@ -33,7 +34,7 @@ public sealed class IntegrationAccountMaintenanceService(
             ?? throw new InvalidOperationException(
                 $"Group node '{RootGroupNodeCode}' was not found. Aborting without changes.");
 
-        var normalizedLogin = NormalizeLogin(IntegrationAccountLogin);
+        var normalizedLogin = NormalizeLogin(IncidentRoutingAdminLogin);
         var user = await dbContext.AuthUsers
             .Include(item => item.UserRoles)
             .SingleOrDefaultAsync(
@@ -52,13 +53,14 @@ public sealed class IntegrationAccountMaintenanceService(
             dbContext.AuthUsers.Add(user);
         }
 
-        user.Login = IntegrationAccountLogin;
+        user.Login = IncidentRoutingAdminLogin;
         user.NormalizedLogin = normalizedLogin;
-        user.DisplayName = IntegrationAccountDisplayName;
+        user.DisplayName = IncidentRoutingAdminDisplayName;
         user.IsActive = true;
         user.CurrentGroupNodeId = rootGroupNode.Id;
         user.PasswordHash = passwordHasher.HashPassword(user, password);
 
+        var wasRoleLinkCreated = false;
         if (!user.UserRoles.Any(item => item.RoleId == role.Id))
         {
             user.UserRoles.Add(new AuthUserRole
@@ -66,15 +68,35 @@ public sealed class IntegrationAccountMaintenanceService(
                 UserId = user.Id,
                 RoleId = role.Id
             });
+
+            wasRoleLinkCreated = true;
+        }
+
+        var assignment = await dbContext.GroupAdminAssignments
+            .SingleOrDefaultAsync(
+                item => item.GroupNodeId == rootGroupNode.Id && item.UserId == user.Id,
+                cancellationToken);
+
+        var wasAssignmentCreated = assignment is null;
+        if (assignment is null)
+        {
+            dbContext.GroupAdminAssignments.Add(new GroupAdminAssignment
+            {
+                GroupNodeId = rootGroupNode.Id,
+                UserId = user.Id,
+                AssignedAtUtc = DateTimeOffset.UtcNow
+            });
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        return new IntegrationAccountUpsertResult(
+        return new IncidentRoutingAdminUpsertResult(
             user.Login,
             wasCreated,
             role.Code,
-            rootGroupNode.Code);
+            wasRoleLinkCreated,
+            rootGroupNode.Code,
+            wasAssignmentCreated);
     }
 
     private static string ReadRequiredPassword()
@@ -95,8 +117,10 @@ public sealed class IntegrationAccountMaintenanceService(
     }
 }
 
-public sealed record IntegrationAccountUpsertResult(
+public sealed record IncidentRoutingAdminUpsertResult(
     string Login,
     bool WasCreated,
     string AssignedRoleCode,
-    string AssignedGroupNodeCode);
+    bool WasRoleLinkCreated,
+    string AssignedGroupNodeCode,
+    bool WasAssignmentCreated);
