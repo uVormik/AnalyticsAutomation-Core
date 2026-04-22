@@ -9,7 +9,7 @@ namespace App.Web.Tests;
 public sealed class UploadReceiptRequestFactoryTests
 {
     [Fact]
-    public void Create_builds_request_using_frozen_contract_fields()
+    public void CreateBuildsRequestUsingFrozenContractFields()
     {
         var form = CreateValidForm();
 
@@ -31,7 +31,7 @@ public sealed class UploadReceiptRequestFactoryTests
     }
 
     [Fact]
-    public void Create_rejects_invalid_pre_upload_check_id_before_calling_backend()
+    public void CreateRejectsInvalidPreUploadCheckIdBeforeCallingBackend()
     {
         var form = CreateValidForm();
         form.PreUploadCheckId = "not-a-guid";
@@ -40,7 +40,7 @@ public sealed class UploadReceiptRequestFactoryTests
     }
 
     [Fact]
-    public void Create_rejects_invalid_uploaded_at_utc_before_calling_backend()
+    public void CreateRejectsInvalidUploadedAtUtcBeforeCallingBackend()
     {
         var form = CreateValidForm();
         form.UploadedAtUtc = "not-a-date";

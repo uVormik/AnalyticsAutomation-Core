@@ -9,7 +9,7 @@ namespace App.Web.Tests;
 public sealed class UploadPreCheckRequestFactoryTests
 {
     [Fact]
-    public void Create_builds_request_using_frozen_contract_fields()
+    public void CreateBuildsRequestUsingFrozenContractFields()
     {
         var form = new UploadPreCheckFormModel
         {
@@ -44,7 +44,7 @@ public sealed class UploadPreCheckRequestFactoryTests
     }
 
     [Fact]
-    public void Create_allows_empty_optional_device_and_group_node_ids()
+    public void CreateAllowsEmptyOptionalDeviceAndGroupNodeIds()
     {
         var form = CreateValidForm();
         form.DeviceId = string.Empty;
@@ -57,7 +57,7 @@ public sealed class UploadPreCheckRequestFactoryTests
     }
 
     [Fact]
-    public void Create_rejects_invalid_guid_before_calling_backend()
+    public void CreateRejectsInvalidGuidBeforeCallingBackend()
     {
         var form = CreateValidForm();
         form.UserId = "not-a-guid";
@@ -66,7 +66,7 @@ public sealed class UploadPreCheckRequestFactoryTests
     }
 
     [Fact]
-    public void Create_rejects_invalid_captured_at_utc_before_calling_backend()
+    public void CreateRejectsInvalidCapturedAtUtcBeforeCallingBackend()
     {
         var form = CreateValidForm();
         form.CapturedAtUtc = "not-a-date";
