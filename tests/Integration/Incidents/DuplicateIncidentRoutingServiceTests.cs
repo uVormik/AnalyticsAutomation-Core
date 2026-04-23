@@ -83,11 +83,13 @@ public sealed class DuplicateIncidentRoutingServiceTests
         var created = await service.CreateFromCandidateAsync(
             CreateRequest(isUploaderBranchAdmin: false),
             CancellationToken.None);
+        var assignedAdminUserId = created.Assignments.Single().AssignedAdminUserId;
 
         var decided = await service.RecordDecisionAsync(
             created.IncidentId,
+            assignedAdminUserId,
             new DuplicateIncidentDecisionRequestV1Dto(
-                DecidedByUserId: Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc"),
+                DecidedByUserId: assignedAdminUserId,
                 Decision: DuplicateIncidentV1DecisionTypes.ConfirmDuplicate,
                 Notes: "Confirmed by test."),
             CancellationToken.None);
@@ -95,6 +97,56 @@ public sealed class DuplicateIncidentRoutingServiceTests
         Assert.Equal(DuplicateIncidentV1Statuses.Resolved, decided.Status);
         Assert.NotNull(decided.LatestDecision);
         Assert.Equal(DuplicateIncidentV1DecisionTypes.ConfirmDuplicate, decided.LatestDecision!.Decision);
+        Assert.Equal(assignedAdminUserId, decided.LatestDecision.DecidedByUserId);
+    }
+
+    [Fact]
+    public async Task RecordDecisionAsyncRejectsNonAssignedUser()
+    {
+        using var provider = CreateProvider();
+        using var scope = provider.CreateScope();
+
+        var service = scope.ServiceProvider.GetRequiredService<IDuplicateIncidentRoutingService>();
+        var created = await service.CreateFromCandidateAsync(
+            CreateRequest(isUploaderBranchAdmin: false),
+            CancellationToken.None);
+
+        var exception = await Assert.ThrowsAsync<UnauthorizedAccessException>(
+            () => service.RecordDecisionAsync(
+                created.IncidentId,
+                Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd"),
+                new DuplicateIncidentDecisionRequestV1Dto(
+                    DecidedByUserId: Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd"),
+                    Decision: DuplicateIncidentV1DecisionTypes.ConfirmDuplicate,
+                    Notes: "Rejected by test."),
+                CancellationToken.None));
+
+        Assert.Equal("DuplicateIncident decision can only be recorded by the assigned admin.", exception.Message);
+    }
+
+    [Fact]
+    public async Task RecordDecisionAsyncRejectsSpoofedDecidedByUserId()
+    {
+        using var provider = CreateProvider();
+        using var scope = provider.CreateScope();
+
+        var service = scope.ServiceProvider.GetRequiredService<IDuplicateIncidentRoutingService>();
+        var created = await service.CreateFromCandidateAsync(
+            CreateRequest(isUploaderBranchAdmin: false),
+            CancellationToken.None);
+        var assignedAdminUserId = created.Assignments.Single().AssignedAdminUserId;
+
+        var exception = await Assert.ThrowsAsync<UnauthorizedAccessException>(
+            () => service.RecordDecisionAsync(
+                created.IncidentId,
+                assignedAdminUserId,
+                new DuplicateIncidentDecisionRequestV1Dto(
+                    DecidedByUserId: Guid.Parse("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"),
+                    Decision: DuplicateIncidentV1DecisionTypes.ConfirmDuplicate,
+                    Notes: "Spoof attempt."),
+                CancellationToken.None));
+
+        Assert.Equal("DuplicateIncident decision cannot be recorded for another admin.", exception.Message);
     }
 
     private static ServiceProvider CreateProvider()

@@ -14,6 +14,7 @@ using Microsoft.Extensions.Options;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -38,8 +39,25 @@ public interface IDuplicateIncidentRoutingService
 
     Task<DuplicateIncidentV1Dto> RecordDecisionAsync(
         Guid incidentId,
+        Guid currentAdminUserId,
         DuplicateIncidentDecisionRequestV1Dto request,
         CancellationToken cancellationToken);
+}
+
+internal sealed record AuthenticatedDuplicateIncidentAdminScope(Guid UserId)
+{
+    public static AuthenticatedDuplicateIncidentAdminScope FromClaimsPrincipal(ClaimsPrincipal principal)
+    {
+        ArgumentNullException.ThrowIfNull(principal);
+
+        var userIdValue = principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (!Guid.TryParse(userIdValue, out var userId) || userId == Guid.Empty)
+        {
+            throw new InvalidOperationException("Authenticated user id claim is required.");
+        }
+
+        return new AuthenticatedDuplicateIncidentAdminScope(userId);
+    }
 }
 
 public sealed class DuplicateIncidentRoutingService(
@@ -191,6 +209,7 @@ public sealed class DuplicateIncidentRoutingService(
 
     public async Task<DuplicateIncidentV1Dto> RecordDecisionAsync(
         Guid incidentId,
+        Guid currentAdminUserId,
         DuplicateIncidentDecisionRequestV1Dto request,
         CancellationToken cancellationToken)
     {
@@ -204,7 +223,17 @@ public sealed class DuplicateIncidentRoutingService(
             throw new ArgumentException("IncidentId is required.", nameof(incidentId));
         }
 
+        if (currentAdminUserId == Guid.Empty)
+        {
+            throw new ArgumentException("CurrentAdminUserId is required.", nameof(currentAdminUserId));
+        }
+
         ValidateDecisionRequest(request);
+
+        if (request.DecidedByUserId != currentAdminUserId)
+        {
+            throw new UnauthorizedAccessException("DuplicateIncident decision cannot be recorded for another admin.");
+        }
 
         var incident = await dbContext.DuplicateIncidentRecords
             .SingleOrDefaultAsync(
@@ -216,13 +245,26 @@ public sealed class DuplicateIncidentRoutingService(
             throw new InvalidOperationException("DuplicateIncident was not found.");
         }
 
+        var isAssignedAdmin = await dbContext.DuplicateIncidentAssignmentRecords
+            .AsNoTracking()
+            .AnyAsync(
+                item => item.IncidentId == incidentId
+                    && item.AssignedAdminUserId == currentAdminUserId
+                    && item.IsActive,
+                cancellationToken);
+
+        if (!isAssignedAdmin)
+        {
+            throw new UnauthorizedAccessException("DuplicateIncident decision can only be recorded by the assigned admin.");
+        }
+
         var decidedAtUtc = DateTimeOffset.UtcNow;
 
         var decision = new DuplicateIncidentDecisionRecord
         {
             Id = Guid.NewGuid(),
             IncidentId = incidentId,
-            DecidedByUserId = request.DecidedByUserId,
+            DecidedByUserId = currentAdminUserId,
             Decision = request.Decision.Trim(),
             Notes = string.IsNullOrWhiteSpace(request.Notes)
                 ? null
@@ -439,28 +481,59 @@ public static class IncidentsModule
             });
 
         endpoints.MapGet(
-            "/api/incidents/duplicates/assigned/{assignedAdminUserId:guid}",
+            "/api/incidents/duplicates/assigned/me",
             async Task<IResult> (
-                Guid assignedAdminUserId,
+                HttpContext httpContext,
                 IDuplicateIncidentRoutingService service,
                 CancellationToken cancellationToken) =>
             {
+                var authenticatedScope = AuthenticatedDuplicateIncidentAdminScope.FromClaimsPrincipal(httpContext.User);
+                var result = await service.GetAssignedAsync(authenticatedScope.UserId, cancellationToken);
+                return Results.Ok(result);
+            })
+            .RequireAuthorization();
+
+        endpoints.MapGet(
+            "/api/incidents/duplicates/assigned/{assignedAdminUserId:guid}",
+            async Task<IResult> (
+                Guid assignedAdminUserId,
+                HttpContext httpContext,
+                IDuplicateIncidentRoutingService service,
+                CancellationToken cancellationToken) =>
+            {
+                var authenticatedScope = AuthenticatedDuplicateIncidentAdminScope.FromClaimsPrincipal(httpContext.User);
+                if (authenticatedScope.UserId != assignedAdminUserId)
+                {
+                    return Results.Forbid();
+                }
+
                 var result = await service.GetAssignedAsync(assignedAdminUserId, cancellationToken);
                 return Results.Ok(result);
-            });
+            })
+            .RequireAuthorization();
 
         endpoints.MapPost(
             "/api/incidents/duplicates/{incidentId:guid}/decision",
             async Task<IResult> (
                 Guid incidentId,
                 DuplicateIncidentDecisionRequestV1Dto request,
+                HttpContext httpContext,
                 IDuplicateIncidentRoutingService service,
                 CancellationToken cancellationToken) =>
             {
                 try
                 {
-                    var result = await service.RecordDecisionAsync(incidentId, request, cancellationToken);
+                    var authenticatedScope = AuthenticatedDuplicateIncidentAdminScope.FromClaimsPrincipal(httpContext.User);
+                    var result = await service.RecordDecisionAsync(
+                        incidentId,
+                        authenticatedScope.UserId,
+                        request,
+                        cancellationToken);
                     return Results.Ok(result);
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    return Results.Forbid();
                 }
                 catch (InvalidOperationException exception)
                 {
@@ -477,7 +550,8 @@ public static class IncidentsModule
                         message = exception.Message
                     });
                 }
-            });
+            })
+            .RequireAuthorization();
 
         return endpoints;
     }
