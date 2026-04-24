@@ -4,8 +4,8 @@
 
 Не просить и не публиковать секреты, пароли, GitHub runner token, private SSH keys.
 
-Учитывать, что Коробочка уже настроена: Ubuntu Server 24.04 LTS, App.Api, App.Worker, PostgreSQL, Nginx, GitHub Actions self-hosted runner, автоматический деплой из main через v1-deploy.
+Учитывать, что Коробочка уже настроена: Ubuntu Server 24.04 LTS, App.Api, App.Worker, PostgreSQL, Nginx, GitHub Actions self-hosted runner, manual-only deploy через GitHub Actions `workflow_dispatch` и v1-deploy.
 
 Не предлагать переустановку Ubuntu, пересоздание БД или ручной запуск сервера без необходимости.
 
-Для серверных изменений использовать обычный flow: ветка -> PR -> merge в main -> GitHub Actions deploy на Коробочку.
+Для серверных изменений использовать обычный flow: ветка -> PR -> merge в main -> repo CI/coordination flow. Deploy на Коробочку НЕ запускается автоматически от merge/push; оператор вручную запускает GitHub Actions `deploy-korobochka.yml` через `workflow_dispatch`, затем проверяет health/version/smoke.

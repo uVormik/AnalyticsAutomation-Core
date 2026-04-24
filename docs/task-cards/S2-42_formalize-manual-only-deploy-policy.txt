@@ -1,0 +1,103 @@
+Title:
+S2-42 Formalize Manual-only Korobochka Deploy Policy
+
+Owner:
+Coder 1 / Platform Owner
+
+Module:
+GitHub Actions / Korobochka deploy process / docs
+
+Type:
+docs / process / context hardening
+
+Goal:
+Formalize Option B from S2-39: Korobochka deploy remains manual-only, and operational docs/context must not describe merge to main as an automatic deploy trigger.
+
+Context:
+- Canonical repo: `uVormik/AnalyticsAutomation-Core`.
+- Current branch: `docs/s2-42-formalize-manual-only-deploy-policy`.
+- S2-39 documented the mismatch between workflow behavior and older docs/context wording.
+- S2-41 preflight audit baseline was OK.
+- `.github/workflows/deploy-korobochka.yml` currently uses manual `workflow_dispatch`.
+
+Canonical policy:
+- Merge to `main` fixes code in the repository and runs repo CI/coordination flow.
+- Korobochka deploy does not start automatically from merge or push to `main`.
+- Korobochka deploy is executed manually through GitHub Actions `workflow_dispatch` in `.github/workflows/deploy-korobochka.yml`.
+- After manual deploy, operators must verify health, version, and smoke checks.
+- Push-to-main auto-deploy remains disabled until a separate PR and explicit owner approval.
+
+Scope:
+- `docs/ops/`
+- `docs/runbooks/`
+- `docs/task-cards/`
+- `04_GITHUB_WORKFLOW_AND_INFRA_RULES.txt`
+- Docs-only files that explicitly contain conflicting deploy wording.
+
+Out of scope:
+- `.github/workflows/deploy-korobochka.yml`
+- `.github/workflows/*`
+- Runtime API code
+- Contracts
+- DB migrations
+- Deploy scripts
+- Production/server runtime behavior
+- Deploy execution
+
+What changes:
+- Runtime API: no.
+- Contracts: no changes.
+- Migrations: no.
+- Feature flags: no.
+- Workflow code: no changes.
+- Deploy execution: no.
+- Docs/process: formalize manual-only deploy policy.
+
+Contracts:
+- No shared DTO changes.
+- No public API route changes.
+- No runtime API contract changes.
+
+Migration:
+- No migration.
+
+Runtime API impact:
+- None.
+
+Feature flags:
+- None.
+
+Workflow code:
+- No changes.
+
+Deploy execution:
+- No deploy is executed by this task.
+
+Security:
+- Do not enable deploy from `pull_request`.
+- Do not enable push-to-main deploy in this task.
+- Do not expose runner token, SSH keys, secrets, or server-only files in repo/docs/PRs.
+
+Future option:
+- A push trigger can be restored only by a separate PR and explicit owner approval.
+
+Rollback:
+- Revert the docs PR.
+
+Verification:
+- `git diff --check`
+- `dotnet format whitespace AnalyticsAutomation-Core.sln --verify-no-changes --no-restore`
+- `git diff --name-only`
+- Confirm `.github/workflows/deploy-korobochka.yml` was not changed.
+- Confirm runtime/API/contracts/migrations/deploy scripts were not changed.
+
+Build/tests:
+- Not required for docs-only scope.
+- CI will still verify the PR.
+
+Definition of done:
+- Conflicting docs/context wording no longer describes merge to main as automatic Korobochka deploy.
+- S2-39 runbook records that Option B was selected in S2-42.
+- Infra rules include a small Korobochka deploy policy block.
+- New S2-42 task card exists.
+- No workflow code, runtime API, contracts, migrations, deploy scripts, or deploy execution are included.

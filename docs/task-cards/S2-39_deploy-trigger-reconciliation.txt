@@ -21,6 +21,12 @@ Context:
 - S2-38E admin review LAN smoke passed on version `b377e59`.
 - The backend vertical slice is closed; the remaining gap is deploy trigger reconciliation in infra/process/docs.
 
+Post-S2-42 outcome:
+- S2-42 selected Option B.
+- The canonical deploy policy is manual-only `workflow_dispatch` through `.github/workflows/deploy-korobochka.yml`.
+- Merge/push to `main` does not automatically deploy to Korobochka.
+- The expected deploy assumption below is retained as historical S2-39 mismatch input, not current policy.
+
 Observed mismatch:
 - Expected deploy assumption after merge to `main`:
   - GitHub Actions deploy should be available on `push` to `main`.

@@ -1,5 +1,13 @@
 GITHUB WORKFLOW AND INFRA RULES
 
+Korobochka deploy policy
+
+- Korobochka deploy is manual-only through GitHub Actions `workflow_dispatch` in `.github/workflows/deploy-korobochka.yml`.
+- Merge or push to `main` does not automatically deploy to Korobochka.
+- `pull_request` must not deploy to Korobochka.
+- Push-to-main auto-deploy remains disabled until a separate approved PR explicitly restores a push trigger.
+- After a manual deploy, verify health, version, and smoke checks.
+
 PR sync-readiness metadata
 
 Each PR body must include:

@@ -25,7 +25,7 @@
 - Main branch: main
 - Direct push to main запрещён.
 - Изменения идут через короткие ветки и Pull Request.
-- Текущее состояние: merge в main НЕ запускает deploy автоматически. Deploy на Коробочку сейчас выполняется вручную через GitHub Actions workflow_dispatch. Автоматический deploy на push в main требует отдельного PR и явного решения владельца проекта.
+- Текущее состояние: merge в main НЕ запускает deploy автоматически. Deploy на Коробочку сейчас выполняется вручную через GitHub Actions workflow `.github/workflows/deploy-korobochka.yml` по `workflow_dispatch`. Автоматический deploy на push в main требует отдельного PR и явного решения владельца проекта.
 
 ## Технологический baseline
 
@@ -95,13 +95,13 @@ Important paths:
   - framework: .NET 10.0.6
   - databaseProvider: PostgreSQL / EF Core / Npgsql
 - GitHub Actions runner активен и слушает jobs.
-- Текущий release после автоматического деплоя: 20260420-072726
+- Текущий release после ранее выполненного deploy: 20260420-072726
 - current-api -> /opt/v1-pyton/releases/20260420-072726/api
 - current-worker -> /opt/v1-pyton/releases/20260420-072726/worker
 
 ## Deployment flow
 
-GitHub main
+Manual GitHub Actions `workflow_dispatch` in `.github/workflows/deploy-korobochka.yml`
 -> GitHub Actions self-hosted runner on Korobochka
 -> sudo /usr/local/bin/v1-deploy
 -> backup
@@ -114,6 +114,14 @@ GitHub main
 Актуальный workflow сейчас запускается только на:
 
 - manual workflow_dispatch
+
+Merge/push в main НЕ запускает deploy на Коробочку автоматически. Merge в main фиксирует код и запускает repo CI/coordination flow. Deploy выполняется только вручную через GitHub Actions `workflow_dispatch`.
+
+После ручного deploy обязательно проверить health/version/smoke:
+
+- health ready;
+- `/api/system/version`;
+- smoke-check результата deploy.
 
 Push в main auto-deploy пока не включен. Включение push-trigger требует отдельного PR, CI и явного approval.
 
@@ -209,14 +217,17 @@ Push в main auto-deploy пока не включен. Включение push-t
 
 ## Как продолжать работу
 
-При новых задачах учитывать, что сервер уже поднят и деплой автоматизирован.
+При новых задачах учитывать, что сервер уже поднят и deploy pipeline настроен, но push-to-main auto-deploy сейчас не включён.
 
 Для серверных изменений предпочтительно:
 
 1. изменить код/конфиг в ветке;
 2. PR в GitHub;
 3. merge в main;
-4. GitHub Actions деплоит на Коробочку.
+4. repo CI/coordination flow фиксирует состояние main;
+5. оператор вручную запускает GitHub Actions `deploy-korobochka.yml` через `workflow_dispatch`;
+6. после deploy проверяются health/version/smoke.
+
 ## S2-04 manual deploy verification
 
 На 2026-04-20 проверено:
