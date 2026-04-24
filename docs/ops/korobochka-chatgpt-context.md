@@ -190,6 +190,23 @@ Push в main auto-deploy пока не включен. Включение push-t
 - Module data ownership mandatory.
 - New work starts as a task card.
 
+## Source of truth and sync readiness
+
+- Source of truth for current project coordination state = GitHub main + TEAM COORDINATION LOG.
+- Telegram = notification only.
+- Telegram retellings, screenshots, and oral summaries do not replace GitHub main, TEAM COORDINATION LOG, or linked handoff/task-card docs.
+- Before any new task, any new chat, any resumed work after a pause, or any continuation after another merge to main, first:
+  1. if the working tree is dirty, commit or stash;
+  2. run git fetch origin --prune;
+  3. run git switch main;
+  4. run git pull --ff-only origin main;
+  5. review the latest TEAM COORDINATION LOG entries;
+  6. review every referenced handoff doc and task card;
+  7. only then return to the working branch and continue.
+- If sync readiness is not confirmed, ChatGPT must not behave as if project context is guaranteed current.
+- Do not claim automatic sync completed unless repo-side sync and ChatGPT-side prerequisites were both actually verified.
+- Project context must support repo rules and must never weaken or conflict with them.
+
 ## Как продолжать работу
 
 При новых задачах учитывать, что сервер уже поднят и деплой автоматизирован.

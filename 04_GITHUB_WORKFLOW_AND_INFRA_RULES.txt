@@ -1,0 +1,16 @@
+GITHUB WORKFLOW AND INFRA RULES
+
+PR sync-readiness metadata
+
+Each PR body must include:
+- Base main SHA
+- Coordination log entries reviewed
+- Handoff/task cards reviewed
+
+Review hardening
+
+- Reviewer may return a PR without review if sync readiness is not confirmed.
+- Reviewer may return a PR without review if the branch is clearly stale relative to main.
+- Reviewer may return a PR without review if the coder did not state which coordination log entries, handoff docs, or task cards were reviewed.
+- Reviewer is not required to reconstruct current context from Telegram messages, screenshots, or oral retellings.
+- Protected main discipline is not weakened by docs/process-only scope; sync readiness still must be shown explicitly.

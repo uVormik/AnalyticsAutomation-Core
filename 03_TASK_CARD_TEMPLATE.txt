@@ -1,0 +1,26 @@
+Title:
+
+Owner:
+
+Module:
+
+Type:
+
+Goal:
+
+Context:
+
+Upstream context / reviewed sources:
+- Base main SHA at task start:
+- Coordination log entries reviewed:
+- Handoff/task cards reviewed:
+
+Scope:
+
+What changes:
+
+Validation:
+
+Rollback:
+
+Definition of done:

@@ -1,0 +1,31 @@
+SHARED RULES AND PROTOCOLS
+
+MANDATORY START-OF-STEP SYNC
+
+Hard rule:
+Before any new work step, before any new chat, when resuming after a pause, and after any other merge to main, the coder must first make local state current and re-read the coordination context.
+
+Required sequence:
+1. If the working tree is dirty, commit or stash first.
+2. Run git fetch origin --prune.
+3. Run git switch main.
+4. Run git pull --ff-only origin main.
+5. Read the latest TEAM COORDINATION LOG entries.
+6. Open and review every referenced handoff doc and task card.
+7. Only then return to the working feature/docs branch and continue.
+
+This sync is mandatory:
+- before each new work step;
+- before each new chat;
+- when resuming after a pause;
+- after any merge by someone else into main.
+
+Hard constraints:
+- GitHub main + TEAM COORDINATION LOG are the source of truth for current project coordination state.
+- Telegram is notification only and never replaces GitHub main, the coordination log, or referenced handoff/task-card docs.
+- Telegram retellings, screenshots, and oral summaries are not enough to continue work.
+- Work must not continue from stale local main; fetch and pull --ff-only are mandatory before relying on local state.
+- Returning to a feature/docs branch is allowed only after the sync sequence above is completed.
+- Reviewer or maintainer may reject sync-readiness claims that do not identify what coordination log entries and handoff/task-card sources were actually reviewed.
+- Nobody should claim automatic sync completed when repo-side updates exist but ChatGPT-side prerequisites were not actually checked.
+- This rule protects the current coordination point and prevents silent drift between local state, GitHub state, and ChatGPT/project context.
