@@ -1,3 +1,10 @@
+> SUPERSEDED FOR PRIMARY DESKTOP CLIENT
+>
+> This Web/PWA/App.Web handoff is stale for primary desktop-client planning after PR #101 / desktop-client form architecture update.
+> App.Web may still be used as a non-primary web/admin/diagnostic/support surface.
+> Primary desktop-client work must use the standalone desktop-client replacement prompt in `docs/handoffs/S2_18_DESKTOP_CLIENT_UPLOAD_CONTROL_PLANE_PROMPT.md`.
+> Do not use this file as the primary desktop-client implementation prompt.
+
 # C2 S2-18 Web Upload Control Plane Handoff
 
 Status: local increment ready for PR readiness.

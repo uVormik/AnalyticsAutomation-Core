@@ -1,0 +1,80 @@
+TASK CARD: C2-S2-18 Desktop Client Upload Control Plane Integration
+
+Owner:
+Coder 1 acting as Coder 2 / Desktop Client
+
+Module:
+Desktop client / upload control-plane integration
+
+Client form:
+desktop standalone
+
+Type:
+implementation planning prompt / task card
+
+Status:
+Replacement prompt for stale S2-18-WEB primary desktop-client planning.
+
+Goal:
+Build the primary desktop upload flow as a standalone launchable desktop application.
+
+Context:
+PR #101 / desktop-client form architecture update replaced browser/PWA as the primary desktop-client form with a standalone desktop application. Earlier S2-18 Web/PWA planning remains useful as App.Web support history, but it must not be used as the primary desktop-client implementation prompt.
+
+Primary desktop-client rule:
+- The primary desktop client is a standalone desktop application.
+- App.Web is not the primary desktop client.
+- App.Web may remain a non-primary web/admin/diagnostic/support surface.
+- Browser, PWA, and App.Web cannot be used as the primary desktop client without a new explicit architecture decision.
+
+Technology decision guard:
+- Do NOT choose WPF, WinUI, MAUI Desktop, Avalonia, Electron, Tauri, Blazor Hybrid, or any other concrete desktop UI technology in this task unless an approved architecture decision already exists.
+- If no approved desktop UI technology decision exists, the next implementation task must first create a narrow desktop technology decision/task card.
+- Do not implement desktop UI runtime code until that technology decision exists and explicitly approves the UI technology.
+
+Upload control-plane baseline to preserve:
+- Server remains the control plane.
+- Video bytes remain direct client <-> site.
+- App.Api must not become a media byte proxy.
+- Run PreUploadCheck before site upload when the server is online.
+- Run UploadReceipt after the direct site upload boundary.
+- Keep direct-site upload/download behind a client-side adapter boundary when the real provider is not ready.
+
+Expected primary flow:
+1. SignIn.
+2. GroupTree.
+3. File select.
+4. SHA-256.
+5. businessObjectKey.
+6. PreUploadCheck.
+7. Direct site upload boundary.
+8. UploadReceipt.
+
+Related prompts / history:
+- Stale for primary desktop: `docs/task-cards/C2-S2-18_web-upload-control-plane-integration.txt`.
+- Historical Web/App.Web support handoff: `docs/handoffs/C2_S2_18_WEB_UPLOAD_CONTROL_PLANE_HANDOFF.md`.
+- New desktop implementation prompt: `docs/handoffs/S2_18_DESKTOP_CLIENT_UPLOAD_CONTROL_PLANE_PROMPT.md`.
+- S2-18-ANDROID remains broadly aligned with the mobile baseline.
+
+Out of scope for this docs-only task:
+- Runtime code changes.
+- API changes.
+- Shared contract changes.
+- Database migrations.
+- Deploy scripts or deploy workflow changes.
+- GitHub Actions workflow changes.
+- App.Api, App.Worker, App.Web, App.Mobile.Android, App.UI.Shared, BuildingBlocks.Contracts, Modules, or migration edits.
+
+Validation for this docs-only replacement:
+- git diff --name-only
+- git diff --check
+- dotnet format whitespace AnalyticsAutomation-Core.sln --verify-no-changes --no-restore
+- Confirm no runtime/API/contracts/migrations/workflows/deploy changes.
+- Confirm App.Web and App.Mobile.Android are unchanged.
+
+Definition of done:
+- Old S2-18 Web/PWA task card is explicitly marked stale/superseded for primary desktop-client planning.
+- New standalone desktop-client task card exists.
+- New desktop-client handoff prompt exists for future implementation work.
+- Existing Web/App.Web support history remains available and is not deleted.
+- The next implementation path cannot select a desktop UI technology without an approved architecture decision.

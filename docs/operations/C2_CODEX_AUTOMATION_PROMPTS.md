@@ -79,6 +79,11 @@ Required gates:
 
 Use for bounded code changes.
 
+Desktop client prompt replacement:
+- For primary desktop-client upload control-plane work, use `docs/handoffs/S2_18_DESKTOP_CLIENT_UPLOAD_CONTROL_PLANE_PROMPT.md`.
+- `docs/task-cards/C2-S2-18_web-upload-control-plane-integration.txt` and `docs/handoffs/C2_S2_18_WEB_UPLOAD_CONTROL_PLANE_HANDOFF.md` are stale for primary desktop-client implementation after PR #101.
+- App.Web remains available only as a non-primary web/admin/diagnostic/support surface unless a new explicit architecture decision says otherwise.
+
 Required behavior:
 - verify current feature branch
 - verify clean working tree

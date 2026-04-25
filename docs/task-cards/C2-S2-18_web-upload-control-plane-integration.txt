@@ -1,3 +1,9 @@
+SUPERSEDED FOR PRIMARY DESKTOP CLIENT
+- This Web/PWA/App.Web prompt is stale for primary desktop-client planning after PR #101 / desktop-client form architecture update.
+- App.Web may still be used as a non-primary web/admin/diagnostic/support surface.
+- Primary desktop-client work must use the standalone desktop-client replacement prompt.
+- Do not use this file as the primary desktop-client implementation prompt.
+
 TASK CARD: C2-S2-18 Web/PWA Upload Control Plane Integration Increment 1
 
 Owner:
