@@ -1,0 +1,111 @@
+Title:
+S2-46 Desktop UI Technology Decision
+
+Owner:
+Coder 1 / Platform Owner + Coder 2 acting owner for Desktop Client
+
+Module:
+Desktop client / technology decision
+
+Client form:
+- desktop standalone
+
+Type:
+docs-only architecture decision preparation
+
+Goal:
+Select or explicitly defer the desktop UI technology decision before runtime implementation.
+
+Context:
+PR #101 updated the primary desktop-client form to a standalone launchable desktop application. PR #102 / S2-45 replaced the stale S2-18 Web/PWA prompt with a standalone desktop-client prompt and made runtime desktop UI implementation depend on an approved desktop UI technology decision.
+
+App.Web is not the primary desktop client. Browser/PWA/App.Web cannot be used as the primary desktop client form without a new explicit architecture decision. App.Web may remain a non-primary web/admin/diagnostic/support surface.
+
+S2-45 desktop prompt is blocked until this decision exists and is approved. This S2-46 task prepares that decision process only; it does not select a technology by code and does not create runtime desktop UI projects.
+
+Upstream context / reviewed sources:
+- Base main SHA at task start: 921c9c29e7456504b8a4fe7be6b2770a4320425a
+- Coordination log entries reviewed:
+  - PR #101 Desktop client form architecture update
+  - PR #102 S2-45 Replace stale S2-18 Web prompt with desktop-client prompt
+- Handoff/task cards reviewed:
+  - 00_START_HERE_README.txt
+  - 01_MASTER_PLAN_AND_ARCHITECTURE.txt
+  - 02_SHARED_RULES_AND_PROTOCOLS.txt
+  - 03_TASK_CARD_TEMPLATE.txt
+  - docs/task-cards/desktop-client-form-architecture-update.txt
+  - docs/task-cards/C2-S2-18_desktop-client-upload-control-plane-integration.txt
+  - docs/handoffs/S2_18_DESKTOP_CLIENT_UPLOAD_CONTROL_PLANE_PROMPT.md
+
+Scope:
+- docs/task-cards/S2-46_desktop-ui-technology-decision.txt
+- docs/handoffs/S2_46_DESKTOP_UI_TECHNOLOGY_DECISION_PROMPT.md
+
+What changes:
+- Create the task card and handoff prompt for a desktop UI technology decision.
+- Capture candidate technology families to evaluate without selecting one.
+- Capture mandatory evaluation criteria.
+- Require explicit owner approval before any runtime desktop UI implementation.
+- Preserve server as the control plane.
+- Preserve direct client <-> site media upload/download.
+- Preserve App.Web as a non-primary web/admin/diagnostic/support surface.
+
+Candidate technology families to evaluate without selection:
+- .NET MAUI Desktop
+- WPF
+- WinUI 3
+- Avalonia
+- Uno Platform
+- Electron / Tauri-style shell, explicitly non-default unless approved
+- Other option, only if justified against the mandatory criteria
+
+Mandatory evaluation criteria:
+- Alignment with C# / .NET 10.
+- Standalone launchable app/executable.
+- File picker and large video file handling.
+- SHA-256 hashing of local video bytes.
+- Direct client -> site upload boundary.
+- Offline/local queue potential.
+- Secure token/session storage.
+- Shared UI reuse potential with App.UI.Shared, without forcing browser/PWA.
+- Testability.
+- Packaging/update story.
+- Maintenance risk for a small team.
+- Windows-first practicality, unless owner approves broader desktop scope.
+
+Explicit decision output required:
+- Chosen technology or deferred decision.
+- Rationale.
+- Consequences.
+- Risks.
+- Rollback/revisit criteria.
+- Next implementation branch/task, only after approval.
+
+No-go boundaries:
+- Do not add App.Desktop or any desktop project in this task.
+- Do not choose a concrete desktop UI technology in code.
+- Do not change the solution file or project files.
+- Do not change runtime source.
+- Do not change API routes, shared contracts, migrations, workflows, deploy scripts, or server runtime.
+- Do not change App.Web WIP.
+- Do not mark Browser/PWA/App.Web as the primary desktop client.
+- Do not claim the technology is approved unless explicit owner approval is recorded.
+
+Validation:
+- git diff --name-only
+- git diff --check
+- dotnet format whitespace AnalyticsAutomation-Core.sln --verify-no-changes --no-restore
+- Confirm no runtime/API/contracts/migrations/workflows/deploy changes.
+- Confirm App.Web and App.Mobile.Android are unchanged.
+- Confirm no solution/project files changed.
+
+Rollback:
+Revert this docs-only task card and S2-46 handoff prompt.
+
+Definition of done:
+- S2-46 decision task card exists.
+- S2-46 decision handoff prompt exists.
+- Candidate technologies are listed without selection.
+- Mandatory evaluation criteria are recorded.
+- Concrete desktop UI technology is not selected.
+- Runtime desktop UI implementation remains blocked until an approved owner decision exists.
