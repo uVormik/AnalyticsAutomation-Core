@@ -1,0 +1,229 @@
+MASTER PLAN И АРХИТЕКТУРА ПРОЕКТА
+
+1. ИТОГОВАЯ ЦЕЛЬ
+Собрать кроссплатформенную систему, где:
+- desktop-клиент работает как отдельное запускаемое standalone desktop-приложение; browser/PWA не является primary desktop client form
+- phone-клиент работает как Android APK на .NET MAUI Blazor Hybrid
+- видео напрямую загружаются на сайт и напрямую выгружаются на клиент
+- сервер хранит бизнес-смысл, связь с объектами, уникальность видео, инциденты, синхронизацию, аудит, отчеты и foundation под будущую 1С
+- пользовательский desktop-flow не требует открытия браузера
+
+2. КЛЮЧЕВЫЕ РЕШЕНИЯ
+- язык и платформа: C# / .NET 10
+- сервер: ASP.NET Core API + Worker
+- БД: PostgreSQL
+- reverse proxy: Nginx
+- desktop: standalone desktop application; browser/PWA is not the primary desktop client form
+- mobile: .NET MAUI Blazor Hybrid (Android)
+- App.Web role: non-primary web/admin/diagnostic/support surface; not the primary desktop client form
+- shared UI: Razor Class Library
+- xlsx: Open XML SDK
+- background processing: hosted services / worker
+- anti-duplicate media analysis: ffprobe / ffmpeg / Chromaprint
+- auth / roles / flags / configuration / logging / health checks: reuse-first на стандартных зрелых механизмах .NET
+
+3. ГЛАВНАЯ ИДЕЯ СИСТЕМЫ
+Видео-байты не ходят через сервер как обязательный прокси.
+Сервер работает как control plane:
+- pre-upload check
+- pre-download authorization
+- upload/download receipts
+- sync
+- duplicate registry
+- fraud suspicion
+- admin incidents
+- audit
+- reports
+- future 1C foundation
+
+4. ОГРАНИЧЕНИЯ И ЧЕСТНЫЕ ДОПУЩЕНИЯ
+- если сервер online, клиент обязан сделать pre-upload duplicate check до отправки на сайт
+- если сервер offline, абсолютная блокировка дублей невозможна без специальных механизмов на стороне сайта; в этом режиме достаточно быстрого выявления после синхронизации
+- offline-режим клиента ограничен: вход только под последней активной учеткой, функционал только для загрузки видео и необходимого для нее минимума
+- выгрузка видео с сайта на клиент относится к online-режиму
+- 1С пока не интегрируется по факту, только закладывается foundation
+
+5. ОСНОВНЫЕ СЦЕНАРИИ
+5.1 Upload при online-сервере
+- клиент получает локальные данные файла
+- клиент делает PreUploadCheck на сервер
+- сервер отвечает ALLOW / BLOCK_HARD_DUPLICATE / ALLOW_WITH_REVIEW / BLOCK_POSSIBLE_FALSIFICATION
+- клиент грузит видео напрямую на сайт
+- клиент отправляет UploadReceipt на сервер
+- сервер пишет аудит и ставит deep dedupe/fraud analysis в worker
+- если найден дубль или возможная фальсификация, создается инцидент
+
+5.2 Upload при offline-сервере
+- клиент работает под последней активной учеткой
+- клиент делает локальную проверку по outbox и локальному dedupe cache
+- клиент грузит видео напрямую на сайт
+- клиент сохраняет PendingSyncItem
+- при восстановлении связи клиент отправляет UploadReceipt и sync payload
+- сервер делает dedupe/fraud analysis и при необходимости создает инцидент
+
+5.3 Download при online-сервере
+- клиент делает запрос CreateDownloadIntent
+- сервер проверяет права, пишет аудит и создает intent
+- клиент скачивает видео напрямую с сайта
+- клиент отправляет DownloadReceipt
+- сервер синхронизирует факт выгрузки
+
+6. АНТИДУБЛЬ И АНТИФАЛЬСИФИКАЦИЯ
+Модель многослойная:
+- exact fingerprint: ByteSha256 + Size
+- technical media fingerprint: данные ffprobe
+- normalized fingerprint: streamhash/framehash
+- content fingerprint: video signature + audio fingerprint
+Классы совпадений:
+- Hard duplicate
+- Suspect duplicate
+- Possible falsification
+
+Возможная фальсификация:
+- многократные попытки добавить похожий контент за короткий период
+- повторные попытки после блокировки
+- переименование, перекодировка, легкая модификация с сохранением высокой похожести
+- несколько похожих роликов на один бизнес-объект или одну операцию
+- повторяемый паттерн по одному пользователю, устройству, ветке дерева групп
+
+7. ЭСКАЛАЦИЯ ПО ДЕРЕВУ ГРУПП
+- если видео загрузил обычный пользователь, инцидент идет админу его ветки
+- если видео загрузил админ ветки, инцидент идет админу уровнем выше
+- если выше несколько админов, получают все ответственные этой ноды
+- если достигнут верх дерева, получает root/supervisory admin
+
+8. СТРУКТУРА РЕШЕНИЯ
+src/
+  App.Api/
+  App.Worker/
+  App.Web/
+  App.Mobile.Android/
+  App.UI.Shared/
+  BuildingBlocks/
+    SharedKernel/
+    Contracts/
+    Infrastructure/
+  Modules/
+    Auth/
+    GroupTree/
+    Devices/
+    VideoUpload/
+    VideoDownload/
+    VideoSync/
+    VideoDuplicates/
+    FraudSignals/
+    WebsiteIntegration/
+    Reports/
+    Inventory/
+    OneC.Foundation/
+    Audit/
+tests/
+  Unit/
+  Integration/
+  Contract/
+docs/
+  adr/
+infra/
+  nginx/
+  deploy/
+
+Примечание по App.Web:
+- App.Web не является primary desktop client form.
+- App.Web может оставаться non-primary web/admin/diagnostic/support surface.
+
+9. БАЗОВЫЕ СУЩНОСТИ
+- User
+- Role
+- GroupNode
+- GroupAdminAssignment
+- DeviceRegistration
+- OfflineSession
+- BusinessObject
+- VideoAsset
+- VideoFingerprint
+- UploadReceipt
+- DownloadReceipt
+- PendingSyncItem
+- DuplicateIncident
+- FraudSuspicionIncident
+- IncidentAssignment
+- IncidentDecision
+- ReportJob
+- ReportArtifact
+- IntegrationPackage
+- AuditRecord
+
+10. ОБЯЗАТЕЛЬНЫЕ МЕХАНИЗМЫ ПРОЕКТА
+- modular monolith
+- compiled-in modules
+- feature flags
+- internal events
+- per-module options
+- additive-first migrations
+- API backward compatibility
+- module data ownership
+- health checks
+- structured logging
+- audit trail
+- outbox pattern
+- reconciliation worker
+
+11. ЭТАПЫ РАБОТ
+Этап 0. Foundation
+- monorepo, solution skeleton
+- базовая инфраструктура
+- auth, roles, group tree, devices
+- feature flags, modular options, audit, logging, health checks
+- contracts сайта
+
+Этап 1. Первый вертикальный срез upload
+- PreUploadCheck
+- direct upload
+- UploadReceipt
+- duplicate registry v1
+- admin incident v1
+
+Этап 2. Deep dedupe
+- ffprobe / ffmpeg / Chromaprint
+- hard / suspect duplicate
+- duplicate analysis UI
+
+Этап 3. Fraud suspicion
+- временные окна
+- behavioral patterns
+- FraudSuspicionIncident
+- escalation
+
+Этап 4. Offline restricted mode
+- last active account
+- local outbox
+- late sync
+- late duplicate detection
+
+Этап 5. Direct download
+- CreateDownloadIntent
+- direct download
+- DownloadReceipt
+- audit of downloads
+
+Этап 6. Reports
+- report engine
+- xlsx export
+- report jobs
+
+Этап 7. 1C foundation
+- contracts
+- staging
+- mappings
+- future-ready import/export pipeline
+
+Этап 8. Hardening
+- reconcile tuning
+- retry policies
+- dashboards
+- backup/restore playbooks
+
+12. КАКОЙ ПЕРВЫЙ PRODUCTION-СРЕЗ СЧИТАЕТСЯ ПРАВИЛЬНЫМ
+standalone desktop client upload -> precheck -> direct site upload -> upload receipt -> server sync -> duplicate/fraud incident -> admin review
+
+Нельзя начинать с отчетов, пока этот контур не доведен до рабочего состояния.

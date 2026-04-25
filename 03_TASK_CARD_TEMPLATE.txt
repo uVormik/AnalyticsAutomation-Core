@@ -4,6 +4,12 @@ Owner:
 
 Module:
 
+Client form:
+- desktop standalone
+- mobile
+- web/admin
+- shared
+
 Type:
 
 Goal:

@@ -1,0 +1,96 @@
+Title:
+Desktop client form architecture update
+
+Owner:
+00_COORDINATION_AND_DECISIONS
+
+Module:
+Common project files / cross-client architecture
+
+Client form:
+- desktop standalone
+- web/admin
+- shared
+
+Type:
+docs-only architecture/process update
+
+Goal:
+Replace the primary desktop-client form in common project files from browser/PWA to standalone desktop application form without introducing runtime, API, contracts, migration, deploy, or workflow changes.
+
+Context:
+Earlier Coder 2 / S2-18 Web/PWA planning treated App.Web / browser/PWA as the desktop client path. Approved product direction now requires a standalone launchable desktop application as the primary desktop client form. The user desktop flow must not require opening a browser.
+
+Upstream context / reviewed sources:
+- Base main SHA at task start: b5d0be7d2c4ac36553da0a94949034c654b7176d
+- Coordination log entries reviewed:
+  - #90 S2-37 Admin Review API AuthZ Scope
+  - #91 S2-39 Deploy Trigger Reconciliation
+  - #92 S2-40 Coordination Readiness and ChatGPT Sync Readiness
+  - #94 S2-42 Formalize Manual-only Korobochka Deploy Policy
+  - PR #95 manual coordination replay: Android media picker and selected media cache
+  - PR #96 manual coordination replay: local Android outbox foundation
+  - PR #97 manual coordination replay: selected media to local outbox draft
+  - PR #98 manual coordination replay: local duplicate precheck
+  - PR #99 manual coordination replay: restart-resilient local snapshots
+- Handoff/task cards reviewed:
+  - docs/handoffs/s1-11-coder3-android-integration.md
+  - docs/handoffs/s1-11-backend-integration-note.md
+  - docs/handoffs/s1-12-sprint1-quality-gate.md
+  - docs/task-cards/MOB-CANON-IMPORT-01.txt
+  - docs/task-cards/MOB-CANON-IMPORT-02.txt
+  - docs/task-cards/MOB-CANON-IMPORT-03.txt
+  - docs/task-cards/MOB-CANON-IMPORT-04.txt
+  - docs/task-cards/MOB-CANON-IMPORT-05.txt
+  - docs/task-cards/MOB-CANON-IMPORT-06.txt
+  - docs/task-cards/C2-S2-18_web-upload-control-plane-integration.txt
+
+Scope:
+- 00_START_HERE_README.txt
+- 01_MASTER_PLAN_AND_ARCHITECTURE.txt
+- 02_SHARED_RULES_AND_PROTOCOLS.txt
+- 03_TASK_CARD_TEMPLATE.txt
+- docs/task-cards/desktop-client-form-architecture-update.txt
+
+What changes:
+- Define the primary desktop client as a standalone desktop application.
+- Require the primary desktop client to be a separate launchable app/executable.
+- State that desktop user flow must not require opening a browser.
+- State that browser/PWA cannot be the primary desktop client form.
+- State that App.Web is not the primary desktop client form.
+- Define App.Web as a non-primary web/admin/diagnostic/support surface.
+- Preserve mobile as the Android baseline.
+- Preserve the server as the control plane.
+- Preserve direct video upload/download as client <-> site.
+- Do not select WPF, WinUI, MAUI Desktop, Avalonia, Electron, or any other concrete desktop UI technology in this task.
+- Mark S2-18-WEB / Web/PWA desktop-client planning as stale and requiring replacement by a desktop-client prompt.
+- Record that S2-18-ANDROID remains broadly aligned with the mobile baseline.
+
+Out of scope:
+- Runtime code changes.
+- API changes.
+- Shared contract changes.
+- Database migrations.
+- Deploy scripts or deploy workflow changes.
+- GitHub Actions workflow changes.
+- App.Api, App.Worker, App.Web, App.Mobile.Android, App.UI.Shared, BuildingBlocks.Contracts, or migration edits.
+- docs/ops/korobochka-chatgpt-context.md and docs/ops/chatgpt-project-instructions.txt edits.
+- Coder-specific runtime prompts/files.
+
+Validation:
+- git diff --name-only
+- git diff --check
+- dotnet format whitespace AnalyticsAutomation-Core.sln --verify-no-changes --no-restore
+- Confirm 04_GITHUB_WORKFLOW_AND_INFRA_RULES.txt is unchanged.
+- Confirm runtime/API/contracts/migrations/workflows/deploy scripts are unchanged.
+
+Rollback:
+Revert this docs-only task card and the common project file updates.
+
+Definition of done:
+- Common project files describe the primary desktop client as a standalone desktop application.
+- Browser/PWA is explicitly not the primary desktop client form.
+- App.Web role is clarified as non-primary web/admin/diagnostic/support surface.
+- Mobile baseline, server control-plane role, and direct client <-> site video flow remain unchanged.
+- S2-18-WEB is marked stale for replacement by a desktop-client prompt.
+- S2-18-ANDROID remains broadly aligned.

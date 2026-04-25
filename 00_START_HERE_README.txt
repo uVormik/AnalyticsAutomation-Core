@@ -10,6 +10,11 @@ Before any new work step, any new chat, any resumed work after a pause, or any c
 6. Open every referenced handoff doc and task card.
 7. Only then return to the feature/docs branch and continue.
 
+Desktop client architecture reminder:
+- Primary desktop client = standalone desktop application.
+- Browser/PWA is not the primary desktop client form.
+- Do not plan new desktop work as browser-first/PWA-first unless it is explicitly re-approved.
+
 Remember:
 - GitHub main + TEAM COORDINATION LOG are the source of truth.
 - Telegram is notification only.

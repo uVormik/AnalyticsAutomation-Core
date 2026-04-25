@@ -29,3 +29,14 @@ Hard constraints:
 - Reviewer or maintainer may reject sync-readiness claims that do not identify what coordination log entries and handoff/task-card sources were actually reviewed.
 - Nobody should claim automatic sync completed when repo-side updates exist but ChatGPT-side prerequisites were not actually checked.
 - This rule protects the current coordination point and prevents silent drift between local state, GitHub state, and ChatGPT/project context.
+
+PRIMARY DESKTOP CLIENT FORM
+
+Hard architectural constraint:
+- New desktop-client work must be planned as standalone desktop application work.
+- Browser-first or PWA-first planning is not allowed for the primary desktop client form.
+- Browser/PWA cannot be treated as the primary desktop client form.
+- App.Web or any other web surface cannot be treated as the primary desktop client form.
+- This rule defines desktop client form only and does not by itself approve a concrete desktop UI technology.
+- Mobile remains the Android baseline, server remains the control plane, and video upload/download remain direct client <-> site.
+- Returning to browser-first or PWA-first primary desktop planning requires a new explicit architecture decision recorded in approved project sources.
