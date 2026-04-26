@@ -6,6 +6,7 @@
 @inject global::App.Mobile.Android.Services.Abstractions.IMobileOutboxService MobileOutboxService
 @inject global::App.Mobile.Android.Services.Abstractions.IMobileLookupCatalogProvider LookupCatalogProvider
 @inject global::App.Mobile.Android.Services.Abstractions.IMobileSelectedMediaStore SelectedMediaStore
+@inject global::App.Mobile.Android.Services.Abstractions.IMobileReportDraftValidationService ReportDraftValidationService
 
 @if (Draft is null)
 {
@@ -311,6 +312,41 @@ else
                 </div>
             }
 
+            @if (ValidationResult is not null)
+            {
+                <section class="@(ValidationResult.IsValidForLocalQueue ? "report-draft-validation report-draft-validation-ready" : "report-draft-validation report-draft-validation-not-ready")">
+                    <div class="report-draft-validation-header">
+                        <div>
+                            <h4>@MobileUiText.GetReportDraftValidationSummaryTitle()</h4>
+                            <p class="report-draft-validation-status">
+                                @MobileUiText.GetReportDraftValidationStatusText(ValidationResult.IsValidForLocalQueue)
+                            </p>
+                        </div>
+                        <span class="report-draft-validation-count">
+                            @MobileUiText.GetReportDraftValidationIssueCountText(ValidationResult.Issues.Count)
+                        </span>
+                    </div>
+
+                    <p class="report-draft-validation-summary">@ValidationResult.SummaryText</p>
+
+                    @if (ValidationResult.Issues.Count == 0)
+                    {
+                        <p class="report-draft-validation-passed">@MobileUiText.GetReportDraftValidationPassedText()</p>
+                    }
+                    else
+                    {
+                        <ul class="report-draft-validation-issues">
+                            @foreach (var issue in ValidationResult.Issues)
+                            {
+                                <li class="@GetValidationIssueClass(issue)">@issue.Message</li>
+                            }
+                        </ul>
+                    }
+
+                    <p class="report-draft-validation-note">@MobileUiText.GetReportDraftValidationLocalOnlyNote()</p>
+                </section>
+            }
+
             <div class="report-draft-queue-shell">
                 <button type="button"
                         class="btn btn-outline-primary"
@@ -335,6 +371,8 @@ else
     private global::App.Mobile.Android.Reports.MobileReportDraft? Draft { get; set; }
 
     private global::App.Mobile.Android.Lookup.MobileLookupCatalogSnapshot? Catalog { get; set; }
+
+    private global::App.Mobile.Android.Reports.Validation.MobileReportDraftValidationResult? ValidationResult { get; set; }
 
     private string ActionResultText { get; set; } = string.Empty;
 
@@ -371,6 +409,7 @@ else
         NavigationState.SetCurrentView(global::App.Mobile.Android.Navigation.MobileViewId.Reports);
         Catalog ??= await LookupCatalogProvider.GetReportDraftFieldsAsync();
         Draft = await ReportDraftStore.GetDraftAsync(DraftId);
+        RefreshValidation();
     }
 
     private async Task PickAndAttachVideoAsync()
@@ -391,22 +430,33 @@ else
     {
         if (Draft is null)
         {
+            RefreshValidation();
             return;
         }
 
         ActionResultText = string.Empty;
         ActionResultIsWarning = false;
+        RefreshValidation();
+
+        if (ValidationResult is null || !ValidationResult.IsValidForLocalQueue)
+        {
+            ActionResultText = $"{MobileUiText.GetReportDraftQueueBlockedByValidationText()} {ValidationResult?.SummaryText}".Trim();
+            ActionResultIsWarning = true;
+            return;
+        }
 
         var queueResult = await MobileOutboxService.EnqueueReportDraftAsync(Draft);
         if (!queueResult.Applied)
         {
             ActionResultText = queueResult.Message;
             ActionResultIsWarning = true;
+            RefreshValidation();
             return;
         }
 
         var markResult = await ReportDraftStore.MarkDraftQueuedLocalAsync(Draft.DraftId);
         Draft = markResult.Draft ?? await ReportDraftStore.GetDraftAsync(DraftId);
+        RefreshValidation();
         ActionResultText = markResult.Applied ? queueResult.Message : markResult.Message;
         ActionResultIsWarning = !markResult.Applied;
     }
@@ -560,6 +610,7 @@ else
     {
         if (Draft is null)
         {
+            RefreshValidation();
             return;
         }
 
@@ -568,11 +619,13 @@ else
         {
             ActionResultText = MobileUiText.ReportDraftNoCurrentSelectedVideoText;
             ActionResultIsWarning = true;
+            RefreshValidation();
             return;
         }
 
         var operationResult = await ReportDraftStore.AttachSelectedVideoAsync(Draft.DraftId, selectedMedia);
         Draft = operationResult.Draft ?? await ReportDraftStore.GetDraftAsync(DraftId);
+        RefreshValidation();
         ActionResultText = operationResult.Message;
         ActionResultIsWarning = !operationResult.Applied;
     }
@@ -719,6 +772,11 @@ else
 
     private static string GetFieldDisplayText(global::App.Mobile.Android.Reports.MobileReportDraftFieldValue field)
     {
+        if (field.IsPlaceholder)
+        {
+            return MobileUiText.ReportFieldPlaceholderText;
+        }
+
         if (field.FieldKind == global::App.Mobile.Android.Lookup.MobileLookupFieldKind.Toggle)
         {
             if (string.Equals(field.ValueText, MobileUiText.ReportDraftToggleYesText, StringComparison.OrdinalIgnoreCase))
@@ -737,16 +795,33 @@ else
             return field.ValueText;
         }
 
-        return field.IsPlaceholder
-            ? MobileUiText.ReportFieldPlaceholderText
-            : "—";
+        return "Нет значения";
+    }
+
+    private string GetValidationIssueClass(global::App.Mobile.Android.Reports.Validation.MobileReportDraftValidationIssue issue)
+    {
+        return issue.Severity switch
+        {
+            global::App.Mobile.Android.Reports.Validation.MobileReportDraftValidationSeverity.Info =>
+                "report-draft-validation-issue report-draft-validation-issue-info",
+            global::App.Mobile.Android.Reports.Validation.MobileReportDraftValidationSeverity.Warning =>
+                "report-draft-validation-issue report-draft-validation-issue-warning",
+            _ =>
+                "report-draft-validation-issue report-draft-validation-issue-error"
+        };
     }
 
     private void ApplyFieldOperationResult(global::App.Mobile.Android.Reports.MobileReportDraftOperationResult result)
     {
         Draft = result.Draft ?? Draft;
+        RefreshValidation();
         FieldResultText = result.Message;
         FieldResultIsWarning = !result.Applied;
+    }
+
+    private void RefreshValidation()
+    {
+        ValidationResult = ReportDraftValidationService.ValidateForLocalQueue(Draft);
     }
 
     private void ClearFieldResult()

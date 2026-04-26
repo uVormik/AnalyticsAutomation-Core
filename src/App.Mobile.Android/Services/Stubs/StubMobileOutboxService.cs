@@ -45,6 +45,7 @@ internal sealed class StubMobileOutboxService :
     private readonly List<global::App.Mobile.Android.Outbox.PendingSyncItem> _items = [];
     private readonly Dictionary<string, Func<Task<global::System.IO.Stream>>> _itemReadFactories = [];
     private readonly global::Microsoft.Extensions.Logging.ILogger<StubMobileOutboxService> _logger;
+    private readonly global::App.Mobile.Android.Services.Abstractions.IMobileReportDraftValidationService _reportDraftValidationService;
     private readonly global::App.Mobile.Android.Services.Abstractions.ILocalDuplicatePrecheckService _duplicatePrecheckService;
     private readonly global::App.Mobile.Android.Services.Abstractions.ILocalMediaDraftRepairService _draftRepairService;
     private readonly global::App.Mobile.Android.Services.Abstractions.IMobileSelectedMediaStore _selectedMediaStore;
@@ -53,12 +54,14 @@ internal sealed class StubMobileOutboxService :
     private int _sequence;
 
     public StubMobileOutboxService(
+        global::App.Mobile.Android.Services.Abstractions.IMobileReportDraftValidationService reportDraftValidationService,
         global::App.Mobile.Android.Services.Abstractions.ILocalDuplicatePrecheckService duplicatePrecheckService,
         global::App.Mobile.Android.Services.Abstractions.ILocalMediaDraftRepairService draftRepairService,
         global::App.Mobile.Android.Services.Abstractions.IMobileSelectedMediaStore selectedMediaStore,
         global::App.Mobile.Android.Services.Abstractions.IMobileOutboxSnapshotStore snapshotStore,
         global::Microsoft.Extensions.Logging.ILogger<StubMobileOutboxService> logger)
     {
+        _reportDraftValidationService = reportDraftValidationService;
         _duplicatePrecheckService = duplicatePrecheckService;
         _draftRepairService = draftRepairService;
         _selectedMediaStore = selectedMediaStore;
@@ -160,22 +163,15 @@ internal sealed class StubMobileOutboxService :
         cancellationToken.ThrowIfCancellationRequested();
         await EnsureSnapshotLoadedAsync(cancellationToken);
 
-        if (draft is null)
+        var validationResult = _reportDraftValidationService.ValidateForLocalQueue(draft);
+        if (!validationResult.IsValidForLocalQueue)
         {
+            var blockedMessage = global::App.Mobile.Android.Localization.MobileUiText
+                .GetReportDraftQueueBlockedByValidationText();
+
             return new global::App.Mobile.Android.Outbox.PendingSyncOperationResult(
                 Applied: false,
-                Message: global::App.Mobile.Android.Localization.MobileUiText.ReportDraftQueueInvalidDraftText,
-                Item: null);
-        }
-
-        var videoAttachmentCount = draft.Attachments.Count(attachment =>
-            attachment.Kind == global::App.Mobile.Android.Reports.MobileReportAttachmentKind.Video);
-
-        if (videoAttachmentCount <= 0)
-        {
-            return new global::App.Mobile.Android.Outbox.PendingSyncOperationResult(
-                Applied: false,
-                Message: global::App.Mobile.Android.Localization.MobileUiText.ReportDraftQueueRequiresVideoText,
+                Message: $"{blockedMessage} {validationResult.SummaryText}",
                 Item: null);
         }
 
@@ -212,7 +208,8 @@ internal sealed class StubMobileOutboxService :
                     CreatedAtUtc: draft.CreatedAtUtc,
                     UpdatedAtUtc: draft.UpdatedAtUtc,
                     AttachmentCount: draft.Attachments.Count,
-                    VideoAttachmentCount: videoAttachmentCount,
+                    VideoAttachmentCount: draft.Attachments.Count(attachment =>
+                        attachment.Kind == global::App.Mobile.Android.Reports.MobileReportAttachmentKind.Video),
                     HasLocalAttachments: draft.Attachments.Count > 0));
 
             _items.Insert(0, item);

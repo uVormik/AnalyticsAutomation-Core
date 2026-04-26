@@ -15,18 +15,22 @@ The canonical repository contains the complete IMPORT-01..07 Android media/outbo
 - Local repair/rebind is present from MOB-CANON-IMPORT-07 / PR #100.
 - BACKEND-01 unresolved business-object binding guard is present from PR #108.
 - REPORT-00..03 local report-first baseline is present from PR #109.
+- REPORT-04 local field editing and selector prototype is present from PR #111.
 - `App.UI.Shared` was intentionally unchanged by IMPORT-02..07, BACKEND-01, and REPORT-00..03.
 
 ## Current local UX slice
-`MOB-CANON-REPORT-04` replays local report field editing and selector prototype as an Android-local UX slice.
+`MOB-CANON-REPORT-05` replays local validation summary and ready-to-queue gating as an Android-local UX slice.
 
 Physical Android runtime check for REPORT-04 is passed with status `report04 phone ok`.
+Physical Android runtime check for REPORT-05 is passed with status `report05 phone ok`.
 
-REPORT-04 means:
-- report draft fields can be edited locally
-- selector fields can open local stub options
-- selected stub values update local draft fields
-- field metadata remains local mobile state
+REPORT-05 means:
+- validation summary renders in report draft
+- missing required local fields are shown in Russian
+- missing video attachment is shown in Russian
+- incomplete draft is blocked from local queue
+- completed draft can be placed into local queue
+- local validation is not backend validation
 - no backend save
 - no sync
 - no upload
@@ -58,7 +62,8 @@ REPORT-04 means:
 | local repair/rebind | yes | remains intact | later polish possible | Existing repair flow retained |
 | BACKEND-01 blocker guard | yes | remains intact | backend contract needed | No fake `businessObjectKey` |
 | local report draft shell | yes | field editing added | later UX slices | Local-only baseline |
-| local selector prototype | partial | yes | final lookup/catalog integration later | Stub options only |
+| local selector prototype | yes | remains intact | final lookup/catalog integration later | Stub options only |
+| local validation/gating | partial | yes | later persistence possible | Local-only, not backend validation |
 | production report flow | no | no | yes | Requires backend source/contract |
 | production PreUploadCheck | no | no | yes | Blocked pending backend source |
 

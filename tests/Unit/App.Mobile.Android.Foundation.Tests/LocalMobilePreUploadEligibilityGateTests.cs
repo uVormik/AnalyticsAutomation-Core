@@ -22,7 +22,7 @@ public sealed class LocalMobilePreUploadEligibilityGateTests
 
         var result = await gate.EvaluateAsync();
 
-        Assert.Contains("approved businessObjectKey source is not documented", result.MessageText);
+        Assert.Contains("утвержденный источник businessObjectKey", result.MessageText);
         Assert.Contains("businessObjectKey", result.RequiredActionText);
     }
 

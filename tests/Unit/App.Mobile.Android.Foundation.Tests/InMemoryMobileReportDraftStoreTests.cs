@@ -66,6 +66,31 @@ public sealed class InMemoryMobileReportDraftStoreTests
     }
 
     [Fact]
+    public async Task CreateFpvDraftAsync_MarksExpectedLocalRequiredFieldsAsRequired()
+    {
+        var store = CreateStore();
+
+        var draft = await store.CreateFpvDraftAsync();
+        var requiredKeys = draft.Fields
+            .Where(field => field.IsRequired)
+            .Select(field => field.FieldKey)
+            .OrderBy(fieldKey => fieldKey, StringComparer.Ordinal)
+            .ToArray();
+
+        Assert.Equal(
+        [
+            "delivery_start",
+            "delivery_time",
+            "device_type",
+            "distance",
+            "reason",
+            "serial_number",
+            "target_type"
+        ],
+        requiredKeys);
+    }
+
+    [Fact]
     public async Task GetDraftsAsync_ReturnsCreatedDraft()
     {
         var store = CreateStore();
@@ -196,10 +221,25 @@ public sealed class InMemoryMobileReportDraftStoreTests
 
         Assert.True(result.Applied);
         Assert.NotNull(result.Draft);
-        var field = Assert.Single(result.Draft!.Fields.Where(item => item.FieldKey == "serial_number"));
+        var field = Assert.Single(result.Draft!.Fields, item => item.FieldKey == "serial_number");
         Assert.Equal("SN-001", field.ValueText);
         Assert.False(field.IsPlaceholder);
         Assert.NotNull(field.LastUpdatedAtUtc);
+    }
+
+    [Fact]
+    public async Task UpdateFieldValueAsync_CanFillRequiredFields()
+    {
+        var store = CreateStore();
+        var draft = await store.CreateFpvDraftAsync();
+
+        var result = await store.UpdateFieldValueAsync(draft.DraftId, "device_type", "Заглушка — значение 1");
+
+        Assert.True(result.Applied);
+        Assert.NotNull(result.Draft);
+        var field = Assert.Single(result.Draft!.Fields, item => item.FieldKey == "device_type");
+        Assert.False(field.IsPlaceholder);
+        Assert.Equal("Заглушка — значение 1", field.ValueText);
     }
 
     [Fact]
@@ -228,13 +268,13 @@ public sealed class InMemoryMobileReportDraftStoreTests
     }
 
     [Fact]
-    public async Task UpdatingField_DoesNotRemoveAttachments()
+    public async Task UpdatingRequiredFields_DoesNotRemoveAttachments()
     {
         var store = CreateStore();
         var draft = await store.CreateFpvDraftAsync();
         var attachResult = await store.AttachSelectedVideoAsync(draft.DraftId, CreateDescriptor());
 
-        var updateResult = await store.UpdateFieldValueAsync(draft.DraftId, "comment", "Локальный комментарий");
+        var updateResult = await store.UpdateFieldValueAsync(draft.DraftId, "device_type", "Заглушка — значение 1");
 
         Assert.True(attachResult.Applied);
         Assert.True(updateResult.Applied);
@@ -243,12 +283,12 @@ public sealed class InMemoryMobileReportDraftStoreTests
     }
 
     [Fact]
-    public async Task MarkDraftQueuedLocal_StillWorksAfterFieldUpdate()
+    public async Task MarkDraftQueuedLocal_StillWorksAfterValidationStyleFieldUpdate()
     {
         var store = CreateStore();
         var draft = await store.CreateFpvDraftAsync();
 
-        var updateResult = await store.UpdateFieldValueAsync(draft.DraftId, "comment", "Локальный комментарий");
+        var updateResult = await store.UpdateFieldValueAsync(draft.DraftId, "reason", "Заглушка — значение 2");
         var queueResult = await store.MarkDraftQueuedLocalAsync(draft.DraftId);
 
         Assert.True(updateResult.Applied);

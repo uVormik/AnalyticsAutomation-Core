@@ -332,14 +332,16 @@ public sealed class StubMobileOutboxServiceTests
     }
 
     [Fact]
-    public async Task EnqueueReportDraftAsync_WithNoVideoAttachments_ReturnsAppliedFalse()
+    public async Task EnqueueReportDraftAsync_WithMissingRequiredFields_ReturnsAppliedFalse()
     {
         var storageDirectory = CreateTempDirectory();
 
         try
         {
             var context = CreateService(storageDirectory);
-            var result = await context.Service.EnqueueReportDraftAsync(CreateReportDraft(includeVideoAttachment: false));
+
+            var result = await context.Service.EnqueueReportDraftAsync(
+                CreateReportDraft(fillRequiredFields: false, includeVideoAttachment: true));
 
             Assert.False(result.Applied);
             Assert.Null(result.Item);
@@ -351,14 +353,36 @@ public sealed class StubMobileOutboxServiceTests
     }
 
     [Fact]
-    public async Task EnqueueReportDraftAsync_WithVideoAttachment_CreatesQueuedItemWithLocalReportDraft()
+    public async Task EnqueueReportDraftAsync_WithRequiredFieldsButNoVideo_ReturnsAppliedFalse()
     {
         var storageDirectory = CreateTempDirectory();
 
         try
         {
             var context = CreateService(storageDirectory);
-            var result = await context.Service.EnqueueReportDraftAsync(CreateReportDraft());
+
+            var result = await context.Service.EnqueueReportDraftAsync(
+                CreateReportDraft(fillRequiredFields: true, includeVideoAttachment: false));
+
+            Assert.False(result.Applied);
+            Assert.Null(result.Item);
+        }
+        finally
+        {
+            DeleteTempDirectory(storageDirectory);
+        }
+    }
+
+    [Fact]
+    public async Task EnqueueReportDraftAsync_WithValidDraft_CreatesQueuedItem()
+    {
+        var storageDirectory = CreateTempDirectory();
+
+        try
+        {
+            var context = CreateService(storageDirectory);
+            var result = await context.Service.EnqueueReportDraftAsync(
+                CreateReportDraft(fillRequiredFields: true, includeVideoAttachment: true));
             var items = await context.Service.GetItemsAsync();
 
             Assert.True(result.Applied);
@@ -374,14 +398,14 @@ public sealed class StubMobileOutboxServiceTests
     }
 
     [Fact]
-    public async Task EnqueueReportDraftAsync_SameDraftTwice_ReturnsAppliedFalse()
+    public async Task EnqueueReportDraftAsync_SameValidDraftTwice_ReturnsAppliedFalse()
     {
         var storageDirectory = CreateTempDirectory();
 
         try
         {
             var context = CreateService(storageDirectory);
-            var draft = CreateReportDraft();
+            var draft = CreateReportDraft(fillRequiredFields: true, includeVideoAttachment: true);
 
             var firstResult = await context.Service.EnqueueReportDraftAsync(draft);
             var secondResult = await context.Service.EnqueueReportDraftAsync(draft);
@@ -405,7 +429,8 @@ public sealed class StubMobileOutboxServiceTests
         try
         {
             var context = CreateService(storageDirectory);
-            var enqueueResult = await context.Service.EnqueueReportDraftAsync(CreateReportDraft());
+            var enqueueResult = await context.Service.EnqueueReportDraftAsync(
+                CreateReportDraft(fillRequiredFields: true, includeVideoAttachment: true));
 
             var retryResult = await context.Service.RetryAsync(enqueueResult.Item!.ItemId);
             var items = await context.Service.GetItemsAsync();
@@ -429,7 +454,8 @@ public sealed class StubMobileOutboxServiceTests
         try
         {
             var context = CreateService(storageDirectory);
-            var enqueueResult = await context.Service.EnqueueReportDraftAsync(CreateReportDraft());
+            var enqueueResult = await context.Service.EnqueueReportDraftAsync(
+                CreateReportDraft(fillRequiredFields: true, includeVideoAttachment: true));
 
             var removeResult = await context.Service.RemoveAsync(enqueueResult.Item!.ItemId);
             var items = await context.Service.GetItemsAsync();
@@ -450,11 +476,13 @@ public sealed class StubMobileOutboxServiceTests
         var outboxSnapshotStore = new global::App.Mobile.Android.Services.Local.FileMobileOutboxSnapshotStore(
             GetOutboxStorageDirectory(storageDirectory));
         var selectedMediaStore = new global::App.Mobile.Android.Services.Local.InMemoryMobileSelectedMediaStore(selectedSnapshotStore);
+        var reportDraftValidationService = new global::App.Mobile.Android.Services.Local.LocalMobileReportDraftValidationService();
         var duplicatePrecheckService = new global::App.Mobile.Android.Services.Local.LocalOutboxDuplicatePrecheckService();
         var repairService = new global::App.Mobile.Android.Services.Local.LocalCurrentSelectionDraftRepairService();
 
         return new ServiceContext(
             new global::App.Mobile.Android.Services.Stubs.StubMobileOutboxService(
+                reportDraftValidationService,
                 duplicatePrecheckService,
                 repairService,
                 selectedMediaStore,
@@ -544,7 +572,9 @@ public sealed class StubMobileOutboxServiceTests
         return Path.Combine(storageDirectory, "outbox");
     }
 
-    private static global::App.Mobile.Android.Reports.MobileReportDraft CreateReportDraft(bool includeVideoAttachment = true)
+    private static global::App.Mobile.Android.Reports.MobileReportDraft CreateReportDraft(
+        bool fillRequiredFields = true,
+        bool includeVideoAttachment = true)
     {
         var attachments = includeVideoAttachment
             ? new[]
@@ -568,16 +598,42 @@ public sealed class StubMobileOutboxServiceTests
             UpdatedAtUtc: new DateTimeOffset(2026, 4, 21, 8, 30, 0, TimeSpan.Zero),
             Title: "FPV-отчет #1",
             Status: global::App.Mobile.Android.Reports.MobileReportDraftStatus.ReadyForAttachmentReview,
-            Fields:
-            [
-                new global::App.Mobile.Android.Reports.MobileReportDraftFieldValue(
-                    FieldKey: "device_type",
-                    Label: "Тип дрона",
-                    ValueText: "Локальная заглушка",
-                    IsRequired: true,
-                    IsPlaceholder: true)
-            ],
+            Fields: CreateReportFields(fillRequiredFields),
             Attachments: attachments);
+    }
+
+    private static global::App.Mobile.Android.Reports.MobileReportDraftFieldValue[] CreateReportFields(bool fillRequiredFields)
+    {
+        return
+        [
+            CreateField("device_type", global::App.Mobile.Android.Localization.MobileUiText.ReportFieldDeviceTypeLabel, true, fillRequiredFields),
+            CreateField("serial_number", global::App.Mobile.Android.Localization.MobileUiText.ReportFieldSerialNumberLabel, true, fillRequiredFields),
+            CreateField("delivery_start", global::App.Mobile.Android.Localization.MobileUiText.ReportFieldDeliveryStartLabel, true, fillRequiredFields),
+            CreateField("delivery_time", global::App.Mobile.Android.Localization.MobileUiText.ReportFieldDeliveryTimeLabel, true, fillRequiredFields),
+            CreateField("distance", global::App.Mobile.Android.Localization.MobileUiText.ReportFieldDistanceLabel, true, fillRequiredFields),
+            CreateField("target_type", global::App.Mobile.Android.Localization.MobileUiText.ReportFieldTargetTypeLabel, true, fillRequiredFields),
+            CreateField("reason", global::App.Mobile.Android.Localization.MobileUiText.ReportFieldReasonLabel, true, fillRequiredFields),
+            CreateField("comment", global::App.Mobile.Android.Localization.MobileUiText.ReportFieldCommentLabel, false, false)
+        ];
+    }
+
+    private static global::App.Mobile.Android.Reports.MobileReportDraftFieldValue CreateField(
+        string fieldKey,
+        string label,
+        bool isRequired,
+        bool fillValue)
+    {
+        return new global::App.Mobile.Android.Reports.MobileReportDraftFieldValue(
+            FieldKey: fieldKey,
+            Label: label,
+            ValueText: fillValue ? "Локальное значение" : global::App.Mobile.Android.Localization.MobileUiText.ReportFieldPlaceholderText,
+            IsRequired: isRequired,
+            IsPlaceholder: !fillValue)
+        {
+            SectionKey = "basic-data",
+            FieldKind = global::App.Mobile.Android.Lookup.MobileLookupFieldKind.Text,
+            SelectorMode = global::App.Mobile.Android.Lookup.MobileLookupSelectorMode.None
+        };
     }
 
     private sealed record ServiceContext(

@@ -1,0 +1,71 @@
+Title: MOB-CANON-REPORT-05 - Local validation summary and ready-to-queue gating
+Coder: 3
+Module: App.Mobile.Android
+Task type: Android-local UX foundation / local report validation / local queue gating
+
+Goal:
+Add local validation summary and block local queue placement until required local fields and at least one video attachment are present.
+
+Base main SHA:
+5e17f51
+
+Coordination log entries reviewed:
+- TEAM COORDINATION LOG #89 latest entries reviewed through 2026-04-26.
+- Android businessObjectKey decision comment:
+  https://github.com/uVormik/AnalyticsAutomation-Core/issues/89#issuecomment-4321720298
+
+Handoff/task cards reviewed:
+- docs/reports/coder3-android-backend-readiness.md
+- docs/task-cards/MOB-CANON-BACKEND-00.txt
+- docs/task-cards/MOB-CANON-BACKEND-01.txt
+- docs/handoffs/MOB-CANON-BACKEND-01_ANDROID_BUSINESS_OBJECT_BINDING_BLOCKER.md
+- docs/task-cards/MOB-CANON-REPORT-00-03.txt
+- docs/task-cards/MOB-CANON-REPORT-04.txt
+- docs/task-cards/MOB-CANON-REPORT-05.txt
+
+What changes:
+- Android-local validation models
+- Android-local validation service
+- validation summary in report draft
+- local queue gating
+- outbox protection against invalid local report drafts
+
+Contracts:
+- shared DTO/contracts unchanged
+
+Migration:
+- none
+
+Feature flags:
+- local mobile stub flags only
+
+Offline behavior:
+- local in-memory validation only
+- no backend save
+- no sync
+- no upload
+
+Security:
+- no auth/session/device binding
+- no tokens/secrets
+
+BusinessObject:
+- businessObjectKey source remains unresolved
+- local report draft id is not businessObjectKey
+- production PreUploadCheck remains blocked
+- this local validation is not backend validation
+
+Rollback:
+- revert this PR
+
+Definition of done:
+- build succeeds
+- unit tests pass
+- format/diff-check pass
+- validation summary renders in report draft
+- missing required fields are shown in Russian
+- missing video attachment is shown in Russian
+- incomplete draft is blocked from local queue
+- completed draft can be placed into local queue
+- no backend integration
+- no App.UI.Shared changes

@@ -30,6 +30,9 @@
     <Compile Include="..\..\..\src\App.Mobile.Android\Reports\MobileReportDraftFieldValue.cs" Link="LinkedProduction\Reports\MobileReportDraftFieldValue.cs" />
     <Compile Include="..\..\..\src\App.Mobile.Android\Reports\MobileReportDraft.cs" Link="LinkedProduction\Reports\MobileReportDraft.cs" />
     <Compile Include="..\..\..\src\App.Mobile.Android\Reports\MobileReportDraftOperationResult.cs" Link="LinkedProduction\Reports\MobileReportDraftOperationResult.cs" />
+    <Compile Include="..\..\..\src\App.Mobile.Android\Reports\Validation\MobileReportDraftValidationSeverity.cs" Link="LinkedProduction\Reports\Validation\MobileReportDraftValidationSeverity.cs" />
+    <Compile Include="..\..\..\src\App.Mobile.Android\Reports\Validation\MobileReportDraftValidationIssue.cs" Link="LinkedProduction\Reports\Validation\MobileReportDraftValidationIssue.cs" />
+    <Compile Include="..\..\..\src\App.Mobile.Android\Reports\Validation\MobileReportDraftValidationResult.cs" Link="LinkedProduction\Reports\Validation\MobileReportDraftValidationResult.cs" />
     <Compile Include="..\..\..\src\App.Mobile.Android\Lookup\MobileLookupFieldKind.cs" Link="LinkedProduction\Lookup\MobileLookupFieldKind.cs" />
     <Compile Include="..\..\..\src\App.Mobile.Android\Lookup\MobileLookupSelectorMode.cs" Link="LinkedProduction\Lookup\MobileLookupSelectorMode.cs" />
     <Compile Include="..\..\..\src\App.Mobile.Android\Lookup\MobileLookupFieldDefinition.cs" Link="LinkedProduction\Lookup\MobileLookupFieldDefinition.cs" />
@@ -60,6 +63,7 @@
     <Compile Include="..\..\..\src\App.Mobile.Android\Services\Abstractions\IMobileLookupCatalogProvider.cs" Link="LinkedProduction\Services\Abstractions\IMobileLookupCatalogProvider.cs" />
     <Compile Include="..\..\..\src\App.Mobile.Android\Services\Abstractions\IMobileOutboxService.cs" Link="LinkedProduction\Services\Abstractions\IMobileOutboxService.cs" />
     <Compile Include="..\..\..\src\App.Mobile.Android\Services\Abstractions\IMobileReportDraftStore.cs" Link="LinkedProduction\Services\Abstractions\IMobileReportDraftStore.cs" />
+    <Compile Include="..\..\..\src\App.Mobile.Android\Services\Abstractions\IMobileReportDraftValidationService.cs" Link="LinkedProduction\Services\Abstractions\IMobileReportDraftValidationService.cs" />
     <Compile Include="..\..\..\src\App.Mobile.Android\Services\Abstractions\IMobileOutboxSnapshotStore.cs" Link="LinkedProduction\Services\Abstractions\IMobileOutboxSnapshotStore.cs" />
     <Compile Include="..\..\..\src\App.Mobile.Android\Services\Abstractions\IMobileSelectedMediaStore.cs" Link="LinkedProduction\Services\Abstractions\IMobileSelectedMediaStore.cs" />
     <Compile Include="..\..\..\src\App.Mobile.Android\Services\Abstractions\IMobileSelectedMediaSnapshotStore.cs" Link="LinkedProduction\Services\Abstractions\IMobileSelectedMediaSnapshotStore.cs" />
@@ -73,6 +77,7 @@
     <Compile Include="..\..\..\src\App.Mobile.Android\Services\Local\FileMobileSelectedMediaSnapshotStore.cs" Link="LinkedProduction\Services\Local\FileMobileSelectedMediaSnapshotStore.cs" />
     <Compile Include="..\..\..\src\App.Mobile.Android\Services\Local\InMemoryMobileSelectedMediaStore.cs" Link="LinkedProduction\Services\Local\InMemoryMobileSelectedMediaStore.cs" />
     <Compile Include="..\..\..\src\App.Mobile.Android\Services\Local\LocalMobilePreUploadEligibilityGate.cs" Link="LinkedProduction\Services\Local\LocalMobilePreUploadEligibilityGate.cs" />
+    <Compile Include="..\..\..\src\App.Mobile.Android\Services\Local\LocalMobileReportDraftValidationService.cs" Link="LinkedProduction\Services\Local\LocalMobileReportDraftValidationService.cs" />
     <Compile Include="..\..\..\src\App.Mobile.Android\Services\Local\LocalCurrentSelectionDraftRepairService.cs" Link="LinkedProduction\Services\Local\LocalCurrentSelectionDraftRepairService.cs" />
     <Compile Include="..\..\..\src\App.Mobile.Android\Services\Local\LocalOutboxDuplicatePrecheckService.cs" Link="LinkedProduction\Services\Local\LocalOutboxDuplicatePrecheckService.cs" />
     <Compile Include="..\..\..\src\App.Mobile.Android\Services\Local\UnresolvedMobileBusinessObjectBindingService.cs" Link="LinkedProduction\Services\Local\UnresolvedMobileBusinessObjectBindingService.cs" />

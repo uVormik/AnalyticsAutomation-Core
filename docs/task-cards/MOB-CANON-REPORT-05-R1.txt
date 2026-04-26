@@ -1,0 +1,44 @@
+Title: MOB-CANON-REPORT-05-R1 - Fix report validation Russian localization
+
+Coder: 3
+
+Module: App.Mobile.Android
+
+Task type: Android runtime localization fix
+
+Goal:
+Fix visible Russian localization issues found on physical Android before merging PR #112.
+
+What changes:
+- Android-local Russian user-facing strings.
+- Android-local localization tests for mojibake markers.
+
+Contracts:
+Shared DTO/contracts unchanged.
+
+Migration:
+None.
+
+Feature flags:
+None. Existing local mobile flags remain unchanged.
+
+Offline behavior:
+Unchanged.
+
+Security:
+No auth/session changes.
+
+BusinessObject:
+businessObjectKey remains unresolved.
+No fake businessObjectKey.
+Production PreUploadCheck remains blocked.
+
+Rollback:
+Revert this fix commit.
+
+Definition of done:
+- No mojibake visible in ReportDraft validation/media/field UI.
+- User-facing English backend/upload/save/validation text is replaced by Russian wording.
+- Technical identifiers remain unchanged.
+- Tests/build/format pass.
+- No App.UI.Shared/backend/contracts changes.

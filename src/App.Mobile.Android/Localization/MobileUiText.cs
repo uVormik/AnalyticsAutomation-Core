@@ -13,7 +13,7 @@ internal static class MobileUiText
 
     public const string HomeTitle = "Главная";
     public const string HomeIntro =
-        "Текущая Android-оболочка работает локально и показывает только базовую мобильную навигацию без backend-интеграции.";
+        "Текущая Android-оболочка работает локально и показывает только базовую мобильную навигацию без серверной интеграции.";
 
     public const string ReportsTitle = "Полеты";
     public const string ReportsIntro =
@@ -24,7 +24,7 @@ internal static class MobileUiText
     public const string ReportsCreateFpvDraftButton = "Создать отчет FPV";
     public const string ReportsEmptyTitle = "Черновиков пока нет";
     public const string ReportsEmptyMessage =
-        "Создайте локальный FPV-черновик, чтобы проверить report-first оболочку без backend-сохранения, sync и upload.";
+        "Создайте локальный FPV-черновик, чтобы проверить report-first оболочку без серверного сохранения, синхронизации и загрузки.";
     public const string ReportDraftCardCreatedAtLabel = "Создан";
     public const string ReportDraftCardUpdatedAtLabel = "Обновлен";
     public const string ReportDraftCardStatusLabel = "Статус";
@@ -32,9 +32,9 @@ internal static class MobileUiText
 
     public const string ReportDraftPageTitle = "Черновик FPV-отчета";
     public const string ReportDraftLocalOnlyNote =
-        "Это локальный черновик отчета на устройстве. Он еще не сохранен в backend и не имеет server id.";
+        "Это локальный черновик отчета на устройстве. Он еще не сохранен на сервере и не имеет серверного id.";
     public const string ReportDraftNoBackendSaveNote =
-        "В этом срезе нет create-report API, businessObjectKey, PreUploadCheck, UploadReceipt, sync и upload. Это только локальная report-first оболочка.";
+        "В этом срезе нет API создания отчета, businessObjectKey, PreUploadCheck, UploadReceipt, синхронизации и загрузки. Это только локальная report-first оболочка.";
     public const string ReportDraftNotFoundTitle = "Черновик не найден";
     public const string ReportDraftNotFoundMessage =
         "Запрошенный локальный черновик отчета не найден в текущем in-memory store.";
@@ -42,14 +42,14 @@ internal static class MobileUiText
     public const string ReportDraftNoCurrentSelectedVideoText =
         "Сначала выберите или запишите видео в разделе «Медиа-вложения отчета», чтобы прикрепить его к текущему локальному черновику.";
     public const string ReportDraftNoAttachmentsText =
-        "Локальных вложений пока нет. Выберите или запишите видео в этом разделе, чтобы прикрепить его как метаданные вложения без upload и без backend-сохранения.";
+        "Локальных вложений пока нет. Выберите или запишите видео в этом разделе, чтобы прикрепить его как метаданные вложения без загрузки и без серверного сохранения.";
     public const string ReportDraftInvalidVideoSelectionText =
-        "Не удалось обработать текущее локальное видео. Повторите выбор или запись без backend-вызовов.";
+        "Не удалось обработать текущее локальное видео. Повторите выбор или запись без серверных вызовов.";
     public const string ReportDraftDuplicateAttachmentWarningText =
         "Это видео уже прикреплено к текущему локальному черновику отчета. Дубликат локально заблокирован.";
     public const string ReportDraftQueueButton = "Поставить отчет в локальную очередь";
     public const string ReportDraftQueueLocalOnlyNoteText =
-        "Это локальная очередь черновика. Backend create-report и businessObjectKey пока не подключены.";
+        "Это локальная очередь черновика. Серверное создание отчета и businessObjectKey пока не подключены.";
     public const string ReportDraftQueueInvalidDraftText =
         "Не удалось поместить отчет в локальную очередь: черновик не найден.";
     public const string ReportDraftQueueRequiresVideoText =
@@ -88,7 +88,7 @@ internal static class MobileUiText
     public const string ReportFieldDetonatorLabel = "Детонатор";
     public const string ReportFieldNsuLabel = "НСУ";
     public const string ReportFieldPlaceholderText =
-        "Поле пока работает как локальная заглушка без финального backend-контракта и без справочника значений.";
+        "Поле пока пустое. Заполните значение локально; серверный справочник будет подключен позже.";
     public const string ReportDraftEditFieldButton = "Изменить поле";
     public const string ReportDraftSaveFieldValueButton = "Сохранить значение";
     public const string ReportDraftCancelFieldEditButton = "Отмена";
@@ -114,11 +114,11 @@ internal static class MobileUiText
     public const string UploadTitle = "Загрузка";
     public const string UploadIntro =
         "На этом срезе доступны локальный выбор и запись видео на устройстве, а также локальная очередь-черновик. " +
-        "Файлы не копируются, не сохраняются отдельно и не отправляются в backend.";
+        "Файлы не копируются, не сохраняются отдельно и не отправляются на сервер.";
     public const string UploadCapabilityCardTitle = "Локальные media-возможности устройства";
     public const string UploadCapabilityCardSummary =
         "Текущий Android baseline открывает системный выбор видео и запись видео на устройстве, если камера поддерживается. " +
-        "Это только local device media без upload и sync.";
+        "Это только локальные медиафайлы на устройстве без загрузки и синхронизации.";
     public const string UploadLocalDeviceBadge = "Только на устройстве";
     public const string UploadFilePickerLabel = "Файловый seam";
     public const string UploadGalleryVideoLabel = "Выбор видео из галереи";
@@ -134,7 +134,7 @@ internal static class MobileUiText
     public const string UploadNativePickerUnavailableText =
         "Не удалось открыть системный выбор видео на устройстве. Проверьте разрешения и повторите попытку.";
     public const string UploadNativePickerFailedText =
-        "Не удалось завершить локальный выбор видео. Это только Android media baseline без upload и sync.";
+        "Не удалось завершить локальный выбор видео. Это только Android media baseline без загрузки и синхронизации.";
     public const string UploadNativeCaptureCancelledText =
         "Запись видео отменена. Никакие файлы не были сохранены или отправлены.";
     public const string UploadNativeCaptureUnavailableText =
@@ -142,7 +142,7 @@ internal static class MobileUiText
     public const string UploadNativeCapturePermissionDeniedText =
         "Доступ к камере не предоставлен. Разрешите использование камеры и повторите попытку.";
     public const string UploadNativeCaptureFailedText =
-        "Не удалось завершить локальную запись видео. Это только Android media baseline без upload и sync.";
+        "Не удалось завершить локальную запись видео. Это только Android media baseline без загрузки и синхронизации.";
     public const string UploadSelectedMediaCardTitle = "Текущее локально выбранное видео";
     public const string UploadSelectedMediaSourceLabel = "Источник";
     public const string UploadSelectedMediaFileNameLabel = "Имя файла";
@@ -150,7 +150,7 @@ internal static class MobileUiText
     public const string UploadSelectedMediaSelectedAtLabel = "Выбрано";
     public const string UploadSelectedMediaStateLabel = "Состояние";
     public const string UploadSelectedMediaLiveHandleStateText =
-        "Локальный доступ к файлу активен только в текущем запуске, без upload и sync.";
+        "Локальный доступ к файлу активен только в текущем запуске, без загрузки и синхронизации.";
     public const string UploadSelectedMediaRestoredMetadataOnlyStateText =
         "После перезапуска восстановлены только локальные метаданные без живого доступа к файлу.";
     public const string UploadSelectedMediaRestoredMetadataNoteText =
@@ -164,45 +164,45 @@ internal static class MobileUiText
     public const string LocalDuplicatePrecheckNoCurrentSelectionText =
         "Сначала выберите или запишите видео. Локальная предварительная проверка очереди пока ничего не сравнивает.";
     public const string LocalDuplicatePrecheckNoKnownDuplicateText =
-        "Локальная предварительная проверка не нашла дубликатов в текущей очереди. Это не финальная backend-проверка.";
+        "Локальная предварительная проверка не нашла дубликатов в текущей очереди. Это не финальная серверная проверка.";
     public const string LocalDuplicatePrecheckLikelyAlreadyQueuedText =
-        "Похоже, выбранное видео уже есть в локальной очереди. Повторная передача заблокирована только локальной предварительной проверкой, это не финальная backend-проверка.";
+        "Похоже, выбранное видео уже есть в локальной очереди. Повторная передача заблокирована только локальной предварительной проверкой, это не финальная серверная проверка.";
     public const string LocalDuplicatePrecheckLocalOnlyNote =
         "Сравнение выполняется только по текущему локальному выбору и draft-элементам очереди в памяти устройства.";
-    public const string BusinessObjectBindingCardTitle = "Привязка бизнес-объекта для backend precheck";
+    public const string BusinessObjectBindingCardTitle = "Привязка бизнес-объекта для серверной предварительной проверки";
     public const string BusinessObjectBindingStateLabel = "Статус";
-    public const string BusinessObjectBindingUnresolvedStateText = "Не разрешено: approved businessObjectKey отсутствует";
+    public const string BusinessObjectBindingUnresolvedStateText = "Не разрешено: утвержденный businessObjectKey отсутствует";
     public const string BusinessObjectBindingUnresolvedWarning =
-        "approved businessObjectKey source is not documented yet; backend precheck cannot continue as production flow";
+        "утвержденный источник businessObjectKey еще не описан; серверная предварительная проверка не может продолжаться как рабочий сценарий";
     public const string BusinessObjectBindingSourceDescription =
-        "Android хранит только локальный intent. Он не является businessObjectKey и не отправляется в backend.";
-    public const string BusinessObjectBindingLocalIntentTitleLabel = "Локальный intent";
+        "Android хранит только локальное намерение. Оно не является businessObjectKey и не отправляется на сервер.";
+    public const string BusinessObjectBindingLocalIntentTitleLabel = "Локальное намерение";
     public const string BusinessObjectBindingLocalIntentNoteLabel = "Локальная заметка";
-    public const string BusinessObjectBindingDefaultLocalIntentTitle = "Локальный черновик без approved businessObjectKey";
-    public const string BusinessObjectBindingSaveLocalIntentButton = "Сохранить локальный intent";
-    public const string BusinessObjectBindingClearLocalIntentButton = "Очистить локальный intent";
-    public const string BusinessObjectBindingCheckReadinessButton = "Проверить готовность backend precheck";
-    public const string BusinessObjectBindingLocalIntentSavedResult = "Локальный intent сохранен. Approved businessObjectKey не создан.";
-    public const string BusinessObjectBindingLocalIntentClearedResult = "Локальный intent очищен. Approved businessObjectKey по-прежнему отсутствует.";
-    public const string BusinessObjectBindingPreUploadBlockedTitle = "Backend PreUploadCheck заблокирован";
+    public const string BusinessObjectBindingDefaultLocalIntentTitle = "Локальный черновик без утвержденного businessObjectKey";
+    public const string BusinessObjectBindingSaveLocalIntentButton = "Сохранить локальное намерение";
+    public const string BusinessObjectBindingClearLocalIntentButton = "Очистить локальное намерение";
+    public const string BusinessObjectBindingCheckReadinessButton = "Проверить готовность серверной проверки";
+    public const string BusinessObjectBindingLocalIntentSavedResult = "Локальное намерение сохранено. Утвержденный businessObjectKey не создан.";
+    public const string BusinessObjectBindingLocalIntentClearedResult = "Локальное намерение очищено. Утвержденный businessObjectKey по-прежнему отсутствует.";
+    public const string BusinessObjectBindingPreUploadBlockedTitle = "Серверная PreUploadCheck-проверка заблокирована";
     public const string PreUploadCheckBlockedMessage =
-        "approved businessObjectKey source is not documented yet; backend precheck cannot continue as production flow";
+        "утвержденный источник businessObjectKey еще не описан; серверная предварительная проверка не может продолжаться как рабочий сценарий";
     public const string BusinessObjectBindingRequiredActionText =
-        "Нужен утвержденный источник businessObjectKey / report draft / business object binding до production PreUploadCheck.";
+        "Нужен утвержденный источник businessObjectKey / черновика отчета / бизнес-привязки до рабочей PreUploadCheck-проверки.";
     public const string BusinessObjectBindingLocalOnlyNote =
-        "Это локальная blocker-карточка Android. Она не вызывает backend, не создает create-report и не запускает upload.";
+        "Это локальная blocker-карточка Android. Она не вызывает сервер, не создает отчет и не запускает загрузку.";
     public const string BusinessObjectBindingNoFakeKeyNote =
         "LocalIntentId не является businessObjectKey. Фейковый ключ, hash файла или group id не используются.";
     public const string BusinessObjectBindingEligibleMessage =
-        "Approved businessObjectKey найден. Production PreUploadCheck может быть разрешен отдельной approved integration task.";
+        "Утвержденный businessObjectKey найден. Рабочая PreUploadCheck-проверка может быть разрешена только отдельной утвержденной задачей интеграции.";
     public const string UploadEnqueueStubButton = "Передать выбранное видео в локальную очередь";
     public const string UploadOutboxActionHint =
         "Локальный handoff переносит только текущее выбранное видео в черновик очереди на устройстве. " +
-        "После полного перезапуска могут сохраниться только метаданные. Upload, sync и backend-действия не выполняются.";
+        "После полного перезапуска могут сохраниться только метаданные. Загрузка, синхронизация и серверные действия не выполняются.";
 
     public const string QueueTitle = "Очередь";
     public const string QueueIntro =
-        "Это локальный экран очереди для mobile foundation baseline. Здесь нет upload, sync и бизнес-действий.";
+        "Это локальный экран очереди для mobile foundation baseline. Здесь нет загрузки, синхронизации и бизнес-действий.";
     public const string QueueFoundationCardTitle = "Локальная карточка очереди";
     public const string QueueFoundationCardSummary =
         "Текущий outbox foundation хранит локальные черновики на устройстве. После полного перезапуска восстанавливаются только метаданные без живого доступа к файлам.";
@@ -229,7 +229,7 @@ internal static class MobileUiText
     public const string QueueReportAttachmentCountLabel = "Количество вложений";
     public const string QueueReportVideoAttachmentCountLabel = "Видео-вложения";
     public const string QueueReportDraftLocalOnlyNoteText =
-        "Это локальная очередь черновика. Backend create-report и businessObjectKey пока не подключены.";
+        "Это локальная очередь черновика. Серверное создание отчета и businessObjectKey пока не подключены.";
     public const string QueueMediaDraftLocalOnlyText =
         "Локальный media-черновик привязан к файлу только в текущем запуске.";
     public const string QueueMediaDraftRestoredMetadataOnlyText =
@@ -237,7 +237,7 @@ internal static class MobileUiText
     public const string QueueRestoredMetadataOnlyNoteText =
         "После перезапуска для реального доступа к файлу потребуется повторный выбор и последующая локальная привязка.";
     public const string QueueRepairNoCurrentSelectionText =
-        "Сначала выберите или запишите видео. Это только локальная проверка восстановления черновика, а не backend-валидация.";
+        "Сначала выберите или запишите видео. Это только локальная проверка восстановления черновика, а не серверная проверка.";
     public const string QueueRepairSelectionHasNoLiveHandleText =
         "У текущего выбранного видео нет живого локального доступа к файлу. Сначала выберите тот же файл заново, чтобы локально восстановить привязку.";
     public const string QueueRepairNoRepairableDraftText =
@@ -245,7 +245,7 @@ internal static class MobileUiText
     public const string QueueRepairAlreadyRepairedText =
         "Локальный доступ к файлу для этого черновика уже восстановлен в текущем запуске.";
     public const string QueueRepairSelectionDoesNotMatchText =
-        "Текущее выбранное видео не совпадает с восстановленным черновиком очереди. Это только локальная проверка восстановления, а не backend-валидация.";
+        "Текущее выбранное видео не совпадает с восстановленным черновиком очереди. Это только локальная проверка восстановления, а не серверная проверка.";
     public const string QueueRepairReadyText =
         "Текущее выбранное видео подходит для локального восстановления доступа к файлу в черновике очереди.";
     public const string QueueRepairSuccessLastActionText =
@@ -256,7 +256,7 @@ internal static class MobileUiText
         "Запрошенный экран не найден в текущей локальной оболочке.";
 
     public const string PendingSyncItemSummary =
-        "Элемент создан только для локальной проверки очереди. После перезапуска могут сохраниться только метаданные без upload и sync.";
+        "Элемент создан только для локальной проверки очереди. После перезапуска могут сохраниться только метаданные без загрузки и синхронизации.";
     public const string PendingSyncEnqueuedLastAction =
         "Элемент добавлен в локальную очередь как заглушка.";
     public const string PendingSyncRetriedLastAction =
@@ -268,11 +268,11 @@ internal static class MobileUiText
     public const string PendingSyncReselectAfterRestartText =
         "После перезапуска восстановлены только локальные метаданные выбранного видео. Чтобы снова передать его в очередь, выберите тот же файл еще раз.";
     public const string PendingSyncMediaDraftSummary =
-        "Элемент очереди содержит только локальный медиа-черновик на устройстве без upload, sync и backend-действий. После перезапуска могут остаться только метаданные.";
+        "Элемент очереди содержит только локальный медиа-черновик на устройстве без загрузки, синхронизации и серверных действий. После перезапуска могут остаться только метаданные.";
     public const string PendingSyncMediaDraftEnqueuedLastAction =
         "Выбранное видео передано в локальный черновик очереди.";
     public const string PendingSyncReportDraftSummary =
-        "Локальный черновик отчета помещен в очередь только на устройстве. Это не backend create-report, не sync и не upload.";
+        "Локальный черновик отчета помещен в очередь только на устройстве. Это не серверное создание отчета, не синхронизация и не загрузка.";
     public const string PendingSyncReportDraftEnqueuedLastAction =
         "Локальный черновик отчета добавлен в очередь устройства.";
     public const string PendingSyncRestoredMetadataLastActionText =
@@ -285,7 +285,7 @@ internal static class MobileUiText
 
     public const string ReportsStatusStripTitle = "Локальный статус";
     public const string ReportsStatusStripText =
-        "Список работает только как report-first baseline: локальные черновики, без backend-сохранения, sync и upload.";
+        "Список работает только как report-first baseline: локальные черновики, без серверного сохранения, синхронизации и загрузки.";
     public const string ReportDraftMediaSectionTitle = "Медиа-вложения отчета";
     public const string ReportDraftPickVideoButton = "Выбрать видео";
     public const string ReportDraftCaptureVideoButton = "Записать видео";
@@ -295,14 +295,14 @@ internal static class MobileUiText
     public const string ReportDraftCaptureVideoProgressText =
         "Запускается запись видео для текущего черновика отчета.";
     public const string ReportDraftAttachVideoFailureText =
-        "Не удалось автоматически прикрепить видео к локальному черновику отчета. Проверьте локальный выбор и повторите действие без backend-вызовов.";
+        "Не удалось автоматически прикрепить видео к локальному черновику отчета. Проверьте локальный выбор и повторите действие без серверных вызовов.";
     public const string ReportDraftMediaOperationLoadingText =
         "Локальная media-операция выполняется. После завершения результат будет прикреплен к текущему черновику как метаданные.";
     public const string ReportDraftVideoBlockTitle = "Видео";
     public const string ReportDraftPhotoBlockTitle = "Фото готового дрона";
     public const string ReportDraftLogFileBlockTitle = "Лог-файл";
     public const string ReportDraftFutureAttachmentNote =
-        "Этот тип вложения останется локальной заглушкой до отдельного среза без backend-save, upload и финальных контрактов.";
+        "Этот тип вложения останется локальной заглушкой до отдельного среза без серверного сохранения, загрузки и финальных контрактов.";
 
     public const string UploadServiceScreenNote =
         "Служебный экран. Основной сценарий выбора видео находится внутри черновика отчета.";
@@ -321,7 +321,7 @@ internal static class MobileUiText
     public static string GetShellBannerText(global::App.Mobile.Android.State.MobileShellMode mode)
     {
         return $"Локальное состояние оболочки: {GetShellModeText(mode)}. " +
-               "Это только локальная заглушка shell-state, а не реальная auth/session/backend интеграция.";
+        "Это только локальная заглушка shell-state, а не реальная интеграция авторизации, сессии или сервера.";
     }
 
     public static string GetMediaCapabilityStateText(global::App.Mobile.Android.Media.MobileMediaCapabilityState state)
@@ -506,5 +506,61 @@ internal static class MobileUiText
     public static string GetReportDraftQueuedLocalText(string title)
     {
         return $"Отчет «{title}» помещен в локальную очередь черновиков.";
+    }
+    public static string GetReportDraftValidationSummaryTitle()
+    {
+        return "Локальная проверка черновика";
+    }
+
+    public static string GetReportDraftValidationLocalOnlyNote()
+    {
+        return "Это только локальная мобильная проверка перед постановкой в очередь. Она не заменяет серверную проверку и не является финальным контрактом создания отчета.";
+    }
+
+    public static string GetReportDraftValidationReadySummaryText()
+    {
+        return "Черновик готов только к локальной очереди. Эта проверка не заменяет серверную проверку.";
+    }
+
+    public static string GetReportDraftValidationNotReadySummaryText()
+    {
+        return "Черновик пока не готов к локальной очереди. Эта проверка не заменяет серверную проверку.";
+    }
+
+    public static string GetReportDraftValidationMissingVideoAttachmentText()
+    {
+        return "Добавьте хотя бы одно видео-вложение, прежде чем ставить черновик в локальную очередь.";
+    }
+
+    public static string GetReportDraftValidationDraftNotFoundText()
+    {
+        return "Локальная проверка не может продолжиться: черновик отчета не найден.";
+    }
+
+    public static string GetReportDraftQueueBlockedByValidationText()
+    {
+        return "Локальная очередь заблокирована, пока черновик не пройдет локальную проверку.";
+    }
+
+    public static string GetReportDraftValidationPassedText()
+    {
+        return "Локальная проверка пройдена.";
+    }
+
+    public static string GetReportDraftRequiredFieldMissingText(string fieldLabel)
+    {
+        return $"Заполните обязательное поле «{fieldLabel}» перед постановкой черновика в локальную очередь.";
+    }
+
+    public static string GetReportDraftValidationIssueCountText(int issueCount)
+    {
+        return $"Проблем: {issueCount}";
+    }
+
+    public static string GetReportDraftValidationStatusText(bool isReadyForLocalQueue)
+    {
+        return isReadyForLocalQueue
+            ? "Готов к локальной очереди"
+            : "Не готов к локальной очереди";
     }
 }

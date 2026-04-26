@@ -3,6 +3,17 @@ namespace App.Mobile.Android.Services.Local;
 internal sealed class InMemoryMobileReportDraftStore :
     global::App.Mobile.Android.Services.Abstractions.IMobileReportDraftStore
 {
+    private static readonly HashSet<string> RequiredFieldKeys = new(StringComparer.Ordinal)
+    {
+        "device_type",
+        "serial_number",
+        "delivery_start",
+        "delivery_time",
+        "distance",
+        "target_type",
+        "reason"
+    };
+
     private readonly object _gate = new();
     private readonly global::App.Mobile.Android.Services.Abstractions.IMobileLookupCatalogProvider _lookupCatalogProvider;
     private readonly List<global::App.Mobile.Android.Reports.MobileReportDraft> _drafts = [];
@@ -56,7 +67,7 @@ internal sealed class InMemoryMobileReportDraftStore :
                 FieldKey: field.FieldKey,
                 Label: field.Label,
                 ValueText: field.PlaceholderText,
-                IsRequired: field.IsRequired,
+                IsRequired: RequiredFieldKeys.Contains(field.FieldKey),
                 IsPlaceholder: true)
             {
                 SectionKey = field.SectionKey,
