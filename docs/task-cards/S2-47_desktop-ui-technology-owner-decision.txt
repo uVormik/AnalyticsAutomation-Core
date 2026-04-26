@@ -1,0 +1,149 @@
+Title:
+S2-47 Desktop UI Technology Owner Decision Record
+
+Owner:
+Coder 1 / Platform Owner
+
+Module:
+Desktop client / technology decision
+
+Client form:
+desktop standalone
+
+Type:
+docs-only owner decision record
+
+Goal:
+Record the owner-approved desktop UI technology decision before runtime implementation.
+
+Context:
+PR #101 updated the primary desktop-client form to a standalone launchable desktop application. PR #102 / S2-45 replaced the stale S2-18 Web/PWA prompt with a standalone desktop-client prompt. PR #103 / S2-46 prepared the desktop UI technology decision process and listed candidate technologies without selecting one.
+
+App.Web is not the primary desktop client. Browser/PWA/App.Web cannot be used as the primary desktop client form. App.Web may remain a non-primary web/admin/diagnostic/support surface.
+
+Upstream context / reviewed sources:
+- Base main SHA at task start: 787805fdd2ac28f15b921a7f334cfa9151370510
+- Coordination log issue reviewed: #89 TEAM COORDINATION LOG
+- Relevant coordination entries reviewed:
+  - PR #101 Desktop client form architecture update
+  - PR #102 S2-45 Replace stale S2-18 Web prompt with desktop-client prompt
+  - PR #103 S2-46 Desktop UI Technology Decision Task
+- Handoff/task cards reviewed:
+  - 01_MASTER_PLAN_AND_ARCHITECTURE.txt
+  - 02_SHARED_RULES_AND_PROTOCOLS.txt
+  - docs/task-cards/desktop-client-form-architecture-update.txt
+  - docs/task-cards/C2-S2-18_desktop-client-upload-control-plane-integration.txt
+  - docs/handoffs/S2_18_DESKTOP_CLIENT_UPLOAD_CONTROL_PLANE_PROMPT.md
+  - docs/task-cards/S2-46_desktop-ui-technology-decision.txt
+  - docs/handoffs/S2_46_DESKTOP_UI_TECHNOLOGY_DECISION_PROMPT.md
+
+Scope:
+- docs/task-cards/S2-47_desktop-ui-technology-owner-decision.txt
+- docs/handoffs/S2_47_DESKTOP_UI_TECHNOLOGY_OWNER_DECISION.md
+
+Selected technology:
+WPF standalone desktop shell + BlazorWebView / App.UI.Shared RCL reuse where useful.
+
+Decision:
+Primary desktop client implementation may proceed in a future task using a standalone WPF desktop shell.
+
+BlazorWebView is allowed only as an embedded native desktop UI composition mechanism for selected App.UI.Shared Razor components where useful.
+
+App.Web / Browser / PWA are not primary desktop.
+
+Primary executable:
+The primary desktop client must be a standalone WPF desktop application. App.Desktop-style naming is allowed, but actual project creation remains a later implementation task.
+
+BlazorWebView boundary:
+- BlazorWebView may host selected App.UI.Shared Razor components inside the native WPF desktop shell where useful.
+- BlazorWebView must not be used to turn App.Web into the primary desktop client.
+- Browser/PWA/App.Web must not become the primary desktop client through a shell wrapper.
+
+WPF shell responsibilities:
+- Windowing.
+- Native file picker.
+- Native desktop lifecycle.
+- Secure token/session storage boundary.
+- Hosting upload orchestration services.
+- Hosting BlazorWebView where useful.
+
+Upload/service boundaries:
+- Upload orchestration, hashing, precheck, direct-site adapter, and upload receipt should live in testable services where possible.
+- Video bytes must not go through App.Api.
+- Server remains the control plane.
+- Runtime implementation must preserve:
+  SignIn -> GroupTree -> file select -> SHA-256 -> businessObjectKey -> PreUploadCheck -> direct site upload boundary -> UploadReceipt
+
+Not selected:
+- .NET MAUI Desktop as first option.
+- Pure WPF-only as mandatory direction.
+- Pure WinUI 3 as default.
+- Avalonia.
+- Uno Platform.
+- Electron/Tauri as default.
+- Browser/PWA/App.Web as primary desktop.
+
+Rationale:
+- Windows-first practicality.
+- Standalone executable.
+- Local file picker and large video handling.
+- SHA-256 on local bytes.
+- Direct client -> site upload boundary.
+- Secure token/session storage via native desktop boundary.
+- Lower operational risk for the first upload slice.
+- Controlled App.UI.Shared reuse without returning to Browser/PWA/App.Web as primary.
+
+Consequences:
+- Runtime implementation can create a new desktop-client task after this PR merges.
+- Runtime implementation must remain scoped and cannot change API/contracts/migrations/workflows/deploy without separate approval.
+- WebView2/runtime prerequisite, packaging/update story, and test strategy must be explicitly handled in the implementation task.
+
+Risks:
+- Misuse of BlazorWebView as App.Web-in-a-shell.
+- Duplicated UI patterns.
+- Unclear packaging/update policy.
+- WebView2 runtime prerequisite.
+- Secure storage design still needs implementation details.
+
+Mitigations:
+- WPF shell responsibilities are narrow.
+- Upload orchestration and adapters are testable services.
+- App.Web is not referenced as the primary desktop surface.
+- Implementation task must include packaging/update/security/test plan.
+
+Revisit criteria:
+- If Windows-first is no longer sufficient.
+- If App.UI.Shared reuse through BlazorWebView proves unmaintainable.
+- If packaging/update or WebView2 prerequisite is unacceptable.
+- If owner explicitly changes desktop platform scope.
+
+Rollback:
+Revert this decision PR before runtime implementation, or create a superseding decision PR after implementation begins.
+
+Out of scope:
+- Runtime code changes.
+- API changes.
+- Shared contract changes.
+- Database migrations.
+- Deploy scripts or deploy workflow changes.
+- GitHub Actions workflow changes.
+- App.Api, App.Worker, App.Web, App.Mobile.Android, App.UI.Shared, BuildingBlocks.Contracts, Modules, or migration edits.
+- App.Desktop or any desktop project creation.
+- Solution or project file changes.
+- NuGet/package additions.
+
+Validation:
+- git diff --name-only
+- git diff --check
+- dotnet format whitespace AnalyticsAutomation-Core.sln --verify-no-changes --no-restore
+- Confirm no runtime/API/contracts/migrations/workflows/deploy changes.
+- Confirm App.Web and App.Mobile.Android are unchanged.
+- Confirm no App.Desktop/project/solution files were created.
+
+Definition of done:
+- S2-47 owner decision task card exists.
+- S2-47 handoff/decision record exists.
+- Owner-approved technology is recorded as WPF standalone desktop shell + BlazorWebView / App.UI.Shared RCL reuse where useful.
+- Browser/PWA/App.Web remain explicitly non-primary for desktop.
+- Runtime implementation remains deferred to a future scoped task.
+- No runtime/API/contracts/migrations/workflows/deploy changes are made.
