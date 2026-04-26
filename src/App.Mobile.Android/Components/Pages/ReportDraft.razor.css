@@ -61,6 +61,11 @@
     color: #9a3412;
 }
 
+.report-draft-note-restored {
+    background: #ecfeff;
+    color: #155e75;
+}
+
 .report-draft-section {
     display: grid;
     gap: 0.85rem;
@@ -271,6 +276,15 @@
     border: 1px solid #d7dee9;
     border-radius: 0.75rem;
     background: #f8fafc;
+}
+
+.report-draft-attachment-note {
+    margin: 0.75rem 0 0;
+    padding: 0.7rem 0.8rem;
+    border-radius: 0.75rem;
+    background: #fff7ed;
+    color: #9a3412;
+    line-height: 1.4;
 }
 
 .report-draft-attachment-meta > div {

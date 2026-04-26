@@ -46,6 +46,10 @@ public static class MauiProgram
             global::App.Mobile.Android.Services.Abstractions.IMobileLookupCatalogProvider,
             global::App.Mobile.Android.Services.Stubs.StubMobileReportLookupProvider>();
         builder.Services.AddSingleton<
+            global::App.Mobile.Android.Services.Abstractions.IMobileReportDraftSnapshotStore>(
+            _ => new global::App.Mobile.Android.Services.Local.FileMobileReportDraftSnapshotStore(
+                global::Microsoft.Maui.Storage.FileSystem.AppDataDirectory));
+        builder.Services.AddSingleton<
             global::App.Mobile.Android.Services.Abstractions.IMobileReportDraftStore,
             global::App.Mobile.Android.Services.Local.InMemoryMobileReportDraftStore>();
         builder.Services.AddSingleton<

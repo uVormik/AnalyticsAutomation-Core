@@ -1,22 +1,25 @@
-namespace App.Mobile.Android.Foundation.Tests;
+﻿namespace App.Mobile.Android.Foundation.Tests;
 
 public sealed class InMemoryMobileReportDraftStoreTests
 {
     [Fact]
     public async Task CreateFpvDraftAsync_CreatesOneDraftWithDraftStatus()
     {
-        var store = CreateStore();
+        using var scope = CreateScope();
+        var store = scope.CreateStore();
 
         var draft = await store.CreateFpvDraftAsync();
 
         Assert.Equal(global::App.Mobile.Android.Reports.MobileReportDraftStatus.Draft, draft.Status);
         Assert.NotEmpty(draft.DraftId);
+        Assert.False(draft.IsRestoredFromSnapshot);
     }
 
     [Fact]
     public async Task CreatedDraft_ContainsObservedPlaceholderFieldLabels()
     {
-        var store = CreateStore();
+        using var scope = CreateScope();
+        var store = scope.CreateStore();
 
         var draft = await store.CreateFpvDraftAsync();
         var labels = draft.Fields.Select(field => field.Label).ToArray();
@@ -42,7 +45,8 @@ public sealed class InMemoryMobileReportDraftStoreTests
     [Fact]
     public async Task CreateFpvDraftAsync_CreatesExpectedFieldKeys()
     {
-        var store = CreateStore();
+        using var scope = CreateScope();
+        var store = scope.CreateStore();
 
         var draft = await store.CreateFpvDraftAsync();
         var keys = draft.Fields.Select(field => field.FieldKey).ToArray();
@@ -68,7 +72,8 @@ public sealed class InMemoryMobileReportDraftStoreTests
     [Fact]
     public async Task CreateFpvDraftAsync_MarksExpectedLocalRequiredFieldsAsRequired()
     {
-        var store = CreateStore();
+        using var scope = CreateScope();
+        var store = scope.CreateStore();
 
         var draft = await store.CreateFpvDraftAsync();
         var requiredKeys = draft.Fields
@@ -93,7 +98,8 @@ public sealed class InMemoryMobileReportDraftStoreTests
     [Fact]
     public async Task GetDraftsAsync_ReturnsCreatedDraft()
     {
-        var store = CreateStore();
+        using var scope = CreateScope();
+        var store = scope.CreateStore();
         var createdDraft = await store.CreateFpvDraftAsync();
 
         var drafts = await store.GetDraftsAsync();
@@ -105,7 +111,8 @@ public sealed class InMemoryMobileReportDraftStoreTests
     [Fact]
     public async Task GetDraftAsync_ReturnsCreatedDraft()
     {
-        var store = CreateStore();
+        using var scope = CreateScope();
+        var store = scope.CreateStore();
         var createdDraft = await store.CreateFpvDraftAsync();
 
         var draft = await store.GetDraftAsync(createdDraft.DraftId);
@@ -115,9 +122,62 @@ public sealed class InMemoryMobileReportDraftStoreTests
     }
 
     [Fact]
+    public async Task CreatedDraft_PersistsAndLoadsInNewStoreInstance()
+    {
+        using var scope = CreateScope();
+
+        var firstStore = scope.CreateStore();
+        var createdDraft = await firstStore.CreateFpvDraftAsync();
+
+        var secondStore = scope.CreateStore();
+        var drafts = await secondStore.GetDraftsAsync();
+
+        var restoredDraft = Assert.Single(drafts);
+        Assert.Equal(createdDraft.DraftId, restoredDraft.DraftId);
+        Assert.True(restoredDraft.IsRestoredFromSnapshot);
+    }
+
+    [Fact]
+    public async Task UpdateFieldValueAsync_UpdatesExistingField()
+    {
+        using var scope = CreateScope();
+        var store = scope.CreateStore();
+        var draft = await store.CreateFpvDraftAsync();
+
+        var result = await store.UpdateFieldValueAsync(draft.DraftId, "serial_number", "SN-001");
+
+        Assert.True(result.Applied);
+        Assert.NotNull(result.Draft);
+        var field = Assert.Single(result.Draft!.Fields, item => item.FieldKey == "serial_number");
+        Assert.Equal("SN-001", field.ValueText);
+        Assert.False(field.IsPlaceholder);
+        Assert.NotNull(field.LastUpdatedAtUtc);
+    }
+
+    [Fact]
+    public async Task UpdatedFieldValue_PersistsAndLoadsInNewStoreInstance()
+    {
+        using var scope = CreateScope();
+
+        var firstStore = scope.CreateStore();
+        var draft = await firstStore.CreateFpvDraftAsync();
+        await firstStore.UpdateFieldValueAsync(draft.DraftId, "serial_number", "SN-RESTORED");
+
+        var secondStore = scope.CreateStore();
+        var restoredDraft = await secondStore.GetDraftAsync(draft.DraftId);
+
+        Assert.NotNull(restoredDraft);
+        var field = Assert.Single(restoredDraft!.Fields, item => item.FieldKey == "serial_number");
+        Assert.Equal("SN-RESTORED", field.ValueText);
+        Assert.False(field.IsPlaceholder);
+        Assert.True(restoredDraft.IsRestoredFromSnapshot);
+    }
+
+    [Fact]
     public async Task AttachSelectedVideoAsync_AddsOneVideoAttachment()
     {
-        var store = CreateStore();
+        using var scope = CreateScope();
+        var store = scope.CreateStore();
         var draft = await store.CreateFpvDraftAsync();
 
         var result = await store.AttachSelectedVideoAsync(draft.DraftId, CreateDescriptor());
@@ -131,9 +191,46 @@ public sealed class InMemoryMobileReportDraftStoreTests
     }
 
     [Fact]
+    public async Task AttachedVideoMetadata_PersistsAndLoadsInNewStoreInstance()
+    {
+        using var scope = CreateScope();
+
+        var firstStore = scope.CreateStore();
+        var draft = await firstStore.CreateFpvDraftAsync();
+        await firstStore.AttachSelectedVideoAsync(draft.DraftId, CreateDescriptor(cacheKey: "cache-persist-1", fileName: "persisted.mp4"));
+
+        var secondStore = scope.CreateStore();
+        var restoredDraft = await secondStore.GetDraftAsync(draft.DraftId);
+
+        Assert.NotNull(restoredDraft);
+        var attachment = Assert.Single(restoredDraft!.Attachments);
+        Assert.Equal("persisted.mp4", attachment.FileName);
+        Assert.Equal("cache-persist-1", attachment.SelectedMediaCacheKey);
+        Assert.False(attachment.HasLocalReadHandle);
+    }
+
+    [Fact]
+    public async Task RestoredAttachment_HasLocalReadHandleFalse()
+    {
+        using var scope = CreateScope();
+
+        var firstStore = scope.CreateStore();
+        var draft = await firstStore.CreateFpvDraftAsync();
+        await firstStore.AttachSelectedVideoAsync(draft.DraftId, CreateDescriptor(cacheKey: "cache-restored-handle"));
+
+        var secondStore = scope.CreateStore();
+        var restoredDraft = await secondStore.GetDraftAsync(draft.DraftId);
+
+        Assert.NotNull(restoredDraft);
+        var attachment = Assert.Single(restoredDraft!.Attachments);
+        Assert.False(attachment.HasLocalReadHandle);
+    }
+
+    [Fact]
     public async Task AttachSelectedVideoAsync_SameCacheKeyTwice_ReturnsAppliedFalseAndKeepsOneAttachment()
     {
-        var store = CreateStore();
+        using var scope = CreateScope();
+        var store = scope.CreateStore();
         var draft = await store.CreateFpvDraftAsync();
         var descriptor = CreateDescriptor(cacheKey: "duplicate-cache-key");
 
@@ -149,7 +246,8 @@ public sealed class InMemoryMobileReportDraftStoreTests
     [Fact]
     public async Task AttachSelectedVideoAsync_SameFileNameAndContentTypeTwice_ReturnsAppliedFalseAndKeepsOneAttachment()
     {
-        var store = CreateStore();
+        using var scope = CreateScope();
+        var store = scope.CreateStore();
         var draft = await store.CreateFpvDraftAsync();
 
         var firstResult = await store.AttachSelectedVideoAsync(
@@ -166,9 +264,29 @@ public sealed class InMemoryMobileReportDraftStoreTests
     }
 
     [Fact]
+    public async Task DuplicateAttachmentGuard_StillWorksAfterRestore()
+    {
+        using var scope = CreateScope();
+
+        var firstStore = scope.CreateStore();
+        var draft = await firstStore.CreateFpvDraftAsync();
+        await firstStore.AttachSelectedVideoAsync(draft.DraftId, CreateDescriptor(cacheKey: "cache-guard", fileName: "guard.mp4"));
+
+        var secondStore = scope.CreateStore();
+        var result = await secondStore.AttachSelectedVideoAsync(
+            draft.DraftId,
+            CreateDescriptor(cacheKey: "cache-guard", fileName: "guard.mp4"));
+
+        Assert.False(result.Applied);
+        Assert.NotNull(result.Draft);
+        Assert.Single(result.Draft!.Attachments);
+    }
+
+    [Fact]
     public async Task AttachSelectedVideoAsync_DifferentVideo_Succeeds()
     {
-        var store = CreateStore();
+        using var scope = CreateScope();
+        var store = scope.CreateStore();
         var draft = await store.CreateFpvDraftAsync();
 
         var firstResult = await store.AttachSelectedVideoAsync(
@@ -187,7 +305,8 @@ public sealed class InMemoryMobileReportDraftStoreTests
     [Fact]
     public async Task MarkDraftQueuedLocalAsync_SetsStatusQueuedLocal()
     {
-        var store = CreateStore();
+        using var scope = CreateScope();
+        var store = scope.CreateStore();
         var draft = await store.CreateFpvDraftAsync();
 
         var result = await store.MarkDraftQueuedLocalAsync(draft.DraftId);
@@ -198,9 +317,27 @@ public sealed class InMemoryMobileReportDraftStoreTests
     }
 
     [Fact]
+    public async Task MarkDraftQueuedLocalAsync_StatusPersistsAndLoadsInNewStoreInstance()
+    {
+        using var scope = CreateScope();
+
+        var firstStore = scope.CreateStore();
+        var draft = await firstStore.CreateFpvDraftAsync();
+        await firstStore.MarkDraftQueuedLocalAsync(draft.DraftId);
+
+        var secondStore = scope.CreateStore();
+        var restoredDraft = await secondStore.GetDraftAsync(draft.DraftId);
+
+        Assert.NotNull(restoredDraft);
+        Assert.Equal(global::App.Mobile.Android.Reports.MobileReportDraftStatus.QueuedLocal, restoredDraft!.Status);
+        Assert.True(restoredDraft.IsRestoredFromSnapshot);
+    }
+
+    [Fact]
     public async Task AttachSelectedVideoAsync_DoesNotRequireBackendFieldsOrBusinessObjectKey()
     {
-        var store = CreateStore();
+        using var scope = CreateScope();
+        var store = scope.CreateStore();
         var draft = await store.CreateFpvDraftAsync();
 
         var result = await store.AttachSelectedVideoAsync(draft.DraftId, CreateDescriptor());
@@ -212,40 +349,26 @@ public sealed class InMemoryMobileReportDraftStoreTests
     }
 
     [Fact]
-    public async Task UpdateFieldValueAsync_UpdatesExistingField()
-    {
-        var store = CreateStore();
-        var draft = await store.CreateFpvDraftAsync();
-
-        var result = await store.UpdateFieldValueAsync(draft.DraftId, "serial_number", "SN-001");
-
-        Assert.True(result.Applied);
-        Assert.NotNull(result.Draft);
-        var field = Assert.Single(result.Draft!.Fields, item => item.FieldKey == "serial_number");
-        Assert.Equal("SN-001", field.ValueText);
-        Assert.False(field.IsPlaceholder);
-        Assert.NotNull(field.LastUpdatedAtUtc);
-    }
-
-    [Fact]
     public async Task UpdateFieldValueAsync_CanFillRequiredFields()
     {
-        var store = CreateStore();
+        using var scope = CreateScope();
+        var store = scope.CreateStore();
         var draft = await store.CreateFpvDraftAsync();
 
-        var result = await store.UpdateFieldValueAsync(draft.DraftId, "device_type", "Заглушка — значение 1");
+        var result = await store.UpdateFieldValueAsync(draft.DraftId, "device_type", "Stub value 1");
 
         Assert.True(result.Applied);
         Assert.NotNull(result.Draft);
         var field = Assert.Single(result.Draft!.Fields, item => item.FieldKey == "device_type");
         Assert.False(field.IsPlaceholder);
-        Assert.Equal("Заглушка — значение 1", field.ValueText);
+        Assert.Equal("Stub value 1", field.ValueText);
     }
 
     [Fact]
     public async Task UpdateFieldValueAsync_MissingDraft_ReturnsAppliedFalse()
     {
-        var store = CreateStore();
+        using var scope = CreateScope();
+        var store = scope.CreateStore();
 
         var result = await store.UpdateFieldValueAsync("missing-draft", "serial_number", "SN-001");
 
@@ -257,7 +380,8 @@ public sealed class InMemoryMobileReportDraftStoreTests
     [Fact]
     public async Task UpdateFieldValueAsync_MissingField_ReturnsAppliedFalse()
     {
-        var store = CreateStore();
+        using var scope = CreateScope();
+        var store = scope.CreateStore();
         var draft = await store.CreateFpvDraftAsync();
 
         var result = await store.UpdateFieldValueAsync(draft.DraftId, "missing-field", "value");
@@ -270,11 +394,12 @@ public sealed class InMemoryMobileReportDraftStoreTests
     [Fact]
     public async Task UpdatingRequiredFields_DoesNotRemoveAttachments()
     {
-        var store = CreateStore();
+        using var scope = CreateScope();
+        var store = scope.CreateStore();
         var draft = await store.CreateFpvDraftAsync();
         var attachResult = await store.AttachSelectedVideoAsync(draft.DraftId, CreateDescriptor());
 
-        var updateResult = await store.UpdateFieldValueAsync(draft.DraftId, "device_type", "Заглушка — значение 1");
+        var updateResult = await store.UpdateFieldValueAsync(draft.DraftId, "device_type", "Stub value 1");
 
         Assert.True(attachResult.Applied);
         Assert.True(updateResult.Applied);
@@ -283,24 +408,43 @@ public sealed class InMemoryMobileReportDraftStoreTests
     }
 
     [Fact]
-    public async Task MarkDraftQueuedLocal_StillWorksAfterValidationStyleFieldUpdate()
+    public async Task QueueValidationWorkflow_StillWorksAfterRestore()
     {
-        var store = CreateStore();
-        var draft = await store.CreateFpvDraftAsync();
+        using var scope = CreateScope();
+        var validationService = new global::App.Mobile.Android.Services.Local.LocalMobileReportDraftValidationService();
 
-        var updateResult = await store.UpdateFieldValueAsync(draft.DraftId, "reason", "Заглушка — значение 2");
-        var queueResult = await store.MarkDraftQueuedLocalAsync(draft.DraftId);
+        var firstStore = scope.CreateStore();
+        var draft = await firstStore.CreateFpvDraftAsync();
+        await FillRequiredFieldsAsync(firstStore, draft.DraftId);
+        await firstStore.AttachSelectedVideoAsync(draft.DraftId, CreateDescriptor(cacheKey: "cache-workflow", fileName: "workflow.mp4"));
 
-        Assert.True(updateResult.Applied);
+        var secondStore = scope.CreateStore();
+        var restoredDraft = await secondStore.GetDraftAsync(draft.DraftId);
+        var validationResult = validationService.ValidateForLocalQueue(restoredDraft);
+        var queueResult = await secondStore.MarkDraftQueuedLocalAsync(draft.DraftId);
+
+        Assert.NotNull(restoredDraft);
+        Assert.True(validationResult.IsValidForLocalQueue);
         Assert.True(queueResult.Applied);
-        Assert.NotNull(queueResult.Draft);
         Assert.Equal(global::App.Mobile.Android.Reports.MobileReportDraftStatus.QueuedLocal, queueResult.Draft!.Status);
     }
 
-    private static global::App.Mobile.Android.Services.Local.InMemoryMobileReportDraftStore CreateStore()
+    private static async Task FillRequiredFieldsAsync(
+        global::App.Mobile.Android.Services.Local.InMemoryMobileReportDraftStore store,
+        string draftId)
     {
-        return new global::App.Mobile.Android.Services.Local.InMemoryMobileReportDraftStore(
-            new global::App.Mobile.Android.Services.Stubs.StubMobileReportLookupProvider());
+        await store.UpdateFieldValueAsync(draftId, "device_type", "Stub value 1");
+        await store.UpdateFieldValueAsync(draftId, "serial_number", "SN-001");
+        await store.UpdateFieldValueAsync(draftId, "delivery_start", "22.04.2026 10:00");
+        await store.UpdateFieldValueAsync(draftId, "delivery_time", "15");
+        await store.UpdateFieldValueAsync(draftId, "distance", "1200");
+        await store.UpdateFieldValueAsync(draftId, "target_type", "Stub value 2");
+        await store.UpdateFieldValueAsync(draftId, "reason", "Stub value 3");
+    }
+
+    private static TestScope CreateScope()
+    {
+        return new TestScope();
     }
 
     private static global::App.Mobile.Android.Media.LocalSelectedMediaDescriptor CreateDescriptor(
@@ -315,5 +459,31 @@ public sealed class InMemoryMobileReportDraftStoreTests
             ContentType: contentType,
             SelectedAtUtc: DateTimeOffset.UtcNow,
             HasLocalReadHandle: true);
+    }
+    private sealed class TestScope : IDisposable
+    {
+        private readonly string _storageDirectory = Path.Combine(
+            Path.GetTempPath(),
+            $"androida-mobile-report-store-{Guid.NewGuid():N}");
+
+        public TestScope()
+        {
+            Directory.CreateDirectory(_storageDirectory);
+        }
+
+        public global::App.Mobile.Android.Services.Local.InMemoryMobileReportDraftStore CreateStore()
+        {
+            return new global::App.Mobile.Android.Services.Local.InMemoryMobileReportDraftStore(
+                new global::App.Mobile.Android.Services.Stubs.StubMobileReportLookupProvider(),
+                new global::App.Mobile.Android.Services.Local.FileMobileReportDraftSnapshotStore(_storageDirectory));
+        }
+
+        public void Dispose()
+        {
+            if (Directory.Exists(_storageDirectory))
+            {
+                Directory.Delete(_storageDirectory, recursive: true);
+            }
+        }
     }
 }

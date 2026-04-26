@@ -56,6 +56,33 @@ public sealed class LocalMobileReportDraftValidationServiceTests
     }
 
     [Fact]
+    public void ValidateForLocalQueue_RestoredDraftWithRequiredFieldsAndVideoAttachmentMetadata_IsValidForLocalQueue()
+    {
+        var service = new global::App.Mobile.Android.Services.Local.LocalMobileReportDraftValidationService();
+
+        var result = service.ValidateForLocalQueue(
+            CreateDraft(fillRequiredFields: true, includeVideoAttachment: true, restoredAttachmentMetadataOnly: true));
+
+        Assert.True(result.IsValidForLocalQueue);
+        Assert.Empty(result.Issues);
+        Assert.Contains("локаль", result.SummaryText, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void ValidateForLocalQueue_RestoredDraftWithoutVideoAttachment_RemainsInvalid()
+    {
+        var service = new global::App.Mobile.Android.Services.Local.LocalMobileReportDraftValidationService();
+
+        var result = service.ValidateForLocalQueue(
+            CreateDraft(fillRequiredFields: true, includeVideoAttachment: false, restoredAttachmentMetadataOnly: true));
+
+        Assert.False(result.IsValidForLocalQueue);
+        Assert.Contains(
+            result.Issues,
+            issue => issue.Message.Contains("видео", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
     public void ValidateForLocalQueue_OptionalFieldsMissing_DoNotBlockLocalQueue()
     {
         var service = new global::App.Mobile.Android.Services.Local.LocalMobileReportDraftValidationService();
@@ -98,7 +125,8 @@ public sealed class LocalMobileReportDraftValidationServiceTests
 
     private static global::App.Mobile.Android.Reports.MobileReportDraft CreateDraft(
         bool fillRequiredFields,
-        bool includeVideoAttachment)
+        bool includeVideoAttachment,
+        bool restoredAttachmentMetadataOnly = false)
     {
         var now = new DateTimeOffset(2026, 4, 22, 8, 0, 0, TimeSpan.Zero);
         var fields = CreateFields(fillRequiredFields);
@@ -114,7 +142,7 @@ public sealed class LocalMobileReportDraftValidationServiceTests
                     SourceText: "Галерея",
                     AddedAtUtc: now,
                     SelectedMediaCacheKey: "cache-1",
-                    HasLocalReadHandle: true)
+                    HasLocalReadHandle: !restoredAttachmentMetadataOnly)
             }
             : Array.Empty<global::App.Mobile.Android.Reports.MobileReportAttachment>();
 
@@ -125,7 +153,10 @@ public sealed class LocalMobileReportDraftValidationServiceTests
             Title: "FPV-отчет #1",
             Status: global::App.Mobile.Android.Reports.MobileReportDraftStatus.ReadyForAttachmentReview,
             Fields: fields,
-            Attachments: attachments);
+            Attachments: attachments)
+        {
+            IsRestoredFromSnapshot = restoredAttachmentMetadataOnly
+        };
     }
 
     private static global::App.Mobile.Android.Reports.MobileReportDraftFieldValue[] CreateFields(bool fillRequiredFields)

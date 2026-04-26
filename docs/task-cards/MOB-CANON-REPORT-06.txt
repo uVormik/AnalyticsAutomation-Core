@@ -1,0 +1,77 @@
+Title: MOB-CANON-REPORT-06 — Local report draft snapshot persistence
+
+Coder: 3
+
+Module: App.Mobile.Android
+
+Task type: Android-local persistence / report draft restart resilience
+
+Goal:
+Persist local FPV report drafts as JSON metadata snapshots so edited fields and attachment metadata survive full app restart without backend save.
+
+Base main SHA:
+b9fc98b
+
+Coordination log entries reviewed:
+- TEAM COORDINATION LOG #89 latest entries reviewed.
+- Android businessObjectKey decision comment:
+  https://github.com/uVormik/AnalyticsAutomation-Core/issues/89#issuecomment-4321720298
+
+Handoff/task cards reviewed:
+- docs/reports/coder3-android-backend-readiness.md
+- docs/task-cards/MOB-CANON-BACKEND-00.txt
+- docs/task-cards/MOB-CANON-BACKEND-01.txt
+- docs/handoffs/MOB-CANON-BACKEND-01_ANDROID_BUSINESS_OBJECT_BINDING_BLOCKER.md
+- docs/task-cards/MOB-CANON-REPORT-00-03.txt
+- docs/task-cards/MOB-CANON-REPORT-04.txt
+- docs/task-cards/MOB-CANON-REPORT-05.txt
+- docs/task-cards/MOB-CANON-REPORT-06.txt
+
+What changes:
+- Android-local JSON metadata snapshot store for report drafts
+- restored field values
+- restored attachment metadata
+- metadata-only note for restored attachments
+- validation after restore
+- local queue action after restore
+
+Contracts:
+- shared DTO/contracts unchanged
+
+Migration:
+- none
+
+Feature flags:
+- local mobile stub flags only
+
+Offline behavior:
+- local JSON metadata snapshots only
+- no backend save
+- no sync
+- no upload
+- no media byte persistence
+
+Security:
+- no auth/session/device binding
+- no tokens/secrets
+
+BusinessObject:
+- businessObjectKey source remains unresolved
+- local report draft id is not businessObjectKey
+- production PreUploadCheck remains blocked
+
+Rollback:
+- revert this PR
+
+Definition of done:
+- build succeeds
+- unit tests pass
+- format/diff-check pass
+- local drafts survive full app restart
+- edited fields survive full app restart
+- attachment metadata survives full app restart
+- restored attachments are clearly metadata-only
+- validation still works after restore
+- local report queue action still works after restore
+- no backend integration
+- no App.UI.Shared changes

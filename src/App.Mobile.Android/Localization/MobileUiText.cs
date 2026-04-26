@@ -563,4 +563,24 @@ internal static class MobileUiText
             ? "Готов к локальной очереди"
             : "Не готов к локальной очереди";
     }
+
+    public static string GetReportDraftRestoredFromSnapshotText()
+    {
+        return "Черновик восстановлен из локального JSON-снимка после перезапуска. Это только локальные метаданные без серверного создания отчета.";
+    }
+
+    public static string GetReportDraftRestoredAttachmentMetadataOnlyText()
+    {
+        return "Вложение восстановлено только как локальные метаданные. Доступ к исходному файлу после перезапуска пока не восстанавливается в этом срезе.";
+    }
+
+    public static string GetReportDraftLocalSnapshotNoteText()
+    {
+        return "Локальные черновики и метаданные вложений восстановлены из JSON-снимка. Это не серверное сохранение и не API создания отчета.";
+    }
+
+    public static string GetReportDraftLocalPersistenceWarningText()
+    {
+        return "Черновик сохранен только локально. Серверное создание отчета пока не подключено.";
+    }
 }

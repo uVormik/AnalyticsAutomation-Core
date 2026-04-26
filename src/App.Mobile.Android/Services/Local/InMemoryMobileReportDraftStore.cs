@@ -1,7 +1,8 @@
 namespace App.Mobile.Android.Services.Local;
 
 internal sealed class InMemoryMobileReportDraftStore :
-    global::App.Mobile.Android.Services.Abstractions.IMobileReportDraftStore
+    global::App.Mobile.Android.Services.Abstractions.IMobileReportDraftStore,
+    IDisposable
 {
     private static readonly HashSet<string> RequiredFieldKeys = new(StringComparer.Ordinal)
     {
@@ -15,42 +16,47 @@ internal sealed class InMemoryMobileReportDraftStore :
     };
 
     private readonly object _gate = new();
+    private readonly SemaphoreSlim _loadGate = new(1, 1);
     private readonly global::App.Mobile.Android.Services.Abstractions.IMobileLookupCatalogProvider _lookupCatalogProvider;
+    private readonly global::App.Mobile.Android.Services.Abstractions.IMobileReportDraftSnapshotStore _snapshotStore;
     private readonly List<global::App.Mobile.Android.Reports.MobileReportDraft> _drafts = [];
+    private bool _snapshotLoaded;
     private int _sequence;
 
     public InMemoryMobileReportDraftStore(
-        global::App.Mobile.Android.Services.Abstractions.IMobileLookupCatalogProvider lookupCatalogProvider)
+        global::App.Mobile.Android.Services.Abstractions.IMobileLookupCatalogProvider lookupCatalogProvider,
+        global::App.Mobile.Android.Services.Abstractions.IMobileReportDraftSnapshotStore snapshotStore)
     {
         _lookupCatalogProvider = lookupCatalogProvider;
+        _snapshotStore = snapshotStore;
     }
 
-    public Task<IReadOnlyList<global::App.Mobile.Android.Reports.MobileReportDraft>> GetDraftsAsync(
+    public async Task<IReadOnlyList<global::App.Mobile.Android.Reports.MobileReportDraft>> GetDraftsAsync(
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        await EnsureSnapshotLoadedAsync(cancellationToken);
 
         lock (_gate)
         {
-            return Task.FromResult<IReadOnlyList<global::App.Mobile.Android.Reports.MobileReportDraft>>(
-                _drafts
-                    .OrderByDescending(draft => draft.UpdatedAtUtc)
-                    .ToArray());
+            return _drafts
+                .OrderByDescending(draft => draft.UpdatedAtUtc)
+                .ToArray();
         }
     }
 
-    public Task<global::App.Mobile.Android.Reports.MobileReportDraft?> GetDraftAsync(
+    public async Task<global::App.Mobile.Android.Reports.MobileReportDraft?> GetDraftAsync(
         string draftId,
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         ArgumentException.ThrowIfNullOrWhiteSpace(draftId);
+        await EnsureSnapshotLoadedAsync(cancellationToken);
 
         lock (_gate)
         {
-            return Task.FromResult(
-                _drafts.FirstOrDefault(draft =>
-                    string.Equals(draft.DraftId, draftId, StringComparison.Ordinal)));
+            return _drafts.FirstOrDefault(draft =>
+                string.Equals(draft.DraftId, draftId, StringComparison.Ordinal));
         }
     }
 
@@ -58,6 +64,7 @@ internal sealed class InMemoryMobileReportDraftStore :
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        await EnsureSnapshotLoadedAsync(cancellationToken);
 
         var snapshot = await _lookupCatalogProvider.GetReportDraftFieldsAsync(cancellationToken);
         var now = DateTimeOffset.UtcNow;
@@ -86,31 +93,37 @@ internal sealed class InMemoryMobileReportDraftStore :
             Fields: fields,
             Attachments: Array.Empty<global::App.Mobile.Android.Reports.MobileReportAttachment>());
 
+        global::App.Mobile.Android.Reports.MobileReportDraft[] persistedDrafts;
         lock (_gate)
         {
             _drafts.Insert(0, draft);
+            persistedDrafts = _drafts.ToArray();
         }
 
+        await _snapshotStore.SaveAsync(persistedDrafts, cancellationToken);
         return draft;
     }
 
-    public Task<global::App.Mobile.Android.Reports.MobileReportDraftOperationResult> AttachSelectedVideoAsync(
+    public async Task<global::App.Mobile.Android.Reports.MobileReportDraftOperationResult> AttachSelectedVideoAsync(
         string draftId,
         global::App.Mobile.Android.Media.LocalSelectedMediaDescriptor descriptor,
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         ArgumentException.ThrowIfNullOrWhiteSpace(draftId);
+        await EnsureSnapshotLoadedAsync(cancellationToken);
 
         if (descriptor is null || !IsValidDescriptor(descriptor))
         {
-            return Task.FromResult(
-                new global::App.Mobile.Android.Reports.MobileReportDraftOperationResult(
-                    Applied: false,
-                    Message: global::App.Mobile.Android.Localization.MobileUiText.ReportDraftInvalidVideoSelectionText,
-                    Draft: null,
-                    Attachment: null));
+            return new global::App.Mobile.Android.Reports.MobileReportDraftOperationResult(
+                Applied: false,
+                Message: global::App.Mobile.Android.Localization.MobileUiText.ReportDraftInvalidVideoSelectionText,
+                Draft: null,
+                Attachment: null);
         }
+
+        global::App.Mobile.Android.Reports.MobileReportDraftOperationResult operationResult;
+        global::App.Mobile.Android.Reports.MobileReportDraft[]? persistedDrafts = null;
 
         lock (_gate)
         {
@@ -119,23 +132,21 @@ internal sealed class InMemoryMobileReportDraftStore :
 
             if (index < 0)
             {
-                return Task.FromResult(
-                    new global::App.Mobile.Android.Reports.MobileReportDraftOperationResult(
-                        Applied: false,
-                        Message: global::App.Mobile.Android.Localization.MobileUiText.ReportDraftNotFoundMessage,
-                        Draft: null,
-                        Attachment: null));
+                return new global::App.Mobile.Android.Reports.MobileReportDraftOperationResult(
+                    Applied: false,
+                    Message: global::App.Mobile.Android.Localization.MobileUiText.ReportDraftNotFoundMessage,
+                    Draft: null,
+                    Attachment: null);
             }
 
             var currentDraft = _drafts[index];
             if (HasDuplicateVideoAttachment(currentDraft, descriptor))
             {
-                return Task.FromResult(
-                    new global::App.Mobile.Android.Reports.MobileReportDraftOperationResult(
-                        Applied: false,
-                        Message: global::App.Mobile.Android.Localization.MobileUiText.ReportDraftDuplicateAttachmentWarningText,
-                        Draft: currentDraft,
-                        Attachment: null));
+                return new global::App.Mobile.Android.Reports.MobileReportDraftOperationResult(
+                    Applied: false,
+                    Message: global::App.Mobile.Android.Localization.MobileUiText.ReportDraftDuplicateAttachmentWarningText,
+                    Draft: currentDraft,
+                    Attachment: null);
             }
 
             var now = DateTimeOffset.UtcNow;
@@ -162,18 +173,20 @@ internal sealed class InMemoryMobileReportDraftStore :
             };
 
             _drafts[index] = updatedDraft;
-
-            return Task.FromResult(
-                new global::App.Mobile.Android.Reports.MobileReportDraftOperationResult(
-                    Applied: true,
-                    Message: global::App.Mobile.Android.Localization.MobileUiText.GetReportDraftAttachVideoSuccessText(
-                        descriptor.FileName),
-                    Draft: updatedDraft,
-                    Attachment: attachment));
+            persistedDrafts = _drafts.ToArray();
+            operationResult = new global::App.Mobile.Android.Reports.MobileReportDraftOperationResult(
+                Applied: true,
+                Message: global::App.Mobile.Android.Localization.MobileUiText.GetReportDraftAttachVideoSuccessText(
+                    descriptor.FileName),
+                Draft: updatedDraft,
+                Attachment: attachment);
         }
+
+        await _snapshotStore.SaveAsync(persistedDrafts, cancellationToken);
+        return operationResult;
     }
 
-    public Task<global::App.Mobile.Android.Reports.MobileReportDraftOperationResult> UpdateFieldValueAsync(
+    public async Task<global::App.Mobile.Android.Reports.MobileReportDraftOperationResult> UpdateFieldValueAsync(
         string draftId,
         string fieldKey,
         string? valueText,
@@ -182,6 +195,10 @@ internal sealed class InMemoryMobileReportDraftStore :
         cancellationToken.ThrowIfCancellationRequested();
         ArgumentException.ThrowIfNullOrWhiteSpace(draftId);
         ArgumentException.ThrowIfNullOrWhiteSpace(fieldKey);
+        await EnsureSnapshotLoadedAsync(cancellationToken);
+
+        global::App.Mobile.Android.Reports.MobileReportDraftOperationResult operationResult;
+        global::App.Mobile.Android.Reports.MobileReportDraft[]? persistedDrafts = null;
 
         lock (_gate)
         {
@@ -190,15 +207,14 @@ internal sealed class InMemoryMobileReportDraftStore :
 
             if (draftIndex < 0)
             {
-                return Task.FromResult(
-                    new global::App.Mobile.Android.Reports.MobileReportDraftOperationResult(
-                        Applied: false,
-                        Message: global::App.Mobile.Android.Localization.MobileUiText.ReportDraftNotFoundMessage,
-                        Draft: null,
-                        Attachment: null)
-                    {
-                        FieldKey = fieldKey
-                    });
+                return new global::App.Mobile.Android.Reports.MobileReportDraftOperationResult(
+                    Applied: false,
+                    Message: global::App.Mobile.Android.Localization.MobileUiText.ReportDraftNotFoundMessage,
+                    Draft: null,
+                    Attachment: null)
+                {
+                    FieldKey = fieldKey
+                };
             }
 
             var currentDraft = _drafts[draftIndex];
@@ -210,15 +226,14 @@ internal sealed class InMemoryMobileReportDraftStore :
 
             if (fieldIndex < 0)
             {
-                return Task.FromResult(
-                    new global::App.Mobile.Android.Reports.MobileReportDraftOperationResult(
-                        Applied: false,
-                        Message: global::App.Mobile.Android.Localization.MobileUiText.ReportDraftFieldNotFoundMessage,
-                        Draft: currentDraft,
-                        Attachment: null)
-                    {
-                        FieldKey = fieldKey
-                    });
+                return new global::App.Mobile.Android.Reports.MobileReportDraftOperationResult(
+                    Applied: false,
+                    Message: global::App.Mobile.Android.Localization.MobileUiText.ReportDraftFieldNotFoundMessage,
+                    Draft: currentDraft,
+                    Attachment: null)
+                {
+                    FieldKey = fieldKey
+                };
             }
 
             var now = DateTimeOffset.UtcNow;
@@ -241,27 +256,33 @@ internal sealed class InMemoryMobileReportDraftStore :
             };
 
             _drafts[draftIndex] = updatedDraft;
-
-            return Task.FromResult(
-                new global::App.Mobile.Android.Reports.MobileReportDraftOperationResult(
-                    Applied: true,
-                    Message: global::App.Mobile.Android.Localization.MobileUiText.GetReportDraftFieldUpdatedText(
-                        updatedField.Label,
-                        normalizedValue),
-                    Draft: updatedDraft,
-                    Attachment: null)
-                {
-                    FieldKey = updatedField.FieldKey
-                });
+            persistedDrafts = _drafts.ToArray();
+            operationResult = new global::App.Mobile.Android.Reports.MobileReportDraftOperationResult(
+                Applied: true,
+                Message: global::App.Mobile.Android.Localization.MobileUiText.GetReportDraftFieldUpdatedText(
+                    updatedField.Label,
+                    normalizedValue),
+                Draft: updatedDraft,
+                Attachment: null)
+            {
+                FieldKey = updatedField.FieldKey
+            };
         }
+
+        await _snapshotStore.SaveAsync(persistedDrafts, cancellationToken);
+        return operationResult;
     }
 
-    public Task<global::App.Mobile.Android.Reports.MobileReportDraftOperationResult> MarkDraftQueuedLocalAsync(
+    public async Task<global::App.Mobile.Android.Reports.MobileReportDraftOperationResult> MarkDraftQueuedLocalAsync(
         string draftId,
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         ArgumentException.ThrowIfNullOrWhiteSpace(draftId);
+        await EnsureSnapshotLoadedAsync(cancellationToken);
+
+        global::App.Mobile.Android.Reports.MobileReportDraftOperationResult operationResult;
+        global::App.Mobile.Android.Reports.MobileReportDraft[]? persistedDrafts = null;
 
         lock (_gate)
         {
@@ -270,12 +291,11 @@ internal sealed class InMemoryMobileReportDraftStore :
 
             if (index < 0)
             {
-                return Task.FromResult(
-                    new global::App.Mobile.Android.Reports.MobileReportDraftOperationResult(
-                        Applied: false,
-                        Message: global::App.Mobile.Android.Localization.MobileUiText.ReportDraftNotFoundMessage,
-                        Draft: null,
-                        Attachment: null));
+                return new global::App.Mobile.Android.Reports.MobileReportDraftOperationResult(
+                    Applied: false,
+                    Message: global::App.Mobile.Android.Localization.MobileUiText.ReportDraftNotFoundMessage,
+                    Draft: null,
+                    Attachment: null);
             }
 
             var updatedDraft = _drafts[index] with
@@ -285,15 +305,64 @@ internal sealed class InMemoryMobileReportDraftStore :
             };
 
             _drafts[index] = updatedDraft;
-
-            return Task.FromResult(
-                new global::App.Mobile.Android.Reports.MobileReportDraftOperationResult(
-                    Applied: true,
-                    Message: global::App.Mobile.Android.Localization.MobileUiText.GetReportDraftQueuedLocalText(
-                        updatedDraft.Title),
-                    Draft: updatedDraft,
-                    Attachment: null));
+            persistedDrafts = _drafts.ToArray();
+            operationResult = new global::App.Mobile.Android.Reports.MobileReportDraftOperationResult(
+                Applied: true,
+                Message: global::App.Mobile.Android.Localization.MobileUiText.GetReportDraftQueuedLocalText(
+                    updatedDraft.Title),
+                Draft: updatedDraft,
+                Attachment: null);
         }
+
+        await _snapshotStore.SaveAsync(persistedDrafts, cancellationToken);
+        return operationResult;
+    }
+
+    private async Task EnsureSnapshotLoadedAsync(CancellationToken cancellationToken)
+    {
+        if (_snapshotLoaded)
+        {
+            return;
+        }
+
+        await _loadGate.WaitAsync(cancellationToken);
+        try
+        {
+            if (_snapshotLoaded)
+            {
+                return;
+            }
+
+            var restoredDrafts = await _snapshotStore.LoadAsync(cancellationToken);
+            var normalizedDrafts = restoredDrafts
+                .Select(NormalizeRestoredDraft)
+                .ToArray();
+
+            lock (_gate)
+            {
+                _drafts.Clear();
+                _drafts.AddRange(normalizedDrafts);
+                _sequence = Math.Max(_sequence, _drafts.Count);
+                _snapshotLoaded = true;
+            }
+        }
+        finally
+        {
+            _loadGate.Release();
+        }
+    }
+
+    private static global::App.Mobile.Android.Reports.MobileReportDraft NormalizeRestoredDraft(
+        global::App.Mobile.Android.Reports.MobileReportDraft draft)
+    {
+        return draft with
+        {
+            IsRestoredFromSnapshot = true,
+            Fields = draft.Fields.ToArray(),
+            Attachments = draft.Attachments
+                .Select(attachment => attachment with { HasLocalReadHandle = false })
+                .ToArray()
+        };
     }
 
     private static bool IsValidDescriptor(global::App.Mobile.Android.Media.LocalSelectedMediaDescriptor descriptor)
@@ -331,5 +400,9 @@ internal sealed class InMemoryMobileReportDraftStore :
         return string.IsNullOrWhiteSpace(valueText)
             ? string.Empty
             : valueText.Trim();
+    }
+    public void Dispose()
+    {
+        _loadGate.Dispose();
     }
 }

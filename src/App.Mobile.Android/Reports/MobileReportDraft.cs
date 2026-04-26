@@ -7,4 +7,7 @@ internal sealed record MobileReportDraft(
     string Title,
     MobileReportDraftStatus Status,
     IReadOnlyList<MobileReportDraftFieldValue> Fields,
-    IReadOnlyList<MobileReportAttachment> Attachments);
+    IReadOnlyList<MobileReportAttachment> Attachments)
+{
+    public bool IsRestoredFromSnapshot { get; init; }
+}

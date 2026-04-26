@@ -28,6 +28,8 @@ else
             <button type="button" class="btn btn-primary" @onclick="CreateDraftAsync">@MobileUiText.ReportsCreateFpvDraftButton</button>
         </div>
 
+        <p class="reports-local-note">@MobileUiText.GetReportDraftLocalSnapshotNoteText()</p>
+
         @if (Drafts.Count == 0)
         {
             <div class="reports-empty-state">
@@ -62,6 +64,11 @@ else
                                 <dd>@draft.Attachments.Count</dd>
                             </div>
                         </dl>
+
+                        @if (draft.IsRestoredFromSnapshot)
+                        {
+                            <p class="reports-draft-restored-note">@MobileUiText.GetReportDraftRestoredFromSnapshotText()</p>
+                        }
                     </article>
                 }
             </div>

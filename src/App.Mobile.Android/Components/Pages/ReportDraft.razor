@@ -1,4 +1,4 @@
-@page "/reports/{DraftId}"
+﻿@page "/reports/{DraftId}"
 @using global::App.Mobile.Android.Localization
 @inject global::App.Mobile.Android.Navigation.MobileNavigationState NavigationState
 @inject global::App.Mobile.Android.Services.Abstractions.IMobileMediaService MobileMediaService
@@ -40,7 +40,11 @@ else
         </header>
 
         <p class="report-draft-note">@MobileUiText.ReportDraftLocalOnlyNote</p>
-        <p class="report-draft-note report-draft-note-secondary">@MobileUiText.ReportDraftNoBackendSaveNote</p>
+        <p class="report-draft-note report-draft-note-secondary">@MobileUiText.GetReportDraftLocalPersistenceWarningText()</p>
+        @if (Draft.IsRestoredFromSnapshot)
+        {
+            <p class="report-draft-note report-draft-note-restored">@MobileUiText.GetReportDraftRestoredFromSnapshotText()</p>
+        }
 
         @if (!string.IsNullOrWhiteSpace(FieldResultText))
         {
@@ -307,6 +311,11 @@ else
                                     <dd>@MobileUiText.GetReportAttachmentLocalAccessText(attachment.HasLocalReadHandle)</dd>
                                 </div>
                             </dl>
+
+                            @if (!attachment.HasLocalReadHandle)
+                            {
+                                <p class="report-draft-attachment-note">@MobileUiText.GetReportDraftRestoredAttachmentMetadataOnlyText()</p>
+                            }
                         </article>
                     }
                 </div>
