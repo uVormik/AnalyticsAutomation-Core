@@ -1,0 +1,80 @@
+Title:
+S2-49A Desktop Skeleton Launch Fix
+
+Owner:
+Coder / Desktop Client
+
+Module:
+Desktop client / launch skeleton
+
+Client form:
+desktop standalone
+
+Type:
+runtime launch fix task card
+
+Status:
+Implementation task for a narrow App.Desktop skeleton launch fix.
+
+Goal:
+Fix the App.Desktop skeleton launch failure caused by an unversioned Windows target framework while preserving the S2-48 runtime skeleton boundaries.
+
+Context:
+S2-48 introduced the runtime desktop skeleton with a WPF standalone shell and BlazorWebView host. Build and tests passed, HostPage existed, but launch smoke exited during startup with:
+System.IO.FileNotFoundException: Could not load file or assembly 'Microsoft.Windows.SDK.NET, Version=10.0.17763.10...'
+
+The App.Desktop output target framework was net10.0-windows. Official WPF Blazor Hybrid .NET 10 guidance requires a Windows-versioned TFM such as net10.0-windows10.0.17763.0 because the WPF BlazorWebView uses the Windows SDK-backed WebView2CompositionControl path.
+
+Expected fix:
+- Update App.Desktop TargetFramework from net10.0-windows to net10.0-windows10.0.17763.0.
+- Keep the Microsoft.NET.Sdk.Razor project SDK.
+- Keep WPF enabled.
+- Keep the existing BlazorWebView and HostPage setup.
+- Avoid package changes unless a launch-specific package fix is proven necessary.
+
+Scope:
+- src/App.Desktop/App.Desktop.csproj
+- src/App.Desktop only if needed for the launch fix
+- tests/Unit/App.Desktop.Tests only if needed for TFM/config assertions
+- docs/task-cards/S2-49A_desktop-skeleton-launch-fix.txt
+- docs/handoffs/S2_49A_DESKTOP_SKELETON_LAUNCH_FIX.md if useful
+
+Out of scope:
+- Full SignIn/upload UI.
+- Real site provider implementation.
+- Offline queue implementation.
+- Duplicate/fraud/admin UI.
+- App.Web references or embedding.
+- Routing video bytes through App.Api.
+- Runtime upload behavior changes.
+- App.Api, App.Worker, App.Web, App.Mobile.Android, App.UI.Shared, BuildingBlocks.Contracts, Modules, DB migrations, GitHub workflows, deploy scripts.
+
+Architecture invariants to preserve:
+- The primary desktop client remains a standalone desktop application.
+- BlazorWebView is only an embedded native desktop UI composition mechanism.
+- App.Web is not used as the primary desktop client and is not hosted inside App.Desktop.
+- App.Api remains the control plane.
+- Video bytes do not route through App.Api.
+- Full upload orchestration remains deferred.
+
+Environment prerequisite:
+App.Desktop launch requires the WebView2 runtime to be available on the machine. If missing, document that prerequisite instead of bypassing BlazorWebView.
+
+Validation:
+- git diff --check
+- dotnet restore AnalyticsAutomation-Core.sln -nologo
+- dotnet format whitespace AnalyticsAutomation-Core.sln --verify-no-changes --no-restore
+- dotnet build src/App.Desktop/App.Desktop.csproj -nologo -v minimal
+- dotnet build AnalyticsAutomation-Core.sln -nologo -v minimal
+- dotnet test tests/Unit/App.Desktop.Tests/App.Desktop.Tests.csproj -nologo -v minimal
+- dotnet run --project src/App.Desktop/App.Desktop.csproj --no-build, stopping after confirming the window appears
+- No deploy
+
+Definition of done:
+- App.Desktop uses net10.0-windows10.0.17763.0.
+- Package changes are avoided unless proven necessary.
+- HostPage remains present.
+- App.Desktop launch smoke is attempted and result is recorded.
+- Full upload flow remains unimplemented.
+- App.Web is not referenced or embedded.
+- No App.Api/contracts/migrations/deploy/App.Mobile.Android changes are made.
