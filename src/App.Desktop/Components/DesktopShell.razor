@@ -1,0 +1,15 @@
+@inject IBlazorWebViewHostBoundary BlazorHostBoundary
+
+<div class="desktop-shell">
+    <header class="desktop-shell__header">
+        <div>
+            <p class="desktop-shell__eyebrow">@BlazorHostBoundary.SurfaceName</p>
+            <h1>AnalyticsAutomation Desktop</h1>
+        </div>
+        <span class="desktop-shell__status">Skeleton</span>
+    </header>
+
+    <main class="desktop-shell__main">
+        <UploadPlaceholder />
+    </main>
+</div>

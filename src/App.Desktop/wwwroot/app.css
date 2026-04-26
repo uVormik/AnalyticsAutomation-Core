@@ -1,0 +1,55 @@
+:root {
+    color-scheme: light;
+    font-family: "Segoe UI", Arial, sans-serif;
+}
+
+body {
+    margin: 0;
+    background: #f4f6f8;
+    color: #18212f;
+}
+
+.desktop-shell {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.desktop-shell__header {
+    min-height: 88px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    padding: 20px 28px;
+    background: #ffffff;
+    border-bottom: 1px solid #d7dde5;
+}
+
+.desktop-shell__eyebrow {
+    margin: 0 0 4px;
+    color: #52616f;
+    font-size: 0.8rem;
+}
+
+.desktop-shell__header h1 {
+    margin: 0;
+    font-size: 1.45rem;
+    font-weight: 650;
+}
+
+.desktop-shell__status {
+    padding: 6px 10px;
+    border-radius: 6px;
+    background: #eef4ff;
+    color: #18406b;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.desktop-shell__main {
+    flex: 1;
+    display: grid;
+    place-items: center;
+    padding: 32px;
+}
