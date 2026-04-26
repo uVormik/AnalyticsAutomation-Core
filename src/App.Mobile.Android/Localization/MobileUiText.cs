@@ -82,8 +82,34 @@ internal static class MobileUiText
     public const string ReportFieldRadioFrequencyLabel = "Радиочастота";
     public const string ReportFieldVideoFrequencyLabel = "Видеочастота";
     public const string ReportFieldTestFlightLabel = "Тестовый полет";
+    public const string ReportFieldTechnicalIssueTypeLabel = "Тип технической неисправности";
+    public const string ReportFieldStatusLabel = "Статус";
+    public const string ReportFieldWarheadTypeLabel = "Тип боевой части";
+    public const string ReportFieldDetonatorLabel = "Детонатор";
+    public const string ReportFieldNsuLabel = "НСУ";
     public const string ReportFieldPlaceholderText =
         "Поле пока работает как локальная заглушка без финального backend-контракта и без справочника значений.";
+    public const string ReportDraftEditFieldButton = "Изменить поле";
+    public const string ReportDraftSaveFieldValueButton = "Сохранить значение";
+    public const string ReportDraftCancelFieldEditButton = "Отмена";
+    public const string ReportDraftOpenSelectorButton = "Выбрать значение";
+    public const string ReportDraftSelectorSheetTitle = "Локальный выбор значения";
+    public const string ReportDraftSelectorSearchPlaceholder = "Поиск по локальным значениям-заглушкам";
+    public const string ReportDraftSelectorApplyButton = "Применить";
+    public const string ReportDraftSelectorClearButton = "Очистить";
+    public const string ReportDraftSelectorEmptyState = "Подходящих локальных значений-заглушек не найдено.";
+    public const string ReportDraftStubCatalogWarning =
+        "Справочник-заглушка. Реальные значения будут загружаться с сервера.";
+    public const string ReportDraftTextValuePlaceholder = "Введите локальное текстовое значение";
+    public const string ReportDraftNumericValuePlaceholder = "Введите локальное числовое значение";
+    public const string ReportDraftDateTimeValuePlaceholder = "Выберите дату и время локально";
+    public const string ReportDraftToggleYesText = "Да";
+    public const string ReportDraftToggleNoText = "Нет";
+    public const string ReportDraftFieldRequiredMark = "*";
+    public const string ReportDraftFieldNotFoundMessage =
+        "Не удалось локально обновить поле: оно не найдено в текущем черновике.";
+    public const string ReportDraftFieldUpdateFailedMessage =
+        "Не удалось локально обновить значение поля.";
 
     public const string UploadTitle = "Загрузка";
     public const string UploadIntro =
@@ -440,6 +466,36 @@ internal static class MobileUiText
     public static string GetReportDraftTitle(int sequence)
     {
         return $"FPV-отчет #{sequence}";
+    }
+
+    public static string GetLookupStubOptionText(int sequence)
+    {
+        return $"Заглушка — значение {sequence}";
+    }
+
+    public static string GetReportDraftFieldUpdatedText(string label, string? valueText)
+    {
+        var normalizedValue = string.IsNullOrWhiteSpace(valueText)
+            ? "пустое локальное значение"
+            : valueText.Trim();
+
+        return $"Поле «{label}» локально обновлено: {normalizedValue}.";
+    }
+
+    public static string GetReportDraftFieldEditorPlaceholderText(
+        global::App.Mobile.Android.Lookup.MobileLookupFieldKind fieldKind)
+    {
+        return fieldKind switch
+        {
+            global::App.Mobile.Android.Lookup.MobileLookupFieldKind.Number => ReportDraftNumericValuePlaceholder,
+            global::App.Mobile.Android.Lookup.MobileLookupFieldKind.DateTime => ReportDraftDateTimeValuePlaceholder,
+            _ => ReportDraftTextValuePlaceholder
+        };
+    }
+
+    public static string GetToggleValueText(bool value)
+    {
+        return value ? ReportDraftToggleYesText : ReportDraftToggleNoText;
     }
 
     public static string GetReportDraftAttachVideoSuccessText(string fileName)

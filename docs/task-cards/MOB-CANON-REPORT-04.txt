@@ -1,0 +1,70 @@
+Title: MOB-CANON-REPORT-04 - Local report field editing and selector prototype
+
+Coder: 3
+
+Module: App.Mobile.Android
+
+Task type: Android-local UX foundation / local report field editing
+
+Goal:
+Add local-only field editing and selector prototype for FPV report drafts after report baseline is in main.
+
+Base main SHA:
+0c98e62
+
+Coordination log entries reviewed:
+- TEAM COORDINATION LOG #89 latest entries through 2026-04-26.
+- Android businessObjectKey decision comment:
+  https://github.com/uVormik/AnalyticsAutomation-Core/issues/89#issuecomment-4321720298
+
+Handoff/task cards reviewed:
+- docs/reports/coder3-android-backend-readiness.md
+- docs/task-cards/MOB-CANON-BACKEND-00.txt
+- docs/task-cards/MOB-CANON-BACKEND-01.txt
+- docs/handoffs/MOB-CANON-BACKEND-01_ANDROID_BUSINESS_OBJECT_BINDING_BLOCKER.md
+- docs/task-cards/MOB-CANON-REPORT-00-03.txt
+- docs/task-cards/MOB-CANON-REPORT-04.txt
+
+What changes:
+- local report field editing
+- local field metadata
+- local stub selector panel
+- local stub lookup provider behavior
+
+Contracts:
+- shared DTO/contracts unchanged
+
+Migration:
+- none
+
+Feature flags:
+- local mobile stub flags only
+
+Offline behavior:
+- local in-memory report field editing only in this slice
+- no backend save
+- no sync
+- no upload
+
+Security:
+- no auth/session/device binding
+- no tokens/secrets
+
+BusinessObject:
+- businessObjectKey source remains unresolved
+- local report draft id is not businessObjectKey
+- production PreUploadCheck remains blocked
+
+Rollback:
+- revert this PR
+
+Definition of done:
+- build succeeds
+- unit tests pass
+- format/diff-check pass
+- report draft fields can be edited locally
+- selector fields open local stub selector
+- selected stub values update local draft fields
+- final lookup dictionaries are not hardcoded
+- no backend integration
+- no App.UI.Shared changes

@@ -17,6 +17,12 @@ internal interface IMobileReportDraftStore
         global::App.Mobile.Android.Media.LocalSelectedMediaDescriptor descriptor,
         CancellationToken cancellationToken = default);
 
+    Task<global::App.Mobile.Android.Reports.MobileReportDraftOperationResult> UpdateFieldValueAsync(
+        string draftId,
+        string fieldKey,
+        string? valueText,
+        CancellationToken cancellationToken = default);
+
     Task<global::App.Mobile.Android.Reports.MobileReportDraftOperationResult> MarkDraftQueuedLocalAsync(
         string draftId,
         CancellationToken cancellationToken = default);

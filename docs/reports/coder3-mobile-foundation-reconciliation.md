@@ -14,33 +14,23 @@ The canonical repository contains the complete IMPORT-01..07 Android media/outbo
 - Restart-resilience JSON metadata snapshots are present from MOB-CANON-IMPORT-06 / PR #99.
 - Local repair/rebind is present from MOB-CANON-IMPORT-07 / PR #100.
 - BACKEND-01 unresolved business-object binding guard is present from PR #108.
-- `App.UI.Shared` was intentionally unchanged by IMPORT-02..07 and BACKEND-01.
+- REPORT-00..03 local report-first baseline is present from PR #109.
+- `App.UI.Shared` was intentionally unchanged by IMPORT-02..07, BACKEND-01, and REPORT-00..03.
 
 ## Current local UX slice
-`MOB-CANON-REPORT-00-03` replays the local report-first baseline as an Android-local UX slice.
+`MOB-CANON-REPORT-04` replays local report field editing and selector prototype as an Android-local UX slice.
 
-Physical Android runtime check is passed for REPORT-00-03:
-- `Полеты` route/list works.
-- create FPV draft works.
-- report draft opens.
-- media can be selected/captured inside draft.
-- duplicate same-video attachment is blocked.
-- draft can be placed into local queue.
-- no fake `businessObjectKey` is shown.
-- production `PreUploadCheck` remains blocked.
+Physical Android runtime check for REPORT-04 is passed with status `report04 phone ok`.
 
-Report-first baseline means:
-- local FPV report draft shell
-- report route/list and create draft action
-- media selection/capture inside report draft
-- duplicate-safe attachment behavior inside draft
-- local report draft queue action
-- Queue rendering for local report draft pending items
+REPORT-04 means:
+- report draft fields can be edited locally
+- selector fields can open local stub options
+- selected stub values update local draft fields
+- field metadata remains local mobile state
 - no backend save
 - no sync
 - no upload
 - no production reports engine
-- no lookup/filter/profile UX
 
 ## BusinessObject and backend boundary
 - TEAM COORDINATION LOG #89 records the Android `businessObjectKey` decision:
@@ -57,17 +47,18 @@ Report-first baseline means:
 | Capability | Exists in canonical main | Current slice changes | Later slice needed | Notes |
 | --- | --- | --- | --- | --- |
 | MAUI shell | yes | no | no | Present from PR #67 |
-| mobile navigation/menu | yes | report route/list baseline | later polish possible | Report-first entry point remains Android-local |
-| native video picker | yes | used inside draft | no for baseline | Present from PR #95 |
-| native camera capture | yes | used inside draft | no for baseline | Device capability still applies |
+| mobile navigation/menu | yes | no | later polish possible | Report-first entry point remains Android-local |
+| native video picker | yes | remains inside draft | no for baseline | Present from PR #95 |
+| native camera capture | yes | remains inside draft | no for baseline | Device capability still applies |
 | selected media cache | yes | feeds report attachment | later persistence possible | Temporary Android-local state |
-| local outbox foundation | yes | report draft queue action | later backend sync | No upload/runtime integration |
-| selected media to outbox handoff | yes | reinterpreted under report draft | later production binding | Attachment flow only |
-| local duplicate-precheck | yes | duplicate-safe draft attachment | later backend dedupe | Local-only warning/guard |
+| local outbox foundation | yes | report draft queue action remains | later backend sync | No upload/runtime integration |
+| selected media to outbox handoff | yes | remains under report draft | later production binding | Attachment flow only |
+| local duplicate-precheck | yes | duplicate-safe draft attachment remains | later backend dedupe | Local-only warning/guard |
 | restart snapshots | yes | no new persistence claim | later policy | Existing metadata snapshots only |
 | local repair/rebind | yes | remains intact | later polish possible | Existing repair flow retained |
 | BACKEND-01 blocker guard | yes | remains intact | backend contract needed | No fake `businessObjectKey` |
-| local report draft shell | no | yes | later UX slices | Local-only baseline |
+| local report draft shell | yes | field editing added | later UX slices | Local-only baseline |
+| local selector prototype | partial | yes | final lookup/catalog integration later | Stub options only |
 | production report flow | no | no | yes | Requires backend source/contract |
 | production PreUploadCheck | no | no | yes | Blocked pending backend source |
 

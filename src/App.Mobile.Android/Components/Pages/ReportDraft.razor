@@ -41,6 +41,13 @@ else
         <p class="report-draft-note">@MobileUiText.ReportDraftLocalOnlyNote</p>
         <p class="report-draft-note report-draft-note-secondary">@MobileUiText.ReportDraftNoBackendSaveNote</p>
 
+        @if (!string.IsNullOrWhiteSpace(FieldResultText))
+        {
+            <p class="@(FieldResultIsWarning ? "report-draft-result report-draft-result-warning" : "report-draft-result")">
+                @FieldResultText
+            </p>
+        }
+
         @foreach (var sectionKey in SectionOrder)
         {
             var sectionFields = GetFieldsForSection(sectionKey);
@@ -53,15 +60,151 @@ else
             <section class="report-draft-section">
                 <h3>@GetSectionTitle(sectionKey)</h3>
 
-                <dl class="report-draft-fields">
+                <div class="report-draft-fields">
                     @foreach (var field in sectionFields)
                     {
-                        <div class="report-draft-field-row">
-                            <dt>@field.Label</dt>
-                            <dd class="@(field.IsPlaceholder ? "report-draft-field-placeholder" : string.Empty)">@field.ValueText</dd>
-                        </div>
+                        <article class="report-draft-field-row">
+                            <div class="report-draft-field-header">
+                                <div class="report-draft-field-heading">
+                                    <h4>
+                                        @field.Label
+                                        @if (field.IsRequired)
+                                        {
+                                            <span class="report-draft-required-mark">@MobileUiText.ReportDraftFieldRequiredMark</span>
+                                        }
+                                    </h4>
+                                    @if (field.LastUpdatedAtUtc is not null)
+                                    {
+                                        <p class="report-draft-field-updated-at">@FormatTimestamp(field.LastUpdatedAtUtc.Value)</p>
+                                    }
+                                </div>
+
+                                @if (IsSelectorField(field))
+                                {
+                                    <button type="button"
+                                            class="btn btn-outline-secondary"
+                                            @onclick="() => ToggleSelectorPanel(field)">
+                                        @MobileUiText.ReportDraftOpenSelectorButton
+                                    </button>
+                                }
+                                else if (!IsToggleField(field))
+                                {
+                                    <button type="button"
+                                            class="btn btn-outline-secondary"
+                                            @onclick="() => StartFieldEdit(field)">
+                                        @MobileUiText.ReportDraftEditFieldButton
+                                    </button>
+                                }
+                            </div>
+
+                            @if (IsEditingField(field.FieldKey))
+                            {
+                                <div class="report-draft-inline-editor">
+                                    <input type="@GetInputType(field)"
+                                           class="form-control"
+                                           placeholder="@MobileUiText.GetReportDraftFieldEditorPlaceholderText(field.FieldKind)"
+                                           @bind="EditingValueText" />
+                                    <div class="report-draft-inline-editor-actions">
+                                        <button type="button"
+                                                class="btn btn-primary"
+                                                @onclick="() => SaveFieldEditAsync(field)">
+                                            @MobileUiText.ReportDraftSaveFieldValueButton
+                                        </button>
+                                        <button type="button"
+                                                class="btn btn-outline-secondary"
+                                                @onclick="CancelFieldEdit">
+                                            @MobileUiText.ReportDraftCancelFieldEditButton
+                                        </button>
+                                    </div>
+                                </div>
+                            }
+                            else if (IsToggleField(field))
+                            {
+                                <div class="report-draft-toggle-shell">
+                                    <p class="@(field.IsPlaceholder ? "report-draft-field-placeholder" : "report-draft-field-value")">
+                                        @GetFieldDisplayText(field)
+                                    </p>
+                                    <div class="report-draft-toggle-actions">
+                                        <button type="button"
+                                                class="@(IsToggleValueSelected(field, true) ? "btn btn-primary" : "btn btn-outline-secondary")"
+                                                @onclick="() => SetToggleFieldAsync(field, true)">
+                                            @MobileUiText.ReportDraftToggleYesText
+                                        </button>
+                                        <button type="button"
+                                                class="@(IsToggleValueSelected(field, false) ? "btn btn-primary" : "btn btn-outline-secondary")"
+                                                @onclick="() => SetToggleFieldAsync(field, false)">
+                                            @MobileUiText.ReportDraftToggleNoText
+                                        </button>
+                                    </div>
+                                </div>
+                            }
+                            else
+                            {
+                                <p class="@(field.IsPlaceholder ? "report-draft-field-placeholder" : "report-draft-field-value")">
+                                    @GetFieldDisplayText(field)
+                                </p>
+                            }
+
+                            @if (IsSelectorOpen(field.FieldKey))
+                            {
+                                <div class="report-draft-selector-panel">
+                                    <div class="report-draft-selector-header">
+                                        <h5>@MobileUiText.ReportDraftSelectorSheetTitle</h5>
+                                        <button type="button"
+                                                class="btn btn-outline-secondary"
+                                                @onclick="CloseSelectorPanel">
+                                            @MobileUiText.ReportDraftCancelFieldEditButton
+                                        </button>
+                                    </div>
+
+                                    <input type="search"
+                                           class="form-control"
+                                           placeholder="@MobileUiText.ReportDraftSelectorSearchPlaceholder"
+                                           @bind="SelectorSearchText"
+                                           @bind:event="oninput" />
+
+                                    <p class="report-draft-selector-warning">@MobileUiText.ReportDraftStubCatalogWarning</p>
+
+                                    @if (VisibleSelectorOptions.Count == 0)
+                                    {
+                                        <p class="report-draft-selector-empty">@MobileUiText.ReportDraftSelectorEmptyState</p>
+                                    }
+                                    else
+                                    {
+                                        <div class="report-draft-selector-options">
+                                            @foreach (var option in VisibleSelectorOptions)
+                                            {
+                                                <button type="button"
+                                                        class="@(IsSelectorOptionSelected(option.OptionKey) ? "report-draft-selector-option report-draft-selector-option-active" : "report-draft-selector-option")"
+                                                        @onclick="() => SelectOptionAsync(field, option)">
+                                                    @option.DisplayText
+                                                </button>
+                                            }
+                                        </div>
+                                    }
+
+                                    <div class="report-draft-selector-actions">
+                                        @if (RequiresConfirmApply(field))
+                                        {
+                                            <button type="button"
+                                                    class="btn btn-primary"
+                                                    @onclick="() => ApplyPendingSelectorAsync(field)"
+                                                    disabled="@string.IsNullOrWhiteSpace(PendingSelectorOptionKey)">
+                                                @MobileUiText.ReportDraftSelectorApplyButton
+                                            </button>
+                                        }
+
+                                        <button type="button"
+                                                class="btn btn-outline-secondary"
+                                                @onclick="() => ClearSelectorValueAsync(field)">
+                                            @MobileUiText.ReportDraftSelectorClearButton
+                                        </button>
+                                    </div>
+                                </div>
+                            }
+                        </article>
                     }
-                </dl>
+                </div>
             </section>
         }
 
@@ -120,9 +263,11 @@ else
             {
                 <p class="report-draft-result">@ProgressText</p>
             }
-            else if (!string.IsNullOrWhiteSpace(ResultText))
+            else if (!string.IsNullOrWhiteSpace(ActionResultText))
             {
-                <p class="@(ResultIsWarning ? "report-draft-result report-draft-result-warning" : "report-draft-result")">@ResultText</p>
+                <p class="@(ActionResultIsWarning ? "report-draft-result report-draft-result-warning" : "report-draft-result")">
+                    @ActionResultText
+                </p>
             }
 
             @if (Draft.Attachments.Count == 0)
@@ -191,16 +336,35 @@ else
 
     private global::App.Mobile.Android.Lookup.MobileLookupCatalogSnapshot? Catalog { get; set; }
 
-    private string ResultText { get; set; } = string.Empty;
+    private string ActionResultText { get; set; } = string.Empty;
+
+    private bool ActionResultIsWarning { get; set; }
+
+    private string FieldResultText { get; set; } = string.Empty;
+
+    private bool FieldResultIsWarning { get; set; }
 
     private string ProgressText { get; set; } = string.Empty;
 
-    private bool ResultIsWarning { get; set; }
-
     private bool IsMediaOperationInProgress { get; set; }
+
+    private string? EditingFieldKey { get; set; }
+
+    private string EditingValueText { get; set; } = string.Empty;
+
+    private string? ActiveSelectorFieldKey { get; set; }
+
+    private string SelectorSearchText { get; set; } = string.Empty;
+
+    private string? PendingSelectorOptionKey { get; set; }
+
+    private global::App.Mobile.Android.Lookup.MobileLookupSelectionResult? SelectorSelection { get; set; }
 
     [Parameter]
     public string DraftId { get; set; } = string.Empty;
+
+    private IReadOnlyList<global::App.Mobile.Android.Lookup.MobileLookupOption> VisibleSelectorOptions =>
+        GetVisibleSelectorOptions();
 
     protected override async Task OnParametersSetAsync()
     {
@@ -230,21 +394,138 @@ else
             return;
         }
 
-        ResultText = string.Empty;
-        ResultIsWarning = false;
+        ActionResultText = string.Empty;
+        ActionResultIsWarning = false;
 
         var queueResult = await MobileOutboxService.EnqueueReportDraftAsync(Draft);
         if (!queueResult.Applied)
         {
-            ResultText = queueResult.Message;
-            ResultIsWarning = true;
+            ActionResultText = queueResult.Message;
+            ActionResultIsWarning = true;
             return;
         }
 
         var markResult = await ReportDraftStore.MarkDraftQueuedLocalAsync(Draft.DraftId);
         Draft = markResult.Draft ?? await ReportDraftStore.GetDraftAsync(DraftId);
-        ResultText = markResult.Applied ? queueResult.Message : markResult.Message;
-        ResultIsWarning = !markResult.Applied;
+        ActionResultText = markResult.Applied ? queueResult.Message : markResult.Message;
+        ActionResultIsWarning = !markResult.Applied;
+    }
+
+    private void StartFieldEdit(global::App.Mobile.Android.Reports.MobileReportDraftFieldValue field)
+    {
+        CloseSelectorPanel();
+        ClearFieldResult();
+        EditingFieldKey = field.FieldKey;
+        EditingValueText = GetEditableValue(field);
+    }
+
+    private void CancelFieldEdit()
+    {
+        EditingFieldKey = null;
+        EditingValueText = string.Empty;
+    }
+
+    private async Task SaveFieldEditAsync(global::App.Mobile.Android.Reports.MobileReportDraftFieldValue field)
+    {
+        var normalizedValue = NormalizeFieldInput(field, EditingValueText);
+        var result = await ReportDraftStore.UpdateFieldValueAsync(DraftId, field.FieldKey, normalizedValue);
+        ApplyFieldOperationResult(result);
+        CancelFieldEdit();
+    }
+
+    private async Task SetToggleFieldAsync(
+        global::App.Mobile.Android.Reports.MobileReportDraftFieldValue field,
+        bool value)
+    {
+        CloseSelectorPanel();
+        CancelFieldEdit();
+
+        var result = await ReportDraftStore.UpdateFieldValueAsync(
+            DraftId,
+            field.FieldKey,
+            MobileUiText.GetToggleValueText(value));
+
+        ApplyFieldOperationResult(result);
+    }
+
+    private void ToggleSelectorPanel(global::App.Mobile.Android.Reports.MobileReportDraftFieldValue field)
+    {
+        CancelFieldEdit();
+        ClearFieldResult();
+
+        if (string.Equals(ActiveSelectorFieldKey, field.FieldKey, StringComparison.Ordinal))
+        {
+            CloseSelectorPanel();
+            return;
+        }
+
+        ActiveSelectorFieldKey = field.FieldKey;
+        SelectorSearchText = string.Empty;
+        PendingSelectorOptionKey = FindSelectedOptionKey(field);
+        SelectorSelection = null;
+    }
+
+    private void CloseSelectorPanel()
+    {
+        ActiveSelectorFieldKey = null;
+        SelectorSearchText = string.Empty;
+        PendingSelectorOptionKey = null;
+        SelectorSelection = null;
+    }
+
+    private async Task SelectOptionAsync(
+        global::App.Mobile.Android.Reports.MobileReportDraftFieldValue field,
+        global::App.Mobile.Android.Lookup.MobileLookupOption option)
+    {
+        SelectorSelection = new global::App.Mobile.Android.Lookup.MobileLookupSelectionResult(
+            Applied: !RequiresConfirmApply(field),
+            FieldKey: field.FieldKey,
+            SelectedDisplayText: option.DisplayText,
+            Message: option.DisplayText);
+
+        PendingSelectorOptionKey = option.OptionKey;
+
+        if (!RequiresConfirmApply(field))
+        {
+            var result = await ReportDraftStore.UpdateFieldValueAsync(DraftId, field.FieldKey, option.DisplayText);
+            ApplyFieldOperationResult(result);
+            CloseSelectorPanel();
+        }
+    }
+
+    private async Task ApplyPendingSelectorAsync(global::App.Mobile.Android.Reports.MobileReportDraftFieldValue field)
+    {
+        if (string.IsNullOrWhiteSpace(PendingSelectorOptionKey))
+        {
+            return;
+        }
+
+        var selectedOption = GetSelectorOptions(field.FieldKey)
+            .FirstOrDefault(option => string.Equals(option.OptionKey, PendingSelectorOptionKey, StringComparison.Ordinal));
+
+        if (selectedOption is null)
+        {
+            FieldResultText = MobileUiText.ReportDraftFieldUpdateFailedMessage;
+            FieldResultIsWarning = true;
+            return;
+        }
+
+        SelectorSelection = new global::App.Mobile.Android.Lookup.MobileLookupSelectionResult(
+            Applied: true,
+            FieldKey: field.FieldKey,
+            SelectedDisplayText: selectedOption.DisplayText,
+            Message: selectedOption.DisplayText);
+
+        var result = await ReportDraftStore.UpdateFieldValueAsync(DraftId, field.FieldKey, selectedOption.DisplayText);
+        ApplyFieldOperationResult(result);
+        CloseSelectorPanel();
+    }
+
+    private async Task ClearSelectorValueAsync(global::App.Mobile.Android.Reports.MobileReportDraftFieldValue field)
+    {
+        var result = await ReportDraftStore.UpdateFieldValueAsync(DraftId, field.FieldKey, string.Empty);
+        ApplyFieldOperationResult(result);
+        CloseSelectorPanel();
     }
 
     private async Task RunMediaAttachAsync(
@@ -253,16 +534,16 @@ else
     {
         IsMediaOperationInProgress = true;
         ProgressText = progressText;
-        ResultText = string.Empty;
-        ResultIsWarning = false;
+        ActionResultText = string.Empty;
+        ActionResultIsWarning = false;
 
         try
         {
             var result = await operation();
             if (!IsSuccessfulMediaOperation(result.Status))
             {
-                ResultText = result.Message;
-                ResultIsWarning = true;
+                ActionResultText = result.Message;
+                ActionResultIsWarning = true;
                 return;
             }
 
@@ -285,15 +566,15 @@ else
         var selectedMedia = await SelectedMediaStore.GetCurrentAsync();
         if (selectedMedia is null)
         {
-            ResultText = MobileUiText.ReportDraftNoCurrentSelectedVideoText;
-            ResultIsWarning = true;
+            ActionResultText = MobileUiText.ReportDraftNoCurrentSelectedVideoText;
+            ActionResultIsWarning = true;
             return;
         }
 
         var operationResult = await ReportDraftStore.AttachSelectedVideoAsync(Draft.DraftId, selectedMedia);
         Draft = operationResult.Draft ?? await ReportDraftStore.GetDraftAsync(DraftId);
-        ResultText = operationResult.Message;
-        ResultIsWarning = !operationResult.Applied;
+        ActionResultText = operationResult.Message;
+        ActionResultIsWarning = !operationResult.Applied;
     }
 
     private IReadOnlyList<global::App.Mobile.Android.Reports.MobileReportDraftFieldValue> GetFieldsForSection(string sectionKey)
@@ -313,11 +594,165 @@ else
             .ToArray();
     }
 
+    private IReadOnlyList<global::App.Mobile.Android.Lookup.MobileLookupOption> GetVisibleSelectorOptions()
+    {
+        if (string.IsNullOrWhiteSpace(ActiveSelectorFieldKey))
+        {
+            return Array.Empty<global::App.Mobile.Android.Lookup.MobileLookupOption>();
+        }
+
+        return GetSelectorOptions(ActiveSelectorFieldKey)
+            .Where(option =>
+                string.IsNullOrWhiteSpace(SelectorSearchText)
+                || option.DisplayText.Contains(SelectorSearchText, StringComparison.OrdinalIgnoreCase))
+            .OrderBy(option => option.SortOrder)
+            .ThenBy(option => option.DisplayText, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+    }
+
+    private IReadOnlyList<global::App.Mobile.Android.Lookup.MobileLookupOption> GetSelectorOptions(string fieldKey)
+    {
+        if (Catalog is null || !Catalog.OptionsByFieldKey.TryGetValue(fieldKey, out var options))
+        {
+            return Array.Empty<global::App.Mobile.Android.Lookup.MobileLookupOption>();
+        }
+
+        return options;
+    }
+
+    private bool IsEditingField(string fieldKey)
+    {
+        return string.Equals(EditingFieldKey, fieldKey, StringComparison.Ordinal);
+    }
+
+    private bool IsSelectorOpen(string fieldKey)
+    {
+        return string.Equals(ActiveSelectorFieldKey, fieldKey, StringComparison.Ordinal);
+    }
+
+    private static bool IsSelectorField(global::App.Mobile.Android.Reports.MobileReportDraftFieldValue field)
+    {
+        return field.FieldKind is global::App.Mobile.Android.Lookup.MobileLookupFieldKind.SearchableSingleSelect
+            or global::App.Mobile.Android.Lookup.MobileLookupFieldKind.ConfirmApplySelector;
+    }
+
+    private static bool IsToggleField(global::App.Mobile.Android.Reports.MobileReportDraftFieldValue field)
+    {
+        return field.FieldKind == global::App.Mobile.Android.Lookup.MobileLookupFieldKind.Toggle;
+    }
+
+    private static bool RequiresConfirmApply(global::App.Mobile.Android.Reports.MobileReportDraftFieldValue field)
+    {
+        return field.SelectorMode == global::App.Mobile.Android.Lookup.MobileLookupSelectorMode.ConfirmApply;
+    }
+
     private static bool IsSuccessfulMediaOperation(global::App.Mobile.Android.Media.MobileMediaOperationStatus status)
     {
         return status is global::App.Mobile.Android.Media.MobileMediaOperationStatus.DeviceSelectionCompleted
             or global::App.Mobile.Android.Media.MobileMediaOperationStatus.DeviceCaptureCompleted
             or global::App.Mobile.Android.Media.MobileMediaOperationStatus.StubCompleted;
+    }
+
+    private bool IsSelectorOptionSelected(string optionKey)
+    {
+        return string.Equals(PendingSelectorOptionKey, optionKey, StringComparison.Ordinal);
+    }
+
+    private string? FindSelectedOptionKey(global::App.Mobile.Android.Reports.MobileReportDraftFieldValue field)
+    {
+        return GetSelectorOptions(field.FieldKey)
+            .FirstOrDefault(option => string.Equals(option.DisplayText, field.ValueText, StringComparison.Ordinal))
+            ?.OptionKey;
+    }
+
+    private static bool IsToggleValueSelected(
+        global::App.Mobile.Android.Reports.MobileReportDraftFieldValue field,
+        bool value)
+    {
+        return string.Equals(
+            field.ValueText,
+            MobileUiText.GetToggleValueText(value),
+            StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string GetEditableValue(global::App.Mobile.Android.Reports.MobileReportDraftFieldValue field)
+    {
+        if (field.IsPlaceholder || string.IsNullOrWhiteSpace(field.ValueText))
+        {
+            return string.Empty;
+        }
+
+        if (field.FieldKind == global::App.Mobile.Android.Lookup.MobileLookupFieldKind.DateTime
+            && DateTimeOffset.TryParse(field.ValueText, out var timestamp))
+        {
+            return timestamp.ToLocalTime().ToString("yyyy-MM-ddTHH:mm");
+        }
+
+        return field.ValueText;
+    }
+
+    private static string NormalizeFieldInput(
+        global::App.Mobile.Android.Reports.MobileReportDraftFieldValue field,
+        string? rawValue)
+    {
+        if (field.FieldKind == global::App.Mobile.Android.Lookup.MobileLookupFieldKind.DateTime
+            && !string.IsNullOrWhiteSpace(rawValue)
+            && DateTime.TryParse(rawValue, out var parsedDateTime))
+        {
+            return new DateTimeOffset(parsedDateTime).ToString("dd.MM.yyyy HH:mm");
+        }
+
+        return string.IsNullOrWhiteSpace(rawValue)
+            ? string.Empty
+            : rawValue.Trim();
+    }
+
+    private static string GetInputType(global::App.Mobile.Android.Reports.MobileReportDraftFieldValue field)
+    {
+        return field.FieldKind switch
+        {
+            global::App.Mobile.Android.Lookup.MobileLookupFieldKind.Number => "number",
+            global::App.Mobile.Android.Lookup.MobileLookupFieldKind.DateTime => "datetime-local",
+            _ => "text"
+        };
+    }
+
+    private static string GetFieldDisplayText(global::App.Mobile.Android.Reports.MobileReportDraftFieldValue field)
+    {
+        if (field.FieldKind == global::App.Mobile.Android.Lookup.MobileLookupFieldKind.Toggle)
+        {
+            if (string.Equals(field.ValueText, MobileUiText.ReportDraftToggleYesText, StringComparison.OrdinalIgnoreCase))
+            {
+                return MobileUiText.ReportDraftToggleYesText;
+            }
+
+            if (string.Equals(field.ValueText, MobileUiText.ReportDraftToggleNoText, StringComparison.OrdinalIgnoreCase))
+            {
+                return MobileUiText.ReportDraftToggleNoText;
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(field.ValueText))
+        {
+            return field.ValueText;
+        }
+
+        return field.IsPlaceholder
+            ? MobileUiText.ReportFieldPlaceholderText
+            : "—";
+    }
+
+    private void ApplyFieldOperationResult(global::App.Mobile.Android.Reports.MobileReportDraftOperationResult result)
+    {
+        Draft = result.Draft ?? Draft;
+        FieldResultText = result.Message;
+        FieldResultIsWarning = !result.Applied;
+    }
+
+    private void ClearFieldResult()
+    {
+        FieldResultText = string.Empty;
+        FieldResultIsWarning = false;
     }
 
     private static string GetSectionTitle(string sectionKey)

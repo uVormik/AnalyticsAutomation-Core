@@ -35,6 +35,7 @@
     <Compile Include="..\..\..\src\App.Mobile.Android\Lookup\MobileLookupFieldDefinition.cs" Link="LinkedProduction\Lookup\MobileLookupFieldDefinition.cs" />
     <Compile Include="..\..\..\src\App.Mobile.Android\Lookup\MobileLookupOption.cs" Link="LinkedProduction\Lookup\MobileLookupOption.cs" />
     <Compile Include="..\..\..\src\App.Mobile.Android\Lookup\MobileLookupCatalogSnapshot.cs" Link="LinkedProduction\Lookup\MobileLookupCatalogSnapshot.cs" />
+    <Compile Include="..\..\..\src\App.Mobile.Android\Lookup\MobileLookupSelectionResult.cs" Link="LinkedProduction\Lookup\MobileLookupSelectionResult.cs" />
     <Compile Include="..\..\..\src\App.Mobile.Android\DraftRepair\LocalMediaDraftRepairStatus.cs" Link="LinkedProduction\DraftRepair\LocalMediaDraftRepairStatus.cs" />
     <Compile Include="..\..\..\src\App.Mobile.Android\DraftRepair\LocalMediaDraftRepairResult.cs" Link="LinkedProduction\DraftRepair\LocalMediaDraftRepairResult.cs" />
     <Compile Include="..\..\..\src\App.Mobile.Android\BusinessObjectBinding\MobileBusinessObjectBindingApprovalState.cs" Link="LinkedProduction\BusinessObjectBinding\MobileBusinessObjectBindingApprovalState.cs" />

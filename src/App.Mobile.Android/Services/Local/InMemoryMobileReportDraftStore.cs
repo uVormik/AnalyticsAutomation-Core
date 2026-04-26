@@ -57,7 +57,13 @@ internal sealed class InMemoryMobileReportDraftStore :
                 Label: field.Label,
                 ValueText: field.PlaceholderText,
                 IsRequired: field.IsRequired,
-                IsPlaceholder: true))
+                IsPlaceholder: true)
+            {
+                SectionKey = field.SectionKey,
+                FieldKind = field.Kind,
+                SelectorMode = field.SelectorMode,
+                LastUpdatedAtUtc = null
+            })
             .ToArray();
 
         var draft = new global::App.Mobile.Android.Reports.MobileReportDraft(
@@ -156,6 +162,89 @@ internal sealed class InMemoryMobileReportDraftStore :
         }
     }
 
+    public Task<global::App.Mobile.Android.Reports.MobileReportDraftOperationResult> UpdateFieldValueAsync(
+        string draftId,
+        string fieldKey,
+        string? valueText,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        ArgumentException.ThrowIfNullOrWhiteSpace(draftId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(fieldKey);
+
+        lock (_gate)
+        {
+            var draftIndex = _drafts.FindIndex(draft =>
+                string.Equals(draft.DraftId, draftId, StringComparison.Ordinal));
+
+            if (draftIndex < 0)
+            {
+                return Task.FromResult(
+                    new global::App.Mobile.Android.Reports.MobileReportDraftOperationResult(
+                        Applied: false,
+                        Message: global::App.Mobile.Android.Localization.MobileUiText.ReportDraftNotFoundMessage,
+                        Draft: null,
+                        Attachment: null)
+                    {
+                        FieldKey = fieldKey
+                    });
+            }
+
+            var currentDraft = _drafts[draftIndex];
+            var fieldIndex = currentDraft.Fields
+                .Select((field, index) => new { field, index })
+                .FirstOrDefault(entry =>
+                    string.Equals(entry.field.FieldKey, fieldKey, StringComparison.Ordinal))
+                ?.index ?? -1;
+
+            if (fieldIndex < 0)
+            {
+                return Task.FromResult(
+                    new global::App.Mobile.Android.Reports.MobileReportDraftOperationResult(
+                        Applied: false,
+                        Message: global::App.Mobile.Android.Localization.MobileUiText.ReportDraftFieldNotFoundMessage,
+                        Draft: currentDraft,
+                        Attachment: null)
+                    {
+                        FieldKey = fieldKey
+                    });
+            }
+
+            var now = DateTimeOffset.UtcNow;
+            var currentField = currentDraft.Fields[fieldIndex];
+            var normalizedValue = NormalizeFieldValue(valueText);
+            var updatedField = currentField with
+            {
+                ValueText = normalizedValue,
+                IsPlaceholder = false,
+                LastUpdatedAtUtc = now
+            };
+
+            var updatedFields = currentDraft.Fields.ToArray();
+            updatedFields[fieldIndex] = updatedField;
+
+            var updatedDraft = currentDraft with
+            {
+                UpdatedAtUtc = now,
+                Fields = updatedFields
+            };
+
+            _drafts[draftIndex] = updatedDraft;
+
+            return Task.FromResult(
+                new global::App.Mobile.Android.Reports.MobileReportDraftOperationResult(
+                    Applied: true,
+                    Message: global::App.Mobile.Android.Localization.MobileUiText.GetReportDraftFieldUpdatedText(
+                        updatedField.Label,
+                        normalizedValue),
+                    Draft: updatedDraft,
+                    Attachment: null)
+                {
+                    FieldKey = updatedField.FieldKey
+                });
+        }
+    }
+
     public Task<global::App.Mobile.Android.Reports.MobileReportDraftOperationResult> MarkDraftQueuedLocalAsync(
         string draftId,
         CancellationToken cancellationToken = default)
@@ -224,5 +313,12 @@ internal sealed class InMemoryMobileReportDraftStore :
         return string.IsNullOrWhiteSpace(contentType)
             ? string.Empty
             : contentType.Trim().ToLowerInvariant();
+    }
+
+    private static string NormalizeFieldValue(string? valueText)
+    {
+        return string.IsNullOrWhiteSpace(valueText)
+            ? string.Empty
+            : valueText.Trim();
     }
 }

@@ -31,16 +31,76 @@ public sealed class StubMobileReportLookupProviderTests
         Assert.Contains("radio_frequency", fieldKeys);
         Assert.Contains("video_frequency", fieldKeys);
         Assert.Contains("test_flight", fieldKeys);
+        Assert.Contains("technical_issue_type", fieldKeys);
+        Assert.Contains("status", fieldKeys);
+        Assert.Contains("warhead_type", fieldKeys);
+        Assert.Contains("detonator", fieldKeys);
+        Assert.Contains("nsu", fieldKeys);
     }
 
     [Fact]
-    public async Task ProviderDoesNotReturnFinalOptionDictionariesForLookupFields()
+    public async Task SelectorFieldsHaveStubOptionsMarkedAsNonFinal()
+    {
+        var provider = new global::App.Mobile.Android.Services.Stubs.StubMobileReportLookupProvider();
+
+        var snapshot = await provider.GetReportDraftFieldsAsync();
+
+        var selectorOptions = snapshot.OptionsByFieldKey["device_type"];
+
+        Assert.NotEmpty(selectorOptions);
+        Assert.All(selectorOptions, option => Assert.Contains("Заглушка —", option.DisplayText, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task ProviderDoesNotReturnRealFinalDictionaries()
     {
         var provider = new global::App.Mobile.Android.Services.Stubs.StubMobileReportLookupProvider();
 
         var snapshot = await provider.GetReportDraftFieldsAsync();
 
         Assert.NotNull(snapshot.OptionsByFieldKey);
-        Assert.All(snapshot.OptionsByFieldKey.Values, options => Assert.Empty(options));
+        Assert.All(snapshot.OptionsByFieldKey.Values, options =>
+            Assert.All(options, option => Assert.Contains("Заглушка —", option.DisplayText, StringComparison.Ordinal)));
+    }
+
+    [Fact]
+    public async Task WarheadTypeUsesConfirmApplySelector()
+    {
+        var provider = new global::App.Mobile.Android.Services.Stubs.StubMobileReportLookupProvider();
+
+        var snapshot = await provider.GetReportDraftFieldsAsync();
+        var field = Assert.Single(snapshot.Fields.Where(item => item.FieldKey == "warhead_type"));
+
+        Assert.Equal(global::App.Mobile.Android.Lookup.MobileLookupFieldKind.ConfirmApplySelector, field.Kind);
+        Assert.Equal(global::App.Mobile.Android.Lookup.MobileLookupSelectorMode.ConfirmApply, field.SelectorMode);
+    }
+
+    [Fact]
+    public async Task TestFlightIsToggle()
+    {
+        var provider = new global::App.Mobile.Android.Services.Stubs.StubMobileReportLookupProvider();
+
+        var snapshot = await provider.GetReportDraftFieldsAsync();
+        var field = Assert.Single(snapshot.Fields.Where(item => item.FieldKey == "test_flight"));
+
+        Assert.Equal(global::App.Mobile.Android.Lookup.MobileLookupFieldKind.Toggle, field.Kind);
+    }
+
+    [Fact]
+    public async Task TextNumberDateFieldsHaveExpectedKinds()
+    {
+        var provider = new global::App.Mobile.Android.Services.Stubs.StubMobileReportLookupProvider();
+
+        var snapshot = await provider.GetReportDraftFieldsAsync();
+
+        Assert.Equal(
+            global::App.Mobile.Android.Lookup.MobileLookupFieldKind.Text,
+            Assert.Single(snapshot.Fields.Where(item => item.FieldKey == "serial_number")).Kind);
+        Assert.Equal(
+            global::App.Mobile.Android.Lookup.MobileLookupFieldKind.Number,
+            Assert.Single(snapshot.Fields.Where(item => item.FieldKey == "delivery_time")).Kind);
+        Assert.Equal(
+            global::App.Mobile.Android.Lookup.MobileLookupFieldKind.DateTime,
+            Assert.Single(snapshot.Fields.Where(item => item.FieldKey == "delivery_start")).Kind);
     }
 }

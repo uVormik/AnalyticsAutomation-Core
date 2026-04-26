@@ -32,6 +32,37 @@ public sealed class InMemoryMobileReportDraftStoreTests
         Assert.Contains(global::App.Mobile.Android.Localization.MobileUiText.ReportFieldRadioFrequencyLabel, labels);
         Assert.Contains(global::App.Mobile.Android.Localization.MobileUiText.ReportFieldVideoFrequencyLabel, labels);
         Assert.Contains(global::App.Mobile.Android.Localization.MobileUiText.ReportFieldTestFlightLabel, labels);
+        Assert.Contains(global::App.Mobile.Android.Localization.MobileUiText.ReportFieldTechnicalIssueTypeLabel, labels);
+        Assert.Contains(global::App.Mobile.Android.Localization.MobileUiText.ReportFieldStatusLabel, labels);
+        Assert.Contains(global::App.Mobile.Android.Localization.MobileUiText.ReportFieldWarheadTypeLabel, labels);
+        Assert.Contains(global::App.Mobile.Android.Localization.MobileUiText.ReportFieldDetonatorLabel, labels);
+        Assert.Contains(global::App.Mobile.Android.Localization.MobileUiText.ReportFieldNsuLabel, labels);
+    }
+
+    [Fact]
+    public async Task CreateFpvDraftAsync_CreatesExpectedFieldKeys()
+    {
+        var store = CreateStore();
+
+        var draft = await store.CreateFpvDraftAsync();
+        var keys = draft.Fields.Select(field => field.FieldKey).ToArray();
+
+        Assert.Contains("device_type", keys);
+        Assert.Contains("serial_number", keys);
+        Assert.Contains("delivery_start", keys);
+        Assert.Contains("delivery_time", keys);
+        Assert.Contains("distance", keys);
+        Assert.Contains("target_type", keys);
+        Assert.Contains("reason", keys);
+        Assert.Contains("comment", keys);
+        Assert.Contains("radio_frequency", keys);
+        Assert.Contains("video_frequency", keys);
+        Assert.Contains("test_flight", keys);
+        Assert.Contains("technical_issue_type", keys);
+        Assert.Contains("status", keys);
+        Assert.Contains("warhead_type", keys);
+        Assert.Contains("detonator", keys);
+        Assert.Contains("nsu", keys);
     }
 
     [Fact]
@@ -153,6 +184,77 @@ public sealed class InMemoryMobileReportDraftStoreTests
         Assert.NotNull(result.Draft);
         Assert.DoesNotContain(result.Draft!.Fields, field =>
             string.Equals(field.FieldKey, "businessObjectKey", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task UpdateFieldValueAsync_UpdatesExistingField()
+    {
+        var store = CreateStore();
+        var draft = await store.CreateFpvDraftAsync();
+
+        var result = await store.UpdateFieldValueAsync(draft.DraftId, "serial_number", "SN-001");
+
+        Assert.True(result.Applied);
+        Assert.NotNull(result.Draft);
+        var field = Assert.Single(result.Draft!.Fields.Where(item => item.FieldKey == "serial_number"));
+        Assert.Equal("SN-001", field.ValueText);
+        Assert.False(field.IsPlaceholder);
+        Assert.NotNull(field.LastUpdatedAtUtc);
+    }
+
+    [Fact]
+    public async Task UpdateFieldValueAsync_MissingDraft_ReturnsAppliedFalse()
+    {
+        var store = CreateStore();
+
+        var result = await store.UpdateFieldValueAsync("missing-draft", "serial_number", "SN-001");
+
+        Assert.False(result.Applied);
+        Assert.Null(result.Draft);
+        Assert.Equal("serial_number", result.FieldKey);
+    }
+
+    [Fact]
+    public async Task UpdateFieldValueAsync_MissingField_ReturnsAppliedFalse()
+    {
+        var store = CreateStore();
+        var draft = await store.CreateFpvDraftAsync();
+
+        var result = await store.UpdateFieldValueAsync(draft.DraftId, "missing-field", "value");
+
+        Assert.False(result.Applied);
+        Assert.NotNull(result.Draft);
+        Assert.Equal("missing-field", result.FieldKey);
+    }
+
+    [Fact]
+    public async Task UpdatingField_DoesNotRemoveAttachments()
+    {
+        var store = CreateStore();
+        var draft = await store.CreateFpvDraftAsync();
+        var attachResult = await store.AttachSelectedVideoAsync(draft.DraftId, CreateDescriptor());
+
+        var updateResult = await store.UpdateFieldValueAsync(draft.DraftId, "comment", "Локальный комментарий");
+
+        Assert.True(attachResult.Applied);
+        Assert.True(updateResult.Applied);
+        Assert.NotNull(updateResult.Draft);
+        Assert.Single(updateResult.Draft!.Attachments);
+    }
+
+    [Fact]
+    public async Task MarkDraftQueuedLocal_StillWorksAfterFieldUpdate()
+    {
+        var store = CreateStore();
+        var draft = await store.CreateFpvDraftAsync();
+
+        var updateResult = await store.UpdateFieldValueAsync(draft.DraftId, "comment", "Локальный комментарий");
+        var queueResult = await store.MarkDraftQueuedLocalAsync(draft.DraftId);
+
+        Assert.True(updateResult.Applied);
+        Assert.True(queueResult.Applied);
+        Assert.NotNull(queueResult.Draft);
+        Assert.Equal(global::App.Mobile.Android.Reports.MobileReportDraftStatus.QueuedLocal, queueResult.Draft!.Status);
     }
 
     private static global::App.Mobile.Android.Services.Local.InMemoryMobileReportDraftStore CreateStore()
