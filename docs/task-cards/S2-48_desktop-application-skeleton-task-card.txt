@@ -1,0 +1,145 @@
+Title:
+S2-48 Desktop Application Skeleton Task Card
+
+Owner:
+Coder 1 acting as Coder 2 / Desktop Client
+
+Module:
+Desktop client / application skeleton
+
+Client form:
+desktop standalone
+
+Type:
+runtime implementation task card, no runtime changes in this PR
+
+Status:
+Docs-only task card and implementation handoff for a future runtime skeleton PR.
+
+Goal:
+Create the first standalone desktop application skeleton in a future implementation PR, after the S2-47 owner-approved desktop UI technology decision.
+
+Context:
+PR #101 replaced Browser/PWA/App.Web as the primary desktop-client form with a standalone desktop application.
+PR #102 replaced the stale S2-18 Web/PWA prompt with a standalone desktop-client control-plane prompt.
+PR #103 created the S2-46 desktop UI technology decision task.
+PR #104 / S2-47 recorded the owner-approved desktop UI technology decision.
+
+The future S2-48 runtime implementation must be a narrow skeleton task. It must not implement the full upload flow. Full upload orchestration remains a separate follow-up task after the skeleton and dependency boundaries exist.
+
+Upstream context / reviewed sources:
+- Base origin/main SHA checked at task start: e4dd243e2274c770a2553ca2502582842d02c873
+- Coordination log issue reviewed: #89 TEAM COORDINATION LOG
+- Relevant coordination entries reviewed:
+  - PR #101 Desktop client form architecture update
+  - PR #102 S2-45 Replace stale S2-18 Web prompt with desktop-client prompt
+  - PR #103 S2-46 Desktop UI Technology Decision Task
+  - PR #104 S2-47 Desktop UI Technology Owner Decision
+- Handoff/task cards reviewed:
+  - 01_MASTER_PLAN_AND_ARCHITECTURE.txt
+  - 02_SHARED_RULES_AND_PROTOCOLS.txt
+  - docs/task-cards/desktop-client-form-architecture-update.txt
+  - docs/task-cards/C2-S2-18_desktop-client-upload-control-plane-integration.txt
+  - docs/handoffs/S2_18_DESKTOP_CLIENT_UPLOAD_CONTROL_PLANE_PROMPT.md
+  - docs/task-cards/S2-46_desktop-ui-technology-decision.txt
+  - docs/handoffs/S2_46_DESKTOP_UI_TECHNOLOGY_DECISION_PROMPT.md
+  - docs/task-cards/S2-47_desktop-ui-technology-owner-decision.txt
+  - docs/handoffs/S2_47_DESKTOP_UI_TECHNOLOGY_OWNER_DECISION.md
+
+Approved technology:
+WPF standalone desktop shell + BlazorWebView / App.UI.Shared RCL reuse where useful.
+
+Approved BlazorWebView boundary:
+- BlazorWebView may be used only as embedded native desktop UI composition for selected App.UI.Shared Razor components where useful.
+- BlazorWebView must not be used as App.Web-in-a-shell.
+- App.Web / Browser / PWA are not the primary desktop client.
+
+Architecture invariants to preserve:
+- The primary desktop client is a standalone desktop application.
+- App.Api remains the control plane.
+- Video bytes must not go through App.Api.
+- Video upload/download remains direct client <-> site.
+- Runtime upload flow must preserve:
+  SignIn -> GroupTree -> file select -> SHA-256 -> businessObjectKey -> PreUploadCheck -> direct site upload boundary -> UploadReceipt
+
+Scope of this docs-only PR:
+- Create this S2-48 task card.
+- Create the S2-48 handoff/prompt for a future runtime implementation chat/Codex session.
+- Do not create App.Desktop.
+- Do not change solution/project files.
+- Do not add packages.
+- Do not change runtime code.
+
+Scope of future S2-48 runtime implementation:
+- Add App.Desktop WPF project.
+- Add solution entry.
+- Add minimal app startup/window.
+- Add dependency boundaries/interfaces only.
+- Add no full upload behavior.
+- Add no backend API changes.
+- Add no migrations.
+- Add no deploy workflow changes.
+
+Future skeleton must define these boundaries:
+- Desktop shell / window lifecycle.
+- Desktop auth/session boundary.
+- Secure token/session storage abstraction.
+- File picker abstraction.
+- Local file metadata / SHA-256 hashing service interface.
+- Control-plane API client boundary.
+- Direct site upload adapter boundary.
+- Upload orchestration placeholder service boundary.
+- BlazorWebView host boundary for selected App.UI.Shared components.
+
+Explicitly out of future skeleton scope:
+- Full SignIn UI.
+- Full upload UI.
+- Real site provider implementation.
+- Offline queue implementation.
+- Duplicate/fraud UI.
+- Admin review UI.
+- App.Api changes.
+- Shared contracts changes.
+- DB migrations.
+- Deploy.
+
+Runtime no-go boundaries:
+- Do not use App.Web as the primary desktop client.
+- Do not wrap App.Web in BlazorWebView as a desktop implementation shortcut.
+- Do not route video bytes through App.Api.
+- Do not change API routes, DTOs, shared contracts, migrations, workflows, deploy scripts, or server runtime.
+- Do not change App.Web WIP.
+- Do not change App.Mobile.Android.
+
+Validation expectations for future runtime PR:
+- dotnet restore solution.
+- dotnet build solution or targeted desktop project.
+- dotnet format whitespace.
+- Unit tests for boundaries if added.
+- git diff --check.
+- Confirm no backend API/contracts/migrations/workflows/deploy changes.
+- Confirm video bytes do not route through App.Api.
+- No deploy.
+
+Validation for this docs-only PR:
+- git diff --name-only.
+- git diff --check.
+- dotnet format whitespace AnalyticsAutomation-Core.sln --verify-no-changes --no-restore.
+- Confirm no runtime/API/contracts/migrations/workflows/deploy changes.
+- Confirm App.Desktop was not created.
+- Confirm solution/project files were not changed.
+- Confirm App.Web and App.Mobile.Android were not changed.
+
+Rollback:
+Revert this docs-only task card and S2-48 handoff/prompt.
+For the future runtime implementation, revert the future skeleton PR.
+
+Definition of done:
+- S2-48 docs-only task card exists.
+- S2-48 handoff/prompt exists.
+- Future runtime skeleton scope is recorded.
+- Future skeleton dependency boundaries are recorded.
+- Full upload orchestration is deferred to a later task.
+- App.Desktop is not created in this PR.
+- Solution/project files are not changed in this PR.
+- Runtime/API/contracts/migrations/workflows/deploy files are not changed in this PR.
