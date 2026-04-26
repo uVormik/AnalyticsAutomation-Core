@@ -34,6 +34,12 @@ internal sealed class StubMobileOutboxService :
             new global::Microsoft.Extensions.Logging.EventId(1004, nameof(LogRepaired)),
             "Repaired local pending sync media draft item {ItemId}");
 
+    private static readonly Action<global::Microsoft.Extensions.Logging.ILogger, string, Exception?> LogReportDraftEnqueued =
+        global::Microsoft.Extensions.Logging.LoggerMessage.Define<string>(
+            global::Microsoft.Extensions.Logging.LogLevel.Information,
+            new global::Microsoft.Extensions.Logging.EventId(1005, nameof(LogReportDraftEnqueued)),
+            "Enqueued local pending sync report draft item {ItemId}");
+
     private readonly object _gate = new();
     private readonly SemaphoreSlim _snapshotLoadGate = new(1, 1);
     private readonly List<global::App.Mobile.Android.Outbox.PendingSyncItem> _items = [];
@@ -145,6 +151,81 @@ internal sealed class StubMobileOutboxService :
         CancellationToken cancellationToken = default)
     {
         return EnqueueStubItemCoreAsync(cancellationToken);
+    }
+
+    public async Task<global::App.Mobile.Android.Outbox.PendingSyncOperationResult> EnqueueReportDraftAsync(
+        global::App.Mobile.Android.Reports.MobileReportDraft draft,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        await EnsureSnapshotLoadedAsync(cancellationToken);
+
+        if (draft is null)
+        {
+            return new global::App.Mobile.Android.Outbox.PendingSyncOperationResult(
+                Applied: false,
+                Message: global::App.Mobile.Android.Localization.MobileUiText.ReportDraftQueueInvalidDraftText,
+                Item: null);
+        }
+
+        var videoAttachmentCount = draft.Attachments.Count(attachment =>
+            attachment.Kind == global::App.Mobile.Android.Reports.MobileReportAttachmentKind.Video);
+
+        if (videoAttachmentCount <= 0)
+        {
+            return new global::App.Mobile.Android.Outbox.PendingSyncOperationResult(
+                Applied: false,
+                Message: global::App.Mobile.Android.Localization.MobileUiText.ReportDraftQueueRequiresVideoText,
+                Item: null);
+        }
+
+        lock (_gate)
+        {
+            if (_items.Any(item =>
+                    item.LocalReportDraft is not null
+                    && string.Equals(item.LocalReportDraft.DraftId, draft.DraftId, StringComparison.Ordinal)))
+            {
+                return new global::App.Mobile.Android.Outbox.PendingSyncOperationResult(
+                    Applied: false,
+                    Message: global::App.Mobile.Android.Localization.MobileUiText.ReportDraftAlreadyQueuedText,
+                    Item: null);
+            }
+        }
+
+        global::App.Mobile.Android.Outbox.PendingSyncItem item;
+
+        lock (_gate)
+        {
+            _sequence++;
+
+            item = new global::App.Mobile.Android.Outbox.PendingSyncItem(
+                ItemId: $"pending-sync-{_sequence}",
+                CreatedAtUtc: DateTimeOffset.UtcNow,
+                Title: global::App.Mobile.Android.Localization.MobileUiText.GetPendingSyncReportDraftTitle(draft.Title),
+                SummaryText: global::App.Mobile.Android.Localization.MobileUiText.PendingSyncReportDraftSummary,
+                Status: global::App.Mobile.Android.Outbox.PendingSyncItemStatus.Queued,
+                LastActionText: global::App.Mobile.Android.Localization.MobileUiText.PendingSyncReportDraftEnqueuedLastAction,
+                LocalMediaDraft: null,
+                LocalReportDraft: new global::App.Mobile.Android.Outbox.PendingSyncItemLocalReportDraft(
+                    DraftId: draft.DraftId,
+                    Title: draft.Title,
+                    CreatedAtUtc: draft.CreatedAtUtc,
+                    UpdatedAtUtc: draft.UpdatedAtUtc,
+                    AttachmentCount: draft.Attachments.Count,
+                    VideoAttachmentCount: videoAttachmentCount,
+                    HasLocalAttachments: draft.Attachments.Count > 0));
+
+            _items.Insert(0, item);
+        }
+
+        await SaveSnapshotAsync(cancellationToken);
+
+        LogReportDraftEnqueued(_logger, item.ItemId, null);
+
+        return new global::App.Mobile.Android.Outbox.PendingSyncOperationResult(
+            Applied: true,
+            Message: global::App.Mobile.Android.Localization.MobileUiText.GetReportDraftQueuedLocalText(draft.Title),
+            Item: item);
     }
 
     public async Task<global::App.Mobile.Android.Outbox.PendingSyncOperationResult> RepairLocalMediaDraftAsync(

@@ -1,0 +1,34 @@
+Title: MOB-CANON-REPORT-00 — Report-first mobile direction correction
+Coder: 3
+Module: App.Mobile.Android planning/reconciliation
+Task type: documentation / product-flow correction / mobile architecture planning
+
+Goal:
+Align mobile direction around local report or flight draft creation, with video, photo, and log files handled as attachments to the report draft.
+
+What changes:
+- docs only
+
+New or changed contracts:
+- shared DTO/contracts unchanged
+
+Migration:
+- none
+
+Offline behavior:
+- planning only; future mobile flow must support local report drafts and attachment metadata while offline
+
+Security:
+- no auth/authz changes
+
+Observability:
+- planning/handoff note only
+
+Rollback:
+- revert this docs-only correction
+
+Definition of done:
+- report-first flow documented
+- existing media/outbox foundation reclassified as attachment foundation
+- next safe code step identified
+- no production code changes

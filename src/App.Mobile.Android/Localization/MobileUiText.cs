@@ -6,6 +6,7 @@ internal static class MobileUiText
     public const string NavigationSubtitle = "Локальная оболочка Android";
     public const string ShellBannerLabel = "Локальный режим";
 
+    public const string MenuReports = "Полеты";
     public const string MenuHome = "Главная";
     public const string MenuUpload = "Загрузка";
     public const string MenuQueue = "Очередь";
@@ -13,6 +14,76 @@ internal static class MobileUiText
     public const string HomeTitle = "Главная";
     public const string HomeIntro =
         "Текущая Android-оболочка работает локально и показывает только базовую мобильную навигацию без backend-интеграции.";
+
+    public const string ReportsTitle = "Полеты";
+    public const string ReportsIntro =
+        "Это локальный report-first baseline: сначала создается черновик FPV-отчета, а видео и другие файлы живут как вложения к этому черновику.";
+    public const string ReportsFeatureDisabledText =
+        "Локальная оболочка черновиков отчетов сейчас скрыта флагом функции.";
+    public const string ReportsLoadingText = "Загружается локальный список черновиков...";
+    public const string ReportsCreateFpvDraftButton = "Создать отчет FPV";
+    public const string ReportsEmptyTitle = "Черновиков пока нет";
+    public const string ReportsEmptyMessage =
+        "Создайте локальный FPV-черновик, чтобы проверить report-first оболочку без backend-сохранения, sync и upload.";
+    public const string ReportDraftCardCreatedAtLabel = "Создан";
+    public const string ReportDraftCardUpdatedAtLabel = "Обновлен";
+    public const string ReportDraftCardStatusLabel = "Статус";
+    public const string ReportDraftCardAttachmentCountLabel = "Вложений";
+
+    public const string ReportDraftPageTitle = "Черновик FPV-отчета";
+    public const string ReportDraftLocalOnlyNote =
+        "Это локальный черновик отчета на устройстве. Он еще не сохранен в backend и не имеет server id.";
+    public const string ReportDraftNoBackendSaveNote =
+        "В этом срезе нет create-report API, businessObjectKey, PreUploadCheck, UploadReceipt, sync и upload. Это только локальная report-first оболочка.";
+    public const string ReportDraftNotFoundTitle = "Черновик не найден";
+    public const string ReportDraftNotFoundMessage =
+        "Запрошенный локальный черновик отчета не найден в текущем in-memory store.";
+    public const string ReportDraftAttachCurrentVideoButton = "Прикрепить текущее видео";
+    public const string ReportDraftNoCurrentSelectedVideoText =
+        "Сначала выберите или запишите видео в разделе «Медиа-вложения отчета», чтобы прикрепить его к текущему локальному черновику.";
+    public const string ReportDraftNoAttachmentsText =
+        "Локальных вложений пока нет. Выберите или запишите видео в этом разделе, чтобы прикрепить его как метаданные вложения без upload и без backend-сохранения.";
+    public const string ReportDraftInvalidVideoSelectionText =
+        "Не удалось обработать текущее локальное видео. Повторите выбор или запись без backend-вызовов.";
+    public const string ReportDraftDuplicateAttachmentWarningText =
+        "Это видео уже прикреплено к текущему локальному черновику отчета. Дубликат локально заблокирован.";
+    public const string ReportDraftQueueButton = "Поставить отчет в локальную очередь";
+    public const string ReportDraftQueueLocalOnlyNoteText =
+        "Это локальная очередь черновика. Backend create-report и businessObjectKey пока не подключены.";
+    public const string ReportDraftQueueInvalidDraftText =
+        "Не удалось поместить отчет в локальную очередь: черновик не найден.";
+    public const string ReportDraftQueueRequiresVideoText =
+        "В этом прототипе локальная очередь черновика требует хотя бы одно видео-вложение.";
+    public const string ReportDraftAlreadyQueuedText =
+        "Этот локальный черновик уже находится в очереди устройства.";
+    public const string ReportSectionBasicDataTitle = "Основные данные";
+    public const string ReportSectionTargetAndResultTitle = "Цель и результат";
+    public const string ReportSectionFrequenciesAndParametersTitle = "Частоты и параметры";
+    public const string ReportSectionAttachmentsTitle = "Медиа-вложения";
+    public const string ReportAttachmentKindLabel = "Тип вложения";
+    public const string ReportAttachmentFileNameLabel = "Имя файла";
+    public const string ReportAttachmentContentTypeLabel = "MIME type";
+    public const string ReportAttachmentSourceLabel = "Источник";
+    public const string ReportAttachmentAddedAtLabel = "Добавлено";
+    public const string ReportAttachmentLocalAccessLabel = "Локальный доступ";
+    public const string ReportAttachmentLocalAccessAvailableText =
+        "Локальный доступ к файлу есть в текущем запуске.";
+    public const string ReportAttachmentLocalAccessMissingText =
+        "Доступны только локальные метаданные без живого доступа к файлу.";
+
+    public const string ReportFieldDeviceTypeLabel = "Тип дрона";
+    public const string ReportFieldSerialNumberLabel = "Серийный номер";
+    public const string ReportFieldDeliveryStartLabel = "Начало доставки";
+    public const string ReportFieldDeliveryTimeLabel = "Время доставки";
+    public const string ReportFieldDistanceLabel = "Дистанция";
+    public const string ReportFieldTargetTypeLabel = "Тип цели";
+    public const string ReportFieldReasonLabel = "Причина";
+    public const string ReportFieldCommentLabel = "Комментарий";
+    public const string ReportFieldRadioFrequencyLabel = "Радиочастота";
+    public const string ReportFieldVideoFrequencyLabel = "Видеочастота";
+    public const string ReportFieldTestFlightLabel = "Тестовый полет";
+    public const string ReportFieldPlaceholderText =
+        "Поле пока работает как локальная заглушка без финального backend-контракта и без справочника значений.";
 
     public const string UploadTitle = "Загрузка";
     public const string UploadIntro =
@@ -33,7 +104,7 @@ internal static class MobileUiText
     public const string UploadNativeCaptureTitle = "Запишите одно видео";
     public const string UploadSelectedVideoFallbackName = "без имени";
     public const string UploadNativePickerCancelledText =
-        "Выбор видео отменён. Никакие файлы не были сохранены или отправлены.";
+        "Выбор видео отменен. Никакие файлы не были сохранены или отправлены.";
     public const string UploadNativePickerUnavailableText =
         "Не удалось открыть системный выбор видео на устройстве. Проверьте разрешения и повторите попытку.";
     public const string UploadNativePickerFailedText =
@@ -46,7 +117,7 @@ internal static class MobileUiText
         "Доступ к камере не предоставлен. Разрешите использование камеры и повторите попытку.";
     public const string UploadNativeCaptureFailedText =
         "Не удалось завершить локальную запись видео. Это только Android media baseline без upload и sync.";
-    public const string UploadSelectedMediaCardTitle = "Текущий локально выбранный медиафайл";
+    public const string UploadSelectedMediaCardTitle = "Текущее локально выбранное видео";
     public const string UploadSelectedMediaSourceLabel = "Источник";
     public const string UploadSelectedMediaFileNameLabel = "Имя файла";
     public const string UploadSelectedMediaContentTypeLabel = "MIME-тип";
@@ -57,7 +128,7 @@ internal static class MobileUiText
     public const string UploadSelectedMediaRestoredMetadataOnlyStateText =
         "После перезапуска восстановлены только локальные метаданные без живого доступа к файлу.";
     public const string UploadSelectedMediaRestoredMetadataNoteText =
-        "После перезапуска сохранены только метаданные. Чтобы восстановить локальный доступ или починить восстановленный черновик очереди, выберите тот же видеофайл ещё раз.";
+        "После перезапуска сохранены только метаданные. Чтобы восстановить локальный доступ или починить восстановленный черновик очереди, выберите тот же видеофайл еще раз.";
     public const string UploadClearSelectionButton = "Очистить локальный выбор";
     public const string UploadClearSelectionResultText = "Локально выбранный медиафайл очищен.";
     public const string UploadUnknownContentTypeText = "Неизвестно";
@@ -105,15 +176,14 @@ internal static class MobileUiText
 
     public const string QueueTitle = "Очередь";
     public const string QueueIntro =
-        "Это локальный экран очереди для мобильного foundation baseline. Здесь нет upload, sync и бизнес-действий.";
+        "Это локальный экран очереди для mobile foundation baseline. Здесь нет upload, sync и бизнес-действий.";
     public const string QueueFoundationCardTitle = "Локальная карточка очереди";
     public const string QueueFoundationCardSummary =
-        "Текущий outbox foundation хранит локальные черновики на устройстве. После полного перезапуска " +
-        "восстанавливаются только метаданные без живого доступа к файлам.";
+        "Текущий outbox foundation хранит локальные черновики на устройстве. После полного перезапуска восстанавливаются только метаданные без живого доступа к файлам.";
     public const string QueueLoadingText = "Загружается локальная очередь...";
     public const string QueueEmptyTitle = "Очередь пока пуста";
     public const string QueueEmptyMessage =
-        "Добавьте элемент из раздела «Загрузка», чтобы проверить локальный foundation очереди.";
+        "Добавьте элемент из раздела «Полеты» или со служебного экрана «Загрузка», чтобы проверить локальный foundation очереди.";
     public const string QueueRetryButton = "Повторить (заглушка)";
     public const string QueueRemoveButton = "Удалить";
     public const string QueueRepairButton = "Восстановить локальный доступ к файлу";
@@ -122,11 +192,18 @@ internal static class MobileUiText
     public const string QueueCreatedAtLabel = "Создано";
     public const string QueueStatusLabel = "Статус";
     public const string QueueLastActionLabel = "Последнее действие";
+    public const string QueueItemTypeLabel = "Тип элемента";
+    public const string QueueItemTypeReportDraftText = "Черновик отчета";
     public const string QueueMediaSourceLabel = "Источник видео";
     public const string QueueMediaFileNameLabel = "Имя файла";
     public const string QueueMediaContentTypeLabel = "MIME-тип";
     public const string QueueMediaSelectedAtLabel = "Выбрано";
     public const string QueueMediaDraftStateLabel = "Состояние черновика";
+    public const string QueueReportDraftIdLabel = "ID черновика";
+    public const string QueueReportAttachmentCountLabel = "Количество вложений";
+    public const string QueueReportVideoAttachmentCountLabel = "Видео-вложения";
+    public const string QueueReportDraftLocalOnlyNoteText =
+        "Это локальная очередь черновика. Backend create-report и businessObjectKey пока не подключены.";
     public const string QueueMediaDraftLocalOnlyText =
         "Локальный media-черновик привязан к файлу только в текущем запуске.";
     public const string QueueMediaDraftRestoredMetadataOnlyText =
@@ -163,13 +240,46 @@ internal static class MobileUiText
     public const string PendingSyncNoCurrentSelectionText =
         "Сначала выберите или запишите видео, чтобы передать его в локальную очередь.";
     public const string PendingSyncReselectAfterRestartText =
-        "После перезапуска восстановлены только локальные метаданные выбранного видео. Чтобы снова передать его в очередь, выберите тот же файл ещё раз.";
+        "После перезапуска восстановлены только локальные метаданные выбранного видео. Чтобы снова передать его в очередь, выберите тот же файл еще раз.";
     public const string PendingSyncMediaDraftSummary =
         "Элемент очереди содержит только локальный медиа-черновик на устройстве без upload, sync и backend-действий. После перезапуска могут остаться только метаданные.";
     public const string PendingSyncMediaDraftEnqueuedLastAction =
         "Выбранное видео передано в локальный черновик очереди.";
+    public const string PendingSyncReportDraftSummary =
+        "Локальный черновик отчета помещен в очередь только на устройстве. Это не backend create-report, не sync и не upload.";
+    public const string PendingSyncReportDraftEnqueuedLastAction =
+        "Локальный черновик отчета добавлен в очередь устройства.";
     public const string PendingSyncRestoredMetadataLastActionText =
         "После перезапуска восстановлены только локальные метаданные черновика. Реальный доступ к файлу нужно привязать повторно позже.";
+
+    public const string HomeLandingTitle = "Локальная мобильная оболочка";
+    public const string HomeLandingText =
+        "Основной локальный сценарий сейчас начинается со списка полетов и черновиков отчетов. Экран загрузки остается служебным и диагностическим.";
+    public const string HomeOpenReportsButton = "Перейти в Полеты";
+
+    public const string ReportsStatusStripTitle = "Локальный статус";
+    public const string ReportsStatusStripText =
+        "Список работает только как report-first baseline: локальные черновики, без backend-сохранения, sync и upload.";
+    public const string ReportDraftMediaSectionTitle = "Медиа-вложения отчета";
+    public const string ReportDraftPickVideoButton = "Выбрать видео";
+    public const string ReportDraftCaptureVideoButton = "Записать видео";
+    public const string ReportDraftAttachSelectedVideoButton = "Прикрепить уже выбранное локальное видео";
+    public const string ReportDraftPickVideoProgressText =
+        "Открывается выбор видео для текущего черновика отчета.";
+    public const string ReportDraftCaptureVideoProgressText =
+        "Запускается запись видео для текущего черновика отчета.";
+    public const string ReportDraftAttachVideoFailureText =
+        "Не удалось автоматически прикрепить видео к локальному черновику отчета. Проверьте локальный выбор и повторите действие без backend-вызовов.";
+    public const string ReportDraftMediaOperationLoadingText =
+        "Локальная media-операция выполняется. После завершения результат будет прикреплен к текущему черновику как метаданные.";
+    public const string ReportDraftVideoBlockTitle = "Видео";
+    public const string ReportDraftPhotoBlockTitle = "Фото готового дрона";
+    public const string ReportDraftLogFileBlockTitle = "Лог-файл";
+    public const string ReportDraftFutureAttachmentNote =
+        "Этот тип вложения останется локальной заглушкой до отдельного среза без backend-save, upload и финальных контрактов.";
+
+    public const string UploadServiceScreenNote =
+        "Служебный экран. Основной сценарий выбора видео находится внутри черновика отчета.";
 
     public static string GetShellModeText(global::App.Mobile.Android.State.MobileShellMode mode)
     {
@@ -258,6 +368,11 @@ internal static class MobileUiText
         return $"Локальный медиа-черновик: {fileName}";
     }
 
+    public static string GetPendingSyncReportDraftTitle(string draftTitle)
+    {
+        return $"Локальный черновик отчета: {draftTitle}";
+    }
+
     public static string GetPendingSyncEnqueueResultText(string title)
     {
         return $"Элемент «{title}» добавлен в локальную очередь как заглушка.";
@@ -270,7 +385,7 @@ internal static class MobileUiText
 
     public static string GetPendingSyncRemoveResultText(string title)
     {
-        return $"Элемент «{title}» удалён из локальной очереди.";
+        return $"Элемент «{title}» удален из локальной очереди.";
     }
 
     public static string GetPendingSyncMediaDraftHandoffResultText(string fileName)
@@ -285,11 +400,55 @@ internal static class MobileUiText
 
     public static string GetUploadNativePickerSuccessText(string fileName)
     {
-        return $"Выбрано видео «{fileName}». Файл не был скопирован, сохранён отдельно или отправлен.";
+        return $"Выбрано видео «{fileName}». Файл не был скопирован, сохранен отдельно или отправлен.";
     }
 
     public static string GetUploadNativeCaptureSuccessText(string fileName)
     {
-        return $"Записано видео «{fileName}». Файл не был скопирован, сохранён отдельно или отправлен.";
+        return $"Записано видео «{fileName}». Файл не был скопирован, сохранен отдельно или отправлен.";
+    }
+
+    public static string GetReportDraftStatusText(global::App.Mobile.Android.Reports.MobileReportDraftStatus status)
+    {
+        return status switch
+        {
+            global::App.Mobile.Android.Reports.MobileReportDraftStatus.Draft => "Черновик",
+            global::App.Mobile.Android.Reports.MobileReportDraftStatus.ReadyForAttachmentReview => "Готов к просмотру вложений",
+            global::App.Mobile.Android.Reports.MobileReportDraftStatus.QueuedLocal => "В локальной очереди",
+            _ => "Неизвестно"
+        };
+    }
+
+    public static string GetReportAttachmentKindText(global::App.Mobile.Android.Reports.MobileReportAttachmentKind kind)
+    {
+        return kind switch
+        {
+            global::App.Mobile.Android.Reports.MobileReportAttachmentKind.Video => "Видео",
+            global::App.Mobile.Android.Reports.MobileReportAttachmentKind.Photo => "Фото",
+            global::App.Mobile.Android.Reports.MobileReportAttachmentKind.LogFile => "Лог-файл",
+            _ => "Неизвестно"
+        };
+    }
+
+    public static string GetReportAttachmentLocalAccessText(bool hasLocalReadHandle)
+    {
+        return hasLocalReadHandle
+            ? ReportAttachmentLocalAccessAvailableText
+            : ReportAttachmentLocalAccessMissingText;
+    }
+
+    public static string GetReportDraftTitle(int sequence)
+    {
+        return $"FPV-отчет #{sequence}";
+    }
+
+    public static string GetReportDraftAttachVideoSuccessText(string fileName)
+    {
+        return $"Видео «{fileName}» автоматически прикреплено к локальному черновику как метаданные вложения.";
+    }
+
+    public static string GetReportDraftQueuedLocalText(string title)
+    {
+        return $"Отчет «{title}» помещен в локальную очередь черновиков.";
     }
 }

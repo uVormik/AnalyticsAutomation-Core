@@ -1,0 +1,121 @@
+@page "/reports"
+@using global::App.Mobile.Android.Localization
+@inject global::App.Mobile.Android.Navigation.MobileNavigationState NavigationState
+@inject global::App.Mobile.Android.Services.Abstractions.IFeatureFlagReader FeatureFlagReader
+@inject global::App.Mobile.Android.Services.Abstractions.IMobileReportDraftStore ReportDraftStore
+@inject NavigationManager NavigationManager
+
+<h1>@MobileUiText.ReportsTitle</h1>
+<p>@MobileUiText.ReportsIntro</p>
+
+@if (!ShowReportDraftShell)
+{
+    <p class="reports-note">@MobileUiText.ReportsFeatureDisabledText</p>
+}
+else if (IsLoading)
+{
+    <p class="reports-note">@MobileUiText.ReportsLoadingText</p>
+}
+else
+{
+    <section class="reports-shell-card">
+        <div class="reports-readiness-strip">
+            <span class="reports-readiness-label">@MobileUiText.ReportsStatusStripTitle</span>
+            <p>@MobileUiText.ReportsStatusStripText</p>
+        </div>
+
+        <div class="reports-shell-actions">
+            <button type="button" class="btn btn-primary" @onclick="CreateDraftAsync">@MobileUiText.ReportsCreateFpvDraftButton</button>
+        </div>
+
+        @if (Drafts.Count == 0)
+        {
+            <div class="reports-empty-state">
+                <h2>@MobileUiText.ReportsEmptyTitle</h2>
+                <p>@MobileUiText.ReportsEmptyMessage</p>
+            </div>
+        }
+        else
+        {
+            <div class="reports-draft-list">
+                @foreach (var draft in Drafts)
+                {
+                    <article class="reports-draft-card">
+                        <header class="reports-draft-header">
+                            <h2>
+                                <a class="reports-draft-link" href="@GetDraftRoute(draft.DraftId)">@draft.Title</a>
+                            </h2>
+                            <span class="reports-draft-status">@MobileUiText.GetReportDraftStatusText(draft.Status)</span>
+                        </header>
+
+                        <dl class="reports-draft-meta">
+                            <div>
+                                <dt>@MobileUiText.ReportDraftCardCreatedAtLabel</dt>
+                                <dd>@FormatTimestamp(draft.CreatedAtUtc)</dd>
+                            </div>
+                            <div>
+                                <dt>@MobileUiText.ReportDraftCardUpdatedAtLabel</dt>
+                                <dd>@FormatTimestamp(draft.UpdatedAtUtc)</dd>
+                            </div>
+                            <div>
+                                <dt>@MobileUiText.ReportDraftCardAttachmentCountLabel</dt>
+                                <dd>@draft.Attachments.Count</dd>
+                            </div>
+                        </dl>
+                    </article>
+                }
+            </div>
+        }
+    </section>
+}
+
+@code {
+    private IReadOnlyList<global::App.Mobile.Android.Reports.MobileReportDraft> Drafts { get; set; } =
+        Array.Empty<global::App.Mobile.Android.Reports.MobileReportDraft>();
+
+    private bool IsLoading { get; set; }
+
+    private bool ShowReportDraftShell =>
+        FeatureFlagReader.IsEnabled(global::App.Mobile.Android.Services.Stubs.StubFeatureFlagReader.ReportDraftShellFlag);
+
+    protected override async Task OnInitializedAsync()
+    {
+        NavigationState.SetCurrentView(global::App.Mobile.Android.Navigation.MobileViewId.Reports);
+
+        if (!ShowReportDraftShell)
+        {
+            return;
+        }
+
+        await LoadDraftsAsync();
+    }
+
+    private async Task CreateDraftAsync()
+    {
+        var draft = await ReportDraftStore.CreateFpvDraftAsync();
+        NavigationManager.NavigateTo(GetDraftRoute(draft.DraftId));
+    }
+
+    private async Task LoadDraftsAsync()
+    {
+        IsLoading = true;
+        try
+        {
+            Drafts = await ReportDraftStore.GetDraftsAsync();
+        }
+        finally
+        {
+            IsLoading = false;
+        }
+    }
+
+    private static string GetDraftRoute(string draftId)
+    {
+        return $"/reports/{draftId}";
+    }
+
+    private static string FormatTimestamp(DateTimeOffset value)
+    {
+        return value.ToLocalTime().ToString("dd.MM.yyyy HH:mm:ss");
+    }
+}

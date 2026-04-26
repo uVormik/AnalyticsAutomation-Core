@@ -331,6 +331,118 @@ public sealed class StubMobileOutboxServiceTests
         }
     }
 
+    [Fact]
+    public async Task EnqueueReportDraftAsync_WithNoVideoAttachments_ReturnsAppliedFalse()
+    {
+        var storageDirectory = CreateTempDirectory();
+
+        try
+        {
+            var context = CreateService(storageDirectory);
+            var result = await context.Service.EnqueueReportDraftAsync(CreateReportDraft(includeVideoAttachment: false));
+
+            Assert.False(result.Applied);
+            Assert.Null(result.Item);
+        }
+        finally
+        {
+            DeleteTempDirectory(storageDirectory);
+        }
+    }
+
+    [Fact]
+    public async Task EnqueueReportDraftAsync_WithVideoAttachment_CreatesQueuedItemWithLocalReportDraft()
+    {
+        var storageDirectory = CreateTempDirectory();
+
+        try
+        {
+            var context = CreateService(storageDirectory);
+            var result = await context.Service.EnqueueReportDraftAsync(CreateReportDraft());
+            var items = await context.Service.GetItemsAsync();
+
+            Assert.True(result.Applied);
+            Assert.Single(items);
+            Assert.Equal(global::App.Mobile.Android.Outbox.PendingSyncItemStatus.Queued, items[0].Status);
+            Assert.NotNull(items[0].LocalReportDraft);
+            Assert.Equal(1, items[0].LocalReportDraft!.VideoAttachmentCount);
+        }
+        finally
+        {
+            DeleteTempDirectory(storageDirectory);
+        }
+    }
+
+    [Fact]
+    public async Task EnqueueReportDraftAsync_SameDraftTwice_ReturnsAppliedFalse()
+    {
+        var storageDirectory = CreateTempDirectory();
+
+        try
+        {
+            var context = CreateService(storageDirectory);
+            var draft = CreateReportDraft();
+
+            var firstResult = await context.Service.EnqueueReportDraftAsync(draft);
+            var secondResult = await context.Service.EnqueueReportDraftAsync(draft);
+            var items = await context.Service.GetItemsAsync();
+
+            Assert.True(firstResult.Applied);
+            Assert.False(secondResult.Applied);
+            Assert.Single(items);
+        }
+        finally
+        {
+            DeleteTempDirectory(storageDirectory);
+        }
+    }
+
+    [Fact]
+    public async Task RetryAsync_ReportDraftItem_StillWorks()
+    {
+        var storageDirectory = CreateTempDirectory();
+
+        try
+        {
+            var context = CreateService(storageDirectory);
+            var enqueueResult = await context.Service.EnqueueReportDraftAsync(CreateReportDraft());
+
+            var retryResult = await context.Service.RetryAsync(enqueueResult.Item!.ItemId);
+            var items = await context.Service.GetItemsAsync();
+
+            Assert.True(retryResult.Applied);
+            Assert.Single(items);
+            Assert.Equal(global::App.Mobile.Android.Outbox.PendingSyncItemStatus.RetryRequested, items[0].Status);
+            Assert.NotNull(items[0].LocalReportDraft);
+        }
+        finally
+        {
+            DeleteTempDirectory(storageDirectory);
+        }
+    }
+
+    [Fact]
+    public async Task RemoveAsync_ReportDraftItem_StillRemovesTheItem()
+    {
+        var storageDirectory = CreateTempDirectory();
+
+        try
+        {
+            var context = CreateService(storageDirectory);
+            var enqueueResult = await context.Service.EnqueueReportDraftAsync(CreateReportDraft());
+
+            var removeResult = await context.Service.RemoveAsync(enqueueResult.Item!.ItemId);
+            var items = await context.Service.GetItemsAsync();
+
+            Assert.True(removeResult.Applied);
+            Assert.Empty(items);
+        }
+        finally
+        {
+            DeleteTempDirectory(storageDirectory);
+        }
+    }
+
     private static ServiceContext CreateService(string storageDirectory)
     {
         var selectedSnapshotStore = new global::App.Mobile.Android.Services.Local.FileMobileSelectedMediaSnapshotStore(
@@ -430,6 +542,42 @@ public sealed class StubMobileOutboxServiceTests
     private static string GetOutboxStorageDirectory(string storageDirectory)
     {
         return Path.Combine(storageDirectory, "outbox");
+    }
+
+    private static global::App.Mobile.Android.Reports.MobileReportDraft CreateReportDraft(bool includeVideoAttachment = true)
+    {
+        var attachments = includeVideoAttachment
+            ? new[]
+            {
+                new global::App.Mobile.Android.Reports.MobileReportAttachment(
+                    AttachmentId: "attachment-1",
+                    DraftId: "draft-1",
+                    Kind: global::App.Mobile.Android.Reports.MobileReportAttachmentKind.Video,
+                    FileName: "report-video.mp4",
+                    ContentType: "video/mp4",
+                    SourceText: "Галерея",
+                    AddedAtUtc: new DateTimeOffset(2026, 4, 21, 9, 0, 0, TimeSpan.Zero),
+                    SelectedMediaCacheKey: "report-cache-key",
+                    HasLocalReadHandle: true)
+            }
+            : Array.Empty<global::App.Mobile.Android.Reports.MobileReportAttachment>();
+
+        return new global::App.Mobile.Android.Reports.MobileReportDraft(
+            DraftId: "draft-1",
+            CreatedAtUtc: new DateTimeOffset(2026, 4, 21, 8, 0, 0, TimeSpan.Zero),
+            UpdatedAtUtc: new DateTimeOffset(2026, 4, 21, 8, 30, 0, TimeSpan.Zero),
+            Title: "FPV-отчет #1",
+            Status: global::App.Mobile.Android.Reports.MobileReportDraftStatus.ReadyForAttachmentReview,
+            Fields:
+            [
+                new global::App.Mobile.Android.Reports.MobileReportDraftFieldValue(
+                    FieldKey: "device_type",
+                    Label: "Тип дрона",
+                    ValueText: "Локальная заглушка",
+                    IsRequired: true,
+                    IsPlaceholder: true)
+            ],
+            Attachments: attachments);
     }
 
     private sealed record ServiceContext(

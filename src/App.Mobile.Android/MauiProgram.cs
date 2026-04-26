@@ -43,6 +43,12 @@ public static class MauiProgram
             global::App.Mobile.Android.Services.Abstractions.IMobileSelectedMediaStore,
             global::App.Mobile.Android.Services.Local.InMemoryMobileSelectedMediaStore>();
         builder.Services.AddSingleton<
+            global::App.Mobile.Android.Services.Abstractions.IMobileLookupCatalogProvider,
+            global::App.Mobile.Android.Services.Stubs.StubMobileReportLookupProvider>();
+        builder.Services.AddSingleton<
+            global::App.Mobile.Android.Services.Abstractions.IMobileReportDraftStore,
+            global::App.Mobile.Android.Services.Local.InMemoryMobileReportDraftStore>();
+        builder.Services.AddSingleton<
             global::App.Mobile.Android.Services.Abstractions.ILocalDuplicatePrecheckService,
             global::App.Mobile.Android.Services.Local.LocalOutboxDuplicatePrecheckService>();
         builder.Services.AddSingleton<

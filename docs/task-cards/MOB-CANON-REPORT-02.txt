@@ -1,0 +1,40 @@
+Title: MOB-CANON-REPORT-02 — Report-first media attachment UX
+Coder: 3
+Module: App.Mobile.Android
+Task type: mobile UI capability / local report draft UX / repository reconciliation
+
+Goal:
+Move the video selection/capture UX into the local FPV report draft so the user works report-first and media is attached inside the report draft.
+
+What changes:
+- mobile only
+
+New or changed contracts:
+- shared DTO/contracts unchanged
+
+Migration:
+- none
+
+Offline behavior:
+- local in-memory/report-draft attachment metadata only, no backend save, no sync, no upload
+
+Security:
+- no auth/authz changes
+
+Observability:
+- local attachment result text and report-first UX handoff note
+
+Rollback:
+- revert this report-first media UX slice
+
+Definition of done:
+- build succeeds
+- unit tests pass
+- main menu no longer shows `Загрузка` as a primary user flow
+- menu shows report-first navigation: `Полеты`, `Очередь`, `Профиль`
+- `/upload` route remains available only as a local service/debug screen
+- `ReportDraft` media section has `Выбрать видео` and `Записать видео`
+- selecting or capturing video inside `ReportDraft` attaches video metadata to the current draft
+- attached video appears in draft attachments
+- no backend integration
+- no `App.UI.Shared` changes

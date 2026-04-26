@@ -11,13 +11,22 @@ public sealed class StubMobileAccessContextTests
     }
 
     [Fact]
-    public void CanAccessReturnsTrueForHomeUploadAndQueue()
+    public void CanAccessReturnsTrueForReportFirstPrimaryTabs()
     {
         var accessContext = CreateAccessContext();
 
-        Assert.True(accessContext.CanAccess(global::App.Mobile.Android.Navigation.MobileViewId.Home));
-        Assert.True(accessContext.CanAccess(global::App.Mobile.Android.Navigation.MobileViewId.Upload));
+        Assert.True(accessContext.CanAccess(global::App.Mobile.Android.Navigation.MobileViewId.Reports));
         Assert.True(accessContext.CanAccess(global::App.Mobile.Android.Navigation.MobileViewId.Queue));
+        Assert.True(accessContext.CanAccess(global::App.Mobile.Android.Navigation.MobileViewId.Profile));
+    }
+
+    [Fact]
+    public void CanAccessKeepsHomeAndUploadOutOfPrimaryNavigation()
+    {
+        var accessContext = CreateAccessContext();
+
+        Assert.False(accessContext.CanAccess(global::App.Mobile.Android.Navigation.MobileViewId.Home));
+        Assert.False(accessContext.CanAccess(global::App.Mobile.Android.Navigation.MobileViewId.Upload));
     }
 
     [Fact]

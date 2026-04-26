@@ -1,16 +1,16 @@
 @page "/"
 @using global::App.Mobile.Android.Localization
-@using global::App.UI.Shared.Pages
 @inject global::App.Mobile.Android.Navigation.MobileNavigationState NavigationState
 
-<h1>@MobileUiText.HomeTitle</h1>
-<p>@MobileUiText.HomeIntro</p>
-
-<HomePlaceholder />
+<section>
+    <h1>@MobileUiText.HomeLandingTitle</h1>
+    <p>@MobileUiText.HomeLandingText</p>
+    <a class="btn btn-primary" href="/reports">@MobileUiText.HomeOpenReportsButton</a>
+</section>
 
 @code {
     protected override void OnInitialized()
     {
-        NavigationState.SetCurrentView(global::App.Mobile.Android.Navigation.MobileViewId.Home);
+        NavigationState.SetCurrentView(global::App.Mobile.Android.Navigation.MobileViewId.Reports);
     }
 }

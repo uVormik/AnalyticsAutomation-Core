@@ -48,6 +48,12 @@
     border-top: 1px solid #d7e7db;
 }
 
+.queue-report-draft {
+    margin: 0.85rem 0 0;
+    padding-top: 0.75rem;
+    border-top: 1px solid #d7e7db;
+}
+
 .queue-restored-note {
     margin: 0.75rem 0 0;
     padding: 0.75rem 0.85rem;
@@ -59,6 +65,15 @@
 
 .queue-repair-hint {
     margin: 0.75rem 0 0;
+    color: #1d4f91;
+    line-height: 1.45;
+}
+
+.queue-report-note {
+    margin: 0.75rem 0 0;
+    padding: 0.75rem 0.85rem;
+    border-radius: 0.75rem;
+    background: #eef6ff;
     color: #1d4f91;
     line-height: 1.45;
 }

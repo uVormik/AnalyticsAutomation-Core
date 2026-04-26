@@ -1,0 +1,123 @@
+.reports-note {
+    margin: 1rem 0;
+    color: #475569;
+}
+
+.reports-shell-card {
+    display: grid;
+    gap: 1rem;
+    padding: 1rem;
+    border: 1px solid #d7dee9;
+    border-radius: 1rem;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+}
+
+.reports-readiness-strip {
+    display: grid;
+    gap: 0.45rem;
+    padding: 0.9rem 1rem;
+    border-radius: 0.95rem;
+    background: linear-gradient(135deg, #0f172a 0%, #1d4ed8 100%);
+    color: #eff6ff;
+}
+
+.reports-readiness-strip p {
+    margin: 0;
+    line-height: 1.45;
+}
+
+.reports-readiness-label {
+    display: inline-flex;
+    align-self: flex-start;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.14);
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.reports-shell-actions {
+    display: flex;
+    justify-content: flex-start;
+}
+
+.reports-empty-state {
+    padding: 1rem;
+    border-radius: 0.85rem;
+    background: #eef6ff;
+}
+
+.reports-empty-state h2 {
+    margin: 0 0 0.5rem;
+    font-size: 1.1rem;
+}
+
+.reports-empty-state p {
+    margin: 0;
+    color: #334155;
+}
+
+.reports-draft-list {
+    display: grid;
+    gap: 0.85rem;
+}
+
+.reports-draft-card {
+    padding: 1rem;
+    border: 1px solid #d7dee9;
+    border-radius: 0.85rem;
+    background: #fff;
+}
+
+.reports-draft-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.reports-draft-header h2 {
+    margin: 0;
+    font-size: 1rem;
+}
+
+.reports-draft-link {
+    color: #0f172a;
+    text-decoration: none;
+}
+
+.reports-draft-link:hover {
+    text-decoration: underline;
+}
+
+.reports-draft-status {
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    background: #e2e8f0;
+    color: #0f172a;
+    font-size: 0.8rem;
+    white-space: nowrap;
+}
+
+.reports-draft-meta {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 0.75rem;
+    margin: 0;
+}
+
+.reports-draft-meta dt {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #475569;
+}
+
+.reports-draft-meta dd {
+    margin: 0.2rem 0 0;
+    color: #0f172a;
+}
+

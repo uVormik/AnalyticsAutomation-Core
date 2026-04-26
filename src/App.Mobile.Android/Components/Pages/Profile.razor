@@ -1,0 +1,17 @@
+@page "/profile"
+@inject global::App.Mobile.Android.Navigation.MobileNavigationState NavigationState
+
+<section class="profile-shell-card">
+    <h1>Профиль</h1>
+    <div class="profile-placeholder">
+        <h2>Локальный профиль</h2>
+        <p>Это локальная заглушка профиля без auth/session, backend-синхронизации и device binding.</p>
+    </div>
+</section>
+
+@code {
+    protected override void OnInitialized()
+    {
+        NavigationState.SetCurrentView(global::App.Mobile.Android.Navigation.MobileViewId.Profile);
+    }
+}

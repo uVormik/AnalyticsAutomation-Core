@@ -71,6 +71,32 @@
                             </section>
                         }
 
+                        @if (item.LocalReportDraft is not null)
+                        {
+                            <section class="queue-report-draft">
+                                <dl class="queue-item-meta">
+                                    <div>
+                                        <dt>@MobileUiText.QueueItemTypeLabel</dt>
+                                        <dd>@MobileUiText.QueueItemTypeReportDraftText</dd>
+                                    </div>
+                                    <div>
+                                        <dt>@MobileUiText.QueueReportDraftIdLabel</dt>
+                                        <dd>@item.LocalReportDraft.DraftId</dd>
+                                    </div>
+                                    <div>
+                                        <dt>@MobileUiText.QueueReportAttachmentCountLabel</dt>
+                                        <dd>@item.LocalReportDraft.AttachmentCount</dd>
+                                    </div>
+                                    <div>
+                                        <dt>@MobileUiText.QueueReportVideoAttachmentCountLabel</dt>
+                                        <dd>@item.LocalReportDraft.VideoAttachmentCount</dd>
+                                    </div>
+                                </dl>
+
+                                <p class="queue-report-note">@MobileUiText.QueueReportDraftLocalOnlyNoteText</p>
+                            </section>
+                        }
+
                         <dl class="queue-item-meta">
                             <div>
                                 <dt>@MobileUiText.QueueCreatedAtLabel</dt>

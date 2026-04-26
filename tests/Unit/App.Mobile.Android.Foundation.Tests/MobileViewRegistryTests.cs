@@ -4,15 +4,19 @@ public sealed class MobileViewRegistryTests
 {
     private static readonly global::App.Mobile.Android.Navigation.MobileViewId[] ExpectedViewIds =
     [
+        global::App.Mobile.Android.Navigation.MobileViewId.Reports,
+        global::App.Mobile.Android.Navigation.MobileViewId.Queue,
+        global::App.Mobile.Android.Navigation.MobileViewId.Profile,
         global::App.Mobile.Android.Navigation.MobileViewId.Home,
-        global::App.Mobile.Android.Navigation.MobileViewId.Upload,
-        global::App.Mobile.Android.Navigation.MobileViewId.Queue
+        global::App.Mobile.Android.Navigation.MobileViewId.Upload
     ];
 
-    private static readonly string[] ExpectedRoutes = ["/", "/upload", "/queue"];
+    private static readonly string[] ExpectedRoutes = ["/reports", "/queue", "/profile", "/", "/upload"];
+
+    private static readonly string[] ExpectedPrimaryRoutes = ["/reports", "/queue", "/profile"];
 
     [Fact]
-    public void RegistryContainsExactlyHomeUploadAndQueue()
+    public void RegistryIncludesReportFirstPrimaryRoutesAndServiceRoutes()
     {
         var registry = new global::App.Mobile.Android.Navigation.MobileViewRegistry();
 
@@ -22,7 +26,7 @@ public sealed class MobileViewRegistryTests
     }
 
     [Fact]
-    public void RegistryUsesExpectedRoutes()
+    public void RegistryIncludesUploadRouteWithoutMakingItPrimary()
     {
         var registry = new global::App.Mobile.Android.Navigation.MobileViewRegistry();
 
@@ -32,7 +36,7 @@ public sealed class MobileViewRegistryTests
     }
 
     [Fact]
-    public void GetVisibleMenuEntriesReturnsAllThreeEntriesForDefaultStubAccessContext()
+    public void GetVisibleMenuEntriesReturnsReportFirstPrimaryTabsOnlyForDefaultStubAccessContext()
     {
         var registry = new global::App.Mobile.Android.Navigation.MobileViewRegistry();
         var accessContext = CreateAccessContext();
@@ -40,7 +44,8 @@ public sealed class MobileViewRegistryTests
         var visibleEntries = registry.GetVisibleMenuEntries(accessContext).ToArray();
 
         Assert.Equal(3, visibleEntries.Length);
-        Assert.Equal(ExpectedRoutes, visibleEntries.Select(entry => entry.Route).ToArray());
+        Assert.Equal(ExpectedPrimaryRoutes, visibleEntries.Select(entry => entry.Route).ToArray());
+        Assert.DoesNotContain(visibleEntries, entry => entry.ViewId == global::App.Mobile.Android.Navigation.MobileViewId.Upload);
     }
 
     private static global::App.Mobile.Android.Services.Stubs.StubMobileAccessContext CreateAccessContext()

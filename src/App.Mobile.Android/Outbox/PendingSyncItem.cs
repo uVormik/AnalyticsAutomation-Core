@@ -7,4 +7,5 @@ internal sealed record PendingSyncItem(
     string SummaryText,
     PendingSyncItemStatus Status,
     string? LastActionText,
-    PendingSyncItemLocalMediaDraft? LocalMediaDraft = null);
+    PendingSyncItemLocalMediaDraft? LocalMediaDraft = null,
+    PendingSyncItemLocalReportDraft? LocalReportDraft = null);

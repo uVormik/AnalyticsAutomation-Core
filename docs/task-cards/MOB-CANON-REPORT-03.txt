@@ -1,0 +1,39 @@
+Title: MOB-CANON-REPORT-03 — Report draft attachment dedupe and local queue action
+Coder: 3
+Module: App.Mobile.Android
+Task type: mobile UI capability / local report draft foundation / local outbox foundation
+
+Goal:
+Make report draft media attachment one-action and duplicate-safe, and add a local draft-to-queue action without backend integration.
+
+What changes:
+- mobile only
+
+New or changed contracts:
+- shared DTO/contracts unchanged
+
+Migration:
+- none
+
+Offline behavior:
+- local in-memory report draft and local outbox only, no backend save, no sync, no upload
+
+Security:
+- no auth/authz changes
+
+Observability:
+- local duplicate-warning and local draft queue result text
+
+Rollback:
+- revert this report draft action slice
+
+Definition of done:
+- build succeeds
+- unit tests pass
+- selecting/capturing video inside ReportDraft attaches it automatically
+- repeated same video attachment to same draft is blocked with Russian warning
+- "attach already selected local video" is no longer a primary action
+- ReportDraft has "put report into local queue" action
+- Queue renders report draft pending item
+- no backend integration
+- no App.UI.Shared changes

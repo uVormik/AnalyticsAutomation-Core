@@ -11,6 +11,10 @@ internal interface IMobileOutboxService
     Task<global::App.Mobile.Android.Outbox.PendingSyncOperationResult> EnqueueStubItemAsync(
         CancellationToken cancellationToken = default);
 
+    Task<global::App.Mobile.Android.Outbox.PendingSyncOperationResult> EnqueueReportDraftAsync(
+        global::App.Mobile.Android.Reports.MobileReportDraft draft,
+        CancellationToken cancellationToken = default);
+
     Task<global::App.Mobile.Android.Outbox.PendingSyncOperationResult> RepairLocalMediaDraftAsync(
         string itemId,
         CancellationToken cancellationToken = default);

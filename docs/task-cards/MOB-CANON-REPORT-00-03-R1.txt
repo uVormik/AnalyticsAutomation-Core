@@ -1,0 +1,50 @@
+Title:
+MOB-CANON-REPORT-00-03-R1 - Fix report baseline bottom navigation overlap
+
+Coder:
+3
+
+Module:
+App.Mobile.Android
+
+Task type:
+Android runtime UI layout fix
+
+Goal:
+Fix bottom navigation/footer overlap on physical Android before merging report-first baseline PR #109.
+
+What changes:
+- Android-local navigation/layout/page CSS only.
+- Primary bottom navigation is report-first: Reports, Queue, Profile.
+- Upload remains available by route but is not a primary bottom tab.
+
+Contracts:
+Shared DTO/contracts unchanged.
+
+Migration:
+None.
+
+Feature flags:
+None; existing local mobile flags remain unchanged.
+
+Offline behavior:
+Unchanged.
+
+Security:
+No auth/session changes.
+
+BusinessObject:
+businessObjectKey remains unresolved.
+No fake businessObjectKey.
+Production PreUploadCheck remains blocked.
+
+Rollback:
+Revert this fix commit.
+
+Definition of done:
+- Bottom nav no longer covers page content.
+- Primary bottom tabs are report-first.
+- Upload route remains available but is not primary bottom tab.
+- Content scrolls to bottom.
+- Tests/build/format pass.
+- No App.UI.Shared/backend/contracts changes.

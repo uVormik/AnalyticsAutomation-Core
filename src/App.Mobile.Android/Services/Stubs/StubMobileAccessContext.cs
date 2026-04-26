@@ -20,9 +20,12 @@ internal sealed class StubMobileAccessContext :
     {
         return viewId switch
         {
-            global::App.Mobile.Android.Navigation.MobileViewId.Home => true,
-            global::App.Mobile.Android.Navigation.MobileViewId.Upload => true,
+            global::App.Mobile.Android.Navigation.MobileViewId.Reports =>
+                _featureFlagReader.IsEnabled(StubFeatureFlagReader.ReportDraftShellFlag),
             global::App.Mobile.Android.Navigation.MobileViewId.Queue => true,
+            global::App.Mobile.Android.Navigation.MobileViewId.Profile => true,
+            global::App.Mobile.Android.Navigation.MobileViewId.Home => false,
+            global::App.Mobile.Android.Navigation.MobileViewId.Upload => false,
             _ => false
         };
     }

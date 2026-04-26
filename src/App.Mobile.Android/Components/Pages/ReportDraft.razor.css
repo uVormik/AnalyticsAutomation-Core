@@ -1,0 +1,198 @@
+.report-draft-shell {
+    display: grid;
+    gap: 1rem;
+    padding: 1rem;
+    border: 1px solid #d7dee9;
+    border-radius: 1rem;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
+}
+
+.report-draft-header {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.report-draft-header h2 {
+    margin: 0;
+    font-size: 1.15rem;
+}
+
+.report-draft-status {
+    margin: 0.35rem 0 0;
+    color: #2563eb;
+    font-weight: 600;
+}
+
+.report-draft-meta,
+.report-draft-fields,
+.report-draft-attachment-meta {
+    display: grid;
+    gap: 0.75rem;
+    margin: 0;
+}
+
+.report-draft-meta {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+
+.report-draft-meta dt,
+.report-draft-fields dt,
+.report-draft-attachment-meta dt {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #475569;
+}
+
+.report-draft-meta dd,
+.report-draft-fields dd,
+.report-draft-attachment-meta dd {
+    margin: 0.2rem 0 0;
+    color: #0f172a;
+}
+
+.report-draft-note {
+    margin: 0;
+    padding: 0.8rem 0.9rem;
+    border-radius: 0.85rem;
+    background: #eff6ff;
+    color: #1e3a8a;
+}
+
+.report-draft-note-secondary {
+    background: #fff7ed;
+    color: #9a3412;
+}
+
+.report-draft-section {
+    display: grid;
+    gap: 0.85rem;
+    padding: 0.95rem;
+    border: 1px solid #d7dee9;
+    border-radius: 0.85rem;
+    background: #fff;
+}
+
+.report-draft-section h3 {
+    margin: 0;
+    font-size: 1rem;
+}
+
+.report-draft-media-shell {
+    display: grid;
+    gap: 0.85rem;
+}
+
+.report-draft-media-card {
+    display: grid;
+    gap: 0.85rem;
+    padding: 0.95rem;
+    border: 1px solid #d7dee9;
+    border-radius: 0.85rem;
+    background: #f8fafc;
+}
+
+.report-draft-media-card-disabled {
+    background: #f8fafc;
+    opacity: 0.85;
+}
+
+.report-draft-media-card-header {
+    display: grid;
+    gap: 0.45rem;
+}
+
+.report-draft-media-card-header h4 {
+    margin: 0;
+    font-size: 0.98rem;
+}
+
+.report-draft-media-card-header p {
+    margin: 0;
+    color: #475569;
+    line-height: 1.45;
+}
+
+.report-draft-field-row,
+.report-draft-attachment-meta > div {
+    padding-bottom: 0.65rem;
+    border-bottom: 1px solid #edf2f7;
+}
+
+.report-draft-field-row:last-child,
+.report-draft-attachment-meta > div:last-child {
+    padding-bottom: 0;
+    border-bottom: 0;
+}
+
+.report-draft-field-placeholder {
+    color: #64748b;
+    font-style: italic;
+}
+
+.report-draft-attachment-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    justify-content: flex-start;
+}
+
+.report-draft-result {
+    margin: 0;
+    padding: 0.8rem 0.9rem;
+    border-radius: 0.75rem;
+    background: #ecfdf5;
+    color: #166534;
+}
+
+.report-draft-result-warning {
+    background: #fff7ed;
+    color: #9a3412;
+}
+
+.report-draft-empty-attachments {
+    margin: 0;
+    color: #475569;
+}
+
+.report-draft-attachments {
+    display: grid;
+    gap: 0.85rem;
+}
+
+.report-draft-queue-shell {
+    display: grid;
+    gap: 0.65rem;
+    margin-top: 1rem;
+    padding: 0.95rem;
+    border: 1px solid #dbe3f0;
+    border-radius: 0.85rem;
+    background: #eef6ff;
+}
+
+.report-draft-queue-note {
+    margin: 0;
+    color: #1d4f91;
+    line-height: 1.45;
+}
+
+.report-draft-attachment-card {
+    padding: 0.9rem;
+    border: 1px solid #d7dee9;
+    border-radius: 0.75rem;
+    background: #f8fafc;
+}
+
+@media (max-width: 640px) {
+    .report-draft-attachment-actions {
+        flex-direction: column;
+    }
+
+    .report-draft-attachment-actions .btn {
+        width: 100%;
+    }
+
+    .report-draft-queue-shell .btn {
+        width: 100%;
+    }
+}

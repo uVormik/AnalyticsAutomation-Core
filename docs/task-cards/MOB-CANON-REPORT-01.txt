@@ -1,0 +1,39 @@
+Title: MOB-CANON-REPORT-01 — Local FPV report draft shell
+Coder: 3
+Module: App.Mobile.Android
+Task type: mobile UI capability / local draft foundation / repository reconciliation
+
+Goal:
+Add a local report-first FPV draft shell where the user can create a local report or flight draft and attach current selected media as local attachment metadata.
+
+What changes:
+- mobile only
+
+New or changed contracts:
+- shared DTO/contracts unchanged
+
+Migration:
+- none
+
+Offline behavior:
+- local in-memory report draft only, no backend save, no sync, no upload
+
+Security:
+- no auth/authz changes
+
+Observability:
+- local draft result text and report-first handoff note
+
+Rollback:
+- revert this report draft shell slice
+
+Definition of done:
+- build succeeds
+- unit tests pass
+- menu has local `Полеты` / reports entry
+- Reports route renders local draft list
+- Create FPV draft creates local draft
+- Report draft route renders sectioned draft shell
+- current selected video can be attached as local attachment metadata
+- no backend integration
+- no App.UI.Shared changes

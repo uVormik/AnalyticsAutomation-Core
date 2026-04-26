@@ -1,0 +1,345 @@
+@page "/reports/{DraftId}"
+@using global::App.Mobile.Android.Localization
+@inject global::App.Mobile.Android.Navigation.MobileNavigationState NavigationState
+@inject global::App.Mobile.Android.Services.Abstractions.IMobileMediaService MobileMediaService
+@inject global::App.Mobile.Android.Services.Abstractions.IMobileReportDraftStore ReportDraftStore
+@inject global::App.Mobile.Android.Services.Abstractions.IMobileOutboxService MobileOutboxService
+@inject global::App.Mobile.Android.Services.Abstractions.IMobileLookupCatalogProvider LookupCatalogProvider
+@inject global::App.Mobile.Android.Services.Abstractions.IMobileSelectedMediaStore SelectedMediaStore
+
+@if (Draft is null)
+{
+    <h1>@MobileUiText.ReportDraftNotFoundTitle</h1>
+    <p>@MobileUiText.ReportDraftNotFoundMessage</p>
+}
+else
+{
+    <h1>@MobileUiText.ReportDraftPageTitle</h1>
+
+    <section class="report-draft-shell">
+        <header class="report-draft-header">
+            <div>
+                <h2>@Draft.Title</h2>
+                <p class="report-draft-status">@MobileUiText.GetReportDraftStatusText(Draft.Status)</p>
+            </div>
+            <dl class="report-draft-meta">
+                <div>
+                    <dt>@MobileUiText.ReportDraftCardCreatedAtLabel</dt>
+                    <dd>@FormatTimestamp(Draft.CreatedAtUtc)</dd>
+                </div>
+                <div>
+                    <dt>@MobileUiText.ReportDraftCardUpdatedAtLabel</dt>
+                    <dd>@FormatTimestamp(Draft.UpdatedAtUtc)</dd>
+                </div>
+                <div>
+                    <dt>@MobileUiText.ReportDraftCardAttachmentCountLabel</dt>
+                    <dd>@Draft.Attachments.Count</dd>
+                </div>
+            </dl>
+        </header>
+
+        <p class="report-draft-note">@MobileUiText.ReportDraftLocalOnlyNote</p>
+        <p class="report-draft-note report-draft-note-secondary">@MobileUiText.ReportDraftNoBackendSaveNote</p>
+
+        @foreach (var sectionKey in SectionOrder)
+        {
+            var sectionFields = GetFieldsForSection(sectionKey);
+
+            if (sectionFields.Count == 0)
+            {
+                continue;
+            }
+
+            <section class="report-draft-section">
+                <h3>@GetSectionTitle(sectionKey)</h3>
+
+                <dl class="report-draft-fields">
+                    @foreach (var field in sectionFields)
+                    {
+                        <div class="report-draft-field-row">
+                            <dt>@field.Label</dt>
+                            <dd class="@(field.IsPlaceholder ? "report-draft-field-placeholder" : string.Empty)">@field.ValueText</dd>
+                        </div>
+                    }
+                </dl>
+            </section>
+        }
+
+        <section class="report-draft-section">
+            <h3>@MobileUiText.ReportDraftMediaSectionTitle</h3>
+
+            <div class="report-draft-media-shell">
+                <article class="report-draft-media-card">
+                    <div class="report-draft-media-card-header">
+                        <div>
+                            <h4>@MobileUiText.ReportDraftVideoBlockTitle</h4>
+                            <p>@MobileUiText.ReportDraftLocalOnlyNote</p>
+                        </div>
+                    </div>
+
+                    <div class="report-draft-attachment-actions">
+                        <button type="button"
+                                class="btn btn-primary"
+                                @onclick="PickAndAttachVideoAsync"
+                                disabled="@IsMediaOperationInProgress">
+                            @MobileUiText.ReportDraftPickVideoButton
+                        </button>
+                        <button type="button"
+                                class="btn btn-outline-secondary"
+                                @onclick="CaptureAndAttachVideoAsync"
+                                disabled="@IsMediaOperationInProgress">
+                            @MobileUiText.ReportDraftCaptureVideoButton
+                        </button>
+                    </div>
+                </article>
+
+                <article class="report-draft-media-card report-draft-media-card-disabled">
+                    <div class="report-draft-media-card-header">
+                        <div>
+                            <h4>@MobileUiText.ReportDraftPhotoBlockTitle</h4>
+                            <p>@MobileUiText.ReportDraftFutureAttachmentNote</p>
+                        </div>
+                    </div>
+
+                    <button type="button" class="btn btn-outline-secondary" disabled>Скоро</button>
+                </article>
+
+                <article class="report-draft-media-card report-draft-media-card-disabled">
+                    <div class="report-draft-media-card-header">
+                        <div>
+                            <h4>@MobileUiText.ReportDraftLogFileBlockTitle</h4>
+                            <p>@MobileUiText.ReportDraftFutureAttachmentNote</p>
+                        </div>
+                    </div>
+
+                    <button type="button" class="btn btn-outline-secondary" disabled>Скоро</button>
+                </article>
+            </div>
+
+            @if (IsMediaOperationInProgress)
+            {
+                <p class="report-draft-result">@ProgressText</p>
+            }
+            else if (!string.IsNullOrWhiteSpace(ResultText))
+            {
+                <p class="@(ResultIsWarning ? "report-draft-result report-draft-result-warning" : "report-draft-result")">@ResultText</p>
+            }
+
+            @if (Draft.Attachments.Count == 0)
+            {
+                <p class="report-draft-empty-attachments">@MobileUiText.ReportDraftNoAttachmentsText</p>
+            }
+            else
+            {
+                <div class="report-draft-attachments">
+                    @foreach (var attachment in Draft.Attachments)
+                    {
+                        <article class="report-draft-attachment-card">
+                            <dl class="report-draft-attachment-meta">
+                                <div>
+                                    <dt>@MobileUiText.ReportAttachmentKindLabel</dt>
+                                    <dd>@MobileUiText.GetReportAttachmentKindText(attachment.Kind)</dd>
+                                </div>
+                                <div>
+                                    <dt>@MobileUiText.ReportAttachmentFileNameLabel</dt>
+                                    <dd>@attachment.FileName</dd>
+                                </div>
+                                <div>
+                                    <dt>@MobileUiText.ReportAttachmentContentTypeLabel</dt>
+                                    <dd>@GetContentTypeText(attachment.ContentType)</dd>
+                                </div>
+                                <div>
+                                    <dt>@MobileUiText.ReportAttachmentSourceLabel</dt>
+                                    <dd>@attachment.SourceText</dd>
+                                </div>
+                                <div>
+                                    <dt>@MobileUiText.ReportAttachmentAddedAtLabel</dt>
+                                    <dd>@FormatTimestamp(attachment.AddedAtUtc)</dd>
+                                </div>
+                                <div>
+                                    <dt>@MobileUiText.ReportAttachmentLocalAccessLabel</dt>
+                                    <dd>@MobileUiText.GetReportAttachmentLocalAccessText(attachment.HasLocalReadHandle)</dd>
+                                </div>
+                            </dl>
+                        </article>
+                    }
+                </div>
+            }
+
+            <div class="report-draft-queue-shell">
+                <button type="button"
+                        class="btn btn-outline-primary"
+                        @onclick="QueueDraftAsync"
+                        disabled="@IsMediaOperationInProgress">
+                    @MobileUiText.ReportDraftQueueButton
+                </button>
+                <p class="report-draft-queue-note">@MobileUiText.ReportDraftQueueLocalOnlyNoteText</p>
+            </div>
+        </section>
+    </section>
+}
+
+@code {
+    private static readonly string[] SectionOrder =
+    [
+        "basic-data",
+        "target-result",
+        "frequencies-parameters"
+    ];
+
+    private global::App.Mobile.Android.Reports.MobileReportDraft? Draft { get; set; }
+
+    private global::App.Mobile.Android.Lookup.MobileLookupCatalogSnapshot? Catalog { get; set; }
+
+    private string ResultText { get; set; } = string.Empty;
+
+    private string ProgressText { get; set; } = string.Empty;
+
+    private bool ResultIsWarning { get; set; }
+
+    private bool IsMediaOperationInProgress { get; set; }
+
+    [Parameter]
+    public string DraftId { get; set; } = string.Empty;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        NavigationState.SetCurrentView(global::App.Mobile.Android.Navigation.MobileViewId.Reports);
+        Catalog ??= await LookupCatalogProvider.GetReportDraftFieldsAsync();
+        Draft = await ReportDraftStore.GetDraftAsync(DraftId);
+    }
+
+    private async Task PickAndAttachVideoAsync()
+    {
+        await RunMediaAttachAsync(
+            () => MobileMediaService.PickVideoAsync(),
+            MobileUiText.ReportDraftPickVideoProgressText);
+    }
+
+    private async Task CaptureAndAttachVideoAsync()
+    {
+        await RunMediaAttachAsync(
+            () => MobileMediaService.CaptureVideoAsync(),
+            MobileUiText.ReportDraftCaptureVideoProgressText);
+    }
+
+    private async Task QueueDraftAsync()
+    {
+        if (Draft is null)
+        {
+            return;
+        }
+
+        ResultText = string.Empty;
+        ResultIsWarning = false;
+
+        var queueResult = await MobileOutboxService.EnqueueReportDraftAsync(Draft);
+        if (!queueResult.Applied)
+        {
+            ResultText = queueResult.Message;
+            ResultIsWarning = true;
+            return;
+        }
+
+        var markResult = await ReportDraftStore.MarkDraftQueuedLocalAsync(Draft.DraftId);
+        Draft = markResult.Draft ?? await ReportDraftStore.GetDraftAsync(DraftId);
+        ResultText = markResult.Applied ? queueResult.Message : markResult.Message;
+        ResultIsWarning = !markResult.Applied;
+    }
+
+    private async Task RunMediaAttachAsync(
+        Func<Task<global::App.Mobile.Android.Media.MobileMediaOperationResult>> operation,
+        string progressText)
+    {
+        IsMediaOperationInProgress = true;
+        ProgressText = progressText;
+        ResultText = string.Empty;
+        ResultIsWarning = false;
+
+        try
+        {
+            var result = await operation();
+            if (!IsSuccessfulMediaOperation(result.Status))
+            {
+                ResultText = result.Message;
+                ResultIsWarning = true;
+                return;
+            }
+
+            await AttachCurrentSelectionAsync();
+        }
+        finally
+        {
+            IsMediaOperationInProgress = false;
+            ProgressText = string.Empty;
+        }
+    }
+
+    private async Task AttachCurrentSelectionAsync()
+    {
+        if (Draft is null)
+        {
+            return;
+        }
+
+        var selectedMedia = await SelectedMediaStore.GetCurrentAsync();
+        if (selectedMedia is null)
+        {
+            ResultText = MobileUiText.ReportDraftNoCurrentSelectedVideoText;
+            ResultIsWarning = true;
+            return;
+        }
+
+        var operationResult = await ReportDraftStore.AttachSelectedVideoAsync(Draft.DraftId, selectedMedia);
+        Draft = operationResult.Draft ?? await ReportDraftStore.GetDraftAsync(DraftId);
+        ResultText = operationResult.Message;
+        ResultIsWarning = !operationResult.Applied;
+    }
+
+    private IReadOnlyList<global::App.Mobile.Android.Reports.MobileReportDraftFieldValue> GetFieldsForSection(string sectionKey)
+    {
+        if (Draft is null || Catalog is null)
+        {
+            return Array.Empty<global::App.Mobile.Android.Reports.MobileReportDraftFieldValue>();
+        }
+
+        var fieldsByKey = Draft.Fields.ToDictionary(field => field.FieldKey, StringComparer.Ordinal);
+
+        return Catalog.Fields
+            .Where(field => string.Equals(field.SectionKey, sectionKey, StringComparison.Ordinal))
+            .Select(field => fieldsByKey.TryGetValue(field.FieldKey, out var value) ? value : null)
+            .Where(value => value is not null)
+            .Select(value => value!)
+            .ToArray();
+    }
+
+    private static bool IsSuccessfulMediaOperation(global::App.Mobile.Android.Media.MobileMediaOperationStatus status)
+    {
+        return status is global::App.Mobile.Android.Media.MobileMediaOperationStatus.DeviceSelectionCompleted
+            or global::App.Mobile.Android.Media.MobileMediaOperationStatus.DeviceCaptureCompleted
+            or global::App.Mobile.Android.Media.MobileMediaOperationStatus.StubCompleted;
+    }
+
+    private static string GetSectionTitle(string sectionKey)
+    {
+        return sectionKey switch
+        {
+            "basic-data" => MobileUiText.ReportSectionBasicDataTitle,
+            "target-result" => MobileUiText.ReportSectionTargetAndResultTitle,
+            "frequencies-parameters" => MobileUiText.ReportSectionFrequenciesAndParametersTitle,
+            _ => MobileUiText.ReportSectionBasicDataTitle
+        };
+    }
+
+    private static string FormatTimestamp(DateTimeOffset value)
+    {
+        return value.ToLocalTime().ToString("dd.MM.yyyy HH:mm:ss");
+    }
+
+    private static string GetContentTypeText(string? contentType)
+    {
+        return string.IsNullOrWhiteSpace(contentType)
+            ? MobileUiText.UploadUnknownContentTypeText
+            : contentType;
+    }
+}
