@@ -1,0 +1,193 @@
+Title:
+S2-50 Desktop Auth/Session Boundary Task Card
+
+Owner:
+Coder 1 acting as Coder 2 / Desktop Client
+
+Module:
+App.Desktop / Auth and session boundary
+
+Client form:
+desktop standalone
+
+Type:
+runtime implementation task card, no runtime changes in this PR
+
+Status:
+Docs-only task card and implementation handoff for a future runtime auth/session boundary PR.
+
+Goal:
+Implement the first narrow desktop auth/session boundary slice in a future runtime PR.
+
+The future S2-50 runtime PR must prepare a safe foundation for later SignIn, GroupTree, PreUploadCheck, and UploadReceipt work without implementing the full upload flow.
+
+Context:
+S2-48 runtime skeleton is merged. App.Desktop exists as a WPF standalone desktop shell with BlazorWebView/App.UI.Shared reuse boundaries and placeholder services.
+
+S2-49A launch fix is merged. App.Desktop launches after the Windows-versioned TFM fix.
+
+Full upload flow is not implemented.
+
+The approved desktop technology remains:
+WPF standalone desktop shell + BlazorWebView / App.UI.Shared RCL reuse where useful.
+
+App.Web / Browser / PWA are not the primary desktop client.
+
+App.Api remains the control plane.
+
+Video bytes must not go through App.Api.
+
+Upstream context / reviewed sources:
+- Base origin/main SHA checked at task start: 3403ab2db06c18fbb30fe8050fe9f2604d8a1509
+- Coordination log issue reviewed: #89 TEAM COORDINATION LOG
+- Relevant coordination entries reviewed:
+  - PR #105 S2-48 Desktop Application Skeleton Task Card
+  - PR #107 S2-48 Desktop Application Skeleton
+  - PR #110 S2-49A Desktop Skeleton Launch Fix
+  - Android businessObjectKey coordination decision for later PreUploadCheck context
+- Handoff/task cards and code context reviewed:
+  - 01_MASTER_PLAN_AND_ARCHITECTURE.txt
+  - 02_SHARED_RULES_AND_PROTOCOLS.txt
+  - docs/task-cards/S2-48_desktop-application-skeleton-task-card.txt
+  - docs/handoffs/S2_48_DESKTOP_APPLICATION_SKELETON_PROMPT.md
+  - docs/task-cards/S2-49A_desktop-skeleton-launch-fix.txt
+  - src/App.Desktop
+  - tests/Unit/App.Desktop.Tests
+
+Approved technology:
+WPF standalone desktop shell + BlazorWebView / App.UI.Shared RCL reuse where useful.
+
+Architecture invariants to preserve:
+- The primary desktop client is a standalone desktop application.
+- App.Web is not the primary desktop client.
+- Browser/PWA/App.Web must not become the primary desktop client through a wrapper shell.
+- BlazorWebView may be used only as embedded native desktop UI composition for selected App.UI.Shared Razor components where useful.
+- BlazorWebView must not be used as App.Web-in-a-shell.
+- App.Api remains the control plane.
+- Video bytes must not go through App.Api.
+- Video upload/download remain direct client <-> site.
+- Runtime upload flow for later tasks must preserve:
+  SignIn -> GroupTree -> file select -> SHA-256 -> businessObjectKey -> PreUploadCheck -> direct site upload boundary -> UploadReceipt
+
+Scope of this docs-only PR:
+- Create this S2-50 task card.
+- Create the S2-50 handoff/prompt for a future runtime implementation chat/Codex session.
+- Do not change App.Desktop runtime code.
+- Do not change App.Desktop tests.
+- Do not change solution/project files.
+- Do not change API/contracts/migrations/workflows/deploy/server runtime.
+- Do not change App.Web.
+- Do not change App.Mobile.Android.
+- Do not change S2-44 Web WIP.
+
+Future S2-50 runtime scope:
+- Define the desktop auth/session state model.
+- Define the secure token/session storage abstraction.
+- Add placeholder/in-memory or no-op implementation only if approved by the runtime task.
+- Add sign-in API client boundary only if it uses an existing backend auth endpoint/contracts without changing them.
+- Add tests for session state transitions and storage abstraction behavior.
+- Integrate only enough with App.Desktop composition root to prove boundaries compile.
+- No full SignIn UI.
+- No upload UI.
+- No real refresh-token strategy unless existing contracts clearly support it.
+- No App.Api changes.
+
+Required future runtime boundaries:
+- IDesktopSessionState.
+- IDesktopSessionStore or equivalent secure storage abstraction.
+- IDesktopAuthClient boundary for the existing sign-in endpoint.
+- Session status enum/value object if useful.
+- Error/result model for auth boundary if needed.
+
+Notes for existing S2-48 placeholders:
+- App.Desktop currently contains placeholder auth/session and secure session storage boundaries.
+- Future S2-50 may refine or replace those placeholders only inside the approved App.Desktop runtime scope.
+- Any rename or replacement must keep the composition root testable and must be covered by focused unit tests.
+
+Security guardrails:
+- Do not log tokens.
+- Do not log raw credentials.
+- Do not hardcode passwords.
+- Do not commit secrets.
+- Do not add secrets to repo files.
+- Do not persist tokens in plaintext.
+- Do not treat placeholder storage as production secure storage.
+- If a Windows secure storage mechanism is not approved yet, use an explicit placeholder plus TODO and keep persistence disabled.
+- Keep error messages safe for logs and UI; do not include token values, passwords, or raw auth payloads.
+- Prefer narrow auth/session result objects over leaking transport or token details across the UI boundary.
+
+Explicitly out of future runtime scope:
+- Full SignIn UI.
+- Full upload flow.
+- Group tree UI.
+- Pre-upload check UI.
+- Site upload.
+- Upload receipt submission.
+- Offline queue.
+- Duplicate/fraud/admin review UI.
+- App.Api changes.
+- Shared contract changes.
+- DB migrations.
+- Deploy.
+- App.Worker changes.
+- App.Web changes.
+- App.Mobile.Android changes.
+- App.UI.Shared changes unless a later approved task explicitly scopes shared UI.
+- BuildingBlocks.Contracts changes.
+- Modules changes.
+- GitHub workflow changes.
+- Deploy script changes.
+- Solution/project file changes unless the future runtime task explicitly proves they are required for App.Desktop/App.Desktop.Tests only.
+
+Runtime no-go boundaries:
+- Do not implement the full upload orchestration.
+- Do not invent backend auth contracts.
+- Do not invent refresh-token behavior.
+- Do not add auth endpoints to App.Api.
+- Do not change shared DTOs/contracts.
+- Do not route video bytes through App.Api.
+- Do not use App.Web as a desktop auth surface.
+- Do not store tokens in local config files, plaintext JSON, environment examples, or test fixtures.
+
+Validation expectations for future runtime PR:
+- dotnet restore AnalyticsAutomation-Core.sln
+- dotnet build src/App.Desktop/App.Desktop.csproj
+- dotnet build AnalyticsAutomation-Core.sln
+- dotnet test tests/Unit/App.Desktop.Tests/App.Desktop.Tests.csproj
+- dotnet format whitespace AnalyticsAutomation-Core.sln --verify-no-changes --no-restore
+- git diff --check
+- App.Desktop launch smoke if the App.Desktop composition root changes.
+- Confirm no App.Api/contracts/migrations/workflows/deploy/server runtime changes.
+- Confirm no App.Web or App.Mobile.Android changes.
+- Confirm no full upload flow.
+- Confirm no token logging and no plaintext token persistence.
+- No deploy.
+
+Validation for this docs-only PR:
+- git diff --name-only
+- git diff --check
+- dotnet format whitespace AnalyticsAutomation-Core.sln --verify-no-changes --no-restore
+- Confirm no runtime/API/contracts/migrations/workflows/deploy changes.
+- Confirm App.Desktop runtime code was not changed.
+- Confirm App.Desktop tests were not changed.
+- Confirm solution/project files were not changed.
+- Confirm App.Web and App.Mobile.Android were not changed.
+- Build/tests are not required because this PR is docs-only.
+- No deploy.
+
+Rollback:
+Revert this docs-only task card and S2-50 handoff/prompt.
+
+For the future runtime implementation, revert the future S2-50 runtime PR.
+
+Definition of done:
+- S2-50 docs-only task card exists.
+- S2-50 handoff/prompt exists.
+- Future runtime auth/session scope is recorded.
+- Future auth/session boundaries are recorded.
+- Security guardrails are recorded.
+- Full upload orchestration remains deferred.
+- App.Desktop runtime code is not changed in this PR.
+- Solution/project files are not changed in this PR.
+- Runtime/API/contracts/migrations/workflows/deploy files are not changed in this PR.
+- App.Web and App.Mobile.Android are not changed in this PR.
