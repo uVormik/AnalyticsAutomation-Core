@@ -153,6 +153,85 @@
     color: #8a5a16;
 }
 
+.business-object-card {
+    margin-top: 1rem;
+    padding: 1rem;
+    border: 1px solid #f0c0c0;
+    border-radius: 0.9rem;
+    background: #fff7f7;
+    color: #5f1820;
+}
+
+.business-object-card h3 {
+    margin: 0 0 0.85rem;
+    font-size: 1rem;
+}
+
+.business-object-grid {
+    margin: 0 0 1rem;
+}
+
+.business-object-grid div {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.45rem 0;
+    border-top: 1px solid #f0c0c0;
+}
+
+.business-object-grid div:first-child {
+    border-top: 0;
+    padding-top: 0;
+}
+
+.business-object-grid dt,
+.business-object-grid dd {
+    margin: 0;
+}
+
+.business-object-grid dd {
+    font-weight: 600;
+    text-align: right;
+}
+
+.business-object-warning,
+.business-object-note {
+    margin: 0 0 0.65rem;
+    line-height: 1.45;
+}
+
+.business-object-fields {
+    display: grid;
+    gap: 0.75rem;
+    margin: 0.85rem 0;
+}
+
+.business-object-fields label {
+    display: grid;
+    gap: 0.35rem;
+    font-weight: 600;
+}
+
+.business-object-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.business-object-result,
+.business-object-blocked {
+    margin: 0.9rem 0 0;
+    padding: 0.75rem 0.85rem;
+    border-radius: 0.75rem;
+    background: #fff0f0;
+    color: #7f1d1d;
+    line-height: 1.45;
+}
+
+.business-object-blocked p {
+    margin: 0.35rem 0 0;
+}
+
 .outbox-foundation-block {
     margin-top: 1rem;
     padding: 1rem;
@@ -184,14 +263,16 @@
 @media (max-width: 640px) {
     .media-capability-list div,
     .selected-media-grid div,
-    .precheck-grid div {
+    .precheck-grid div,
+    .business-object-grid div {
         flex-direction: column;
         align-items: flex-start;
     }
 
     .media-capability-list dd,
     .selected-media-grid dd,
-    .precheck-grid dd {
+    .precheck-grid dd,
+    .business-object-grid dd {
         text-align: left;
     }
 }

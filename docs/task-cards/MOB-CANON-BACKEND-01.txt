@@ -1,0 +1,80 @@
+Title:
+MOB-CANON-BACKEND-01 - Android unresolved business-object binding guard
+
+Coder:
+3
+
+Module:
+App.Mobile.Android / backend adapter readiness / blocker guard
+
+Task type:
+Android-local blocker-safe runtime guard / integration readiness
+
+Goal:
+Add an Android-local unresolved business-object binding seam and PreUploadCheck eligibility guard that makes the missing approved businessObjectKey source explicit in UI/state/code without implementing production backend PreUploadCheck runtime.
+
+Base main SHA:
+f08050d
+
+Coordination log entries reviewed:
+- GitHub issue #89: PR #96 local outbox foundation manual replay.
+- GitHub issue #89: PR #97 selected-media handoff manual replay.
+- GitHub issue #89: PR #98 duplicate-precheck manual replay.
+- GitHub issue #89: PR #99 restart-snapshot manual replay.
+- GitHub issue #89: PR #101 desktop client form architecture update.
+- GitHub issue #89: PR #102 stale Web prompt replaced with desktop-client prompt.
+- GitHub issue #89: PR #103 desktop UI technology decision task.
+- GitHub issue #89: PR #104 desktop UI technology owner decision.
+- GitHub issue #89: PR #105 desktop application skeleton task card.
+
+Handoff/task cards reviewed:
+- docs/reports/coder3-android-backend-readiness.md
+- docs/task-cards/MOB-CANON-BACKEND-00.txt
+- docs/handoffs/s1-11-coder3-android-integration.md
+- docs/handoffs/s1-11-backend-integration-note.md
+- docs/handoffs/s1-12-sprint1-quality-gate.md
+- docs/task-cards/MOB-CANON-IMPORT-01.txt
+- docs/task-cards/MOB-CANON-IMPORT-02.txt
+- docs/task-cards/MOB-CANON-IMPORT-03.txt
+- docs/task-cards/MOB-CANON-IMPORT-04.txt
+- docs/task-cards/MOB-CANON-IMPORT-05.txt
+- docs/task-cards/MOB-CANON-IMPORT-06.txt
+- docs/task-cards/MOB-CANON-IMPORT-07.txt
+
+What changes:
+- Android-local unresolved business-object binding state
+- Android-local PreUploadCheck eligibility guard
+- Upload page blocker card/state
+- tests for unresolved guard behavior
+
+New or changed contracts:
+- shared DTO/contracts unchanged
+
+Migration:
+- none
+
+Feature flags:
+- local mobile stub flag: mobile.business-object-binding.blocker-card
+
+Offline behavior:
+- local blocker state only
+- no new sync/upload behavior
+
+Security:
+- no tokens
+- no backend calls
+- no secrets
+- no production upload
+
+Rollback:
+- revert this PR
+
+Definition of done:
+- approved source search is documented
+- blocker remains explicit if no source found
+- Upload page shows backend business-object binding unresolved
+- PreUploadCheck production path is blocked while unresolved
+- no fake businessObjectKey
+- no backend integration
+- no App.UI.Shared changes
+- tests/build/format pass

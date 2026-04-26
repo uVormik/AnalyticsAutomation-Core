@@ -26,6 +26,10 @@
     <Compile Include="..\..\..\src\App.Mobile.Android\Media\LocalSelectedMediaStoreEntry.cs" Link="LinkedProduction\Media\LocalSelectedMediaStoreEntry.cs" />
     <Compile Include="..\..\..\src\App.Mobile.Android\DraftRepair\LocalMediaDraftRepairStatus.cs" Link="LinkedProduction\DraftRepair\LocalMediaDraftRepairStatus.cs" />
     <Compile Include="..\..\..\src\App.Mobile.Android\DraftRepair\LocalMediaDraftRepairResult.cs" Link="LinkedProduction\DraftRepair\LocalMediaDraftRepairResult.cs" />
+    <Compile Include="..\..\..\src\App.Mobile.Android\BusinessObjectBinding\MobileBusinessObjectBindingApprovalState.cs" Link="LinkedProduction\BusinessObjectBinding\MobileBusinessObjectBindingApprovalState.cs" />
+    <Compile Include="..\..\..\src\App.Mobile.Android\BusinessObjectBinding\MobileBusinessObjectDraftIntent.cs" Link="LinkedProduction\BusinessObjectBinding\MobileBusinessObjectDraftIntent.cs" />
+    <Compile Include="..\..\..\src\App.Mobile.Android\BusinessObjectBinding\MobileBusinessObjectBindingSnapshot.cs" Link="LinkedProduction\BusinessObjectBinding\MobileBusinessObjectBindingSnapshot.cs" />
+    <Compile Include="..\..\..\src\App.Mobile.Android\BusinessObjectBinding\MobilePreUploadEligibilityResult.cs" Link="LinkedProduction\BusinessObjectBinding\MobilePreUploadEligibilityResult.cs" />
     <Compile Include="..\..\..\src\App.Mobile.Android\DuplicatePrecheck\LocalDuplicatePrecheckStatus.cs" Link="LinkedProduction\DuplicatePrecheck\LocalDuplicatePrecheckStatus.cs" />
     <Compile Include="..\..\..\src\App.Mobile.Android\DuplicatePrecheck\LocalDuplicatePrecheckResult.cs" Link="LinkedProduction\DuplicatePrecheck\LocalDuplicatePrecheckResult.cs" />
     <Compile Include="..\..\..\src\App.Mobile.Android\State\MobileShellMode.cs" Link="LinkedProduction\State\MobileShellMode.cs" />
@@ -38,6 +42,8 @@
     <Compile Include="..\..\..\src\App.Mobile.Android\Services\Abstractions\IFeatureFlagReader.cs" Link="LinkedProduction\Services\Abstractions\IFeatureFlagReader.cs" />
     <Compile Include="..\..\..\src\App.Mobile.Android\Services\Abstractions\ILocalDuplicatePrecheckService.cs" Link="LinkedProduction\Services\Abstractions\ILocalDuplicatePrecheckService.cs" />
     <Compile Include="..\..\..\src\App.Mobile.Android\Services\Abstractions\ILocalMediaDraftRepairService.cs" Link="LinkedProduction\Services\Abstractions\ILocalMediaDraftRepairService.cs" />
+    <Compile Include="..\..\..\src\App.Mobile.Android\Services\Abstractions\IMobileBusinessObjectBindingService.cs" Link="LinkedProduction\Services\Abstractions\IMobileBusinessObjectBindingService.cs" />
+    <Compile Include="..\..\..\src\App.Mobile.Android\Services\Abstractions\IMobilePreUploadEligibilityGate.cs" Link="LinkedProduction\Services\Abstractions\IMobilePreUploadEligibilityGate.cs" />
     <Compile Include="..\..\..\src\App.Mobile.Android\Services\Abstractions\IMobileAccessContext.cs" Link="LinkedProduction\Services\Abstractions\IMobileAccessContext.cs" />
     <Compile Include="..\..\..\src\App.Mobile.Android\Services\Abstractions\IMobileOutboxService.cs" Link="LinkedProduction\Services\Abstractions\IMobileOutboxService.cs" />
     <Compile Include="..\..\..\src\App.Mobile.Android\Services\Abstractions\IMobileOutboxSnapshotStore.cs" Link="LinkedProduction\Services\Abstractions\IMobileOutboxSnapshotStore.cs" />
@@ -50,8 +56,10 @@
     <Compile Include="..\..\..\src\App.Mobile.Android\Services\Local\FileMobileOutboxSnapshotStore.cs" Link="LinkedProduction\Services\Local\FileMobileOutboxSnapshotStore.cs" />
     <Compile Include="..\..\..\src\App.Mobile.Android\Services\Local\FileMobileSelectedMediaSnapshotStore.cs" Link="LinkedProduction\Services\Local\FileMobileSelectedMediaSnapshotStore.cs" />
     <Compile Include="..\..\..\src\App.Mobile.Android\Services\Local\InMemoryMobileSelectedMediaStore.cs" Link="LinkedProduction\Services\Local\InMemoryMobileSelectedMediaStore.cs" />
+    <Compile Include="..\..\..\src\App.Mobile.Android\Services\Local\LocalMobilePreUploadEligibilityGate.cs" Link="LinkedProduction\Services\Local\LocalMobilePreUploadEligibilityGate.cs" />
     <Compile Include="..\..\..\src\App.Mobile.Android\Services\Local\LocalCurrentSelectionDraftRepairService.cs" Link="LinkedProduction\Services\Local\LocalCurrentSelectionDraftRepairService.cs" />
     <Compile Include="..\..\..\src\App.Mobile.Android\Services\Local\LocalOutboxDuplicatePrecheckService.cs" Link="LinkedProduction\Services\Local\LocalOutboxDuplicatePrecheckService.cs" />
+    <Compile Include="..\..\..\src\App.Mobile.Android\Services\Local\UnresolvedMobileBusinessObjectBindingService.cs" Link="LinkedProduction\Services\Local\UnresolvedMobileBusinessObjectBindingService.cs" />
     <Compile Include="..\..\..\src\App.Mobile.Android\Services\Stubs\StubFeatureFlagReader.cs" Link="LinkedProduction\Services\Stubs\StubFeatureFlagReader.cs" />
     <Compile Include="..\..\..\src\App.Mobile.Android\Services\Stubs\StubMobileAccessContext.cs" Link="LinkedProduction\Services\Stubs\StubMobileAccessContext.cs" />
     <Compile Include="..\..\..\src\App.Mobile.Android\Services\Stubs\StubMobileOutboxService.cs" Link="LinkedProduction\Services\Stubs\StubMobileOutboxService.cs" />

@@ -49,6 +49,12 @@ public static class MauiProgram
             global::App.Mobile.Android.Services.Abstractions.ILocalMediaDraftRepairService,
             global::App.Mobile.Android.Services.Local.LocalCurrentSelectionDraftRepairService>();
         builder.Services.AddSingleton<
+            global::App.Mobile.Android.Services.Abstractions.IMobileBusinessObjectBindingService,
+            global::App.Mobile.Android.Services.Local.UnresolvedMobileBusinessObjectBindingService>();
+        builder.Services.AddSingleton<
+            global::App.Mobile.Android.Services.Abstractions.IMobilePreUploadEligibilityGate,
+            global::App.Mobile.Android.Services.Local.LocalMobilePreUploadEligibilityGate>();
+        builder.Services.AddSingleton<
             global::App.Mobile.Android.Services.Abstractions.IMobileOutboxSnapshotStore>(
             _ => new global::App.Mobile.Android.Services.Local.FileMobileOutboxSnapshotStore(
                 global::Microsoft.Maui.Storage.FileSystem.AppDataDirectory));

@@ -18,11 +18,11 @@ The canonical repository contains the complete IMPORT-01..07 Android media/outbo
 - `App.UI.Shared` was intentionally unchanged by IMPORT-02..07.
 
 ## Current readiness checkpoint
-`MOB-CANON-BACKEND-00` is a docs-only readiness checkpoint from fresh `main` at `e4dd243`.
+`MOB-CANON-BACKEND-01` is a blocker-safe Android-local guard from fresh `main` at `f08050d`.
 
 Android media/outbox foundation reconciliation is complete in main through IMPORT-07.
 Report/UX/backend work is not yet replayed from old stacked work.
-The next decision is backend adapter foundation versus local report UX replay.
+Backend integration remains blocked pending the approved Android `businessObjectKey` source.
 
 ## Explicitly deferred
 - report draft shell
@@ -66,6 +66,12 @@ Continue with small PR-ready slices from fresh `main`, but choose the next direc
 Backend adapter foundation should wait for the approved Android source of `businessObjectKey` / report draft / business object binding before any `PreUploadCheck` runtime.
 
 Local report UX replay remains possible only as local/non-production context if the owner accepts that it does not provide backend save, `businessObjectKey`, production reports engine, `PreUploadCheck`, or `UploadReceipt`.
+
+BACKEND-01 adds only:
+- Android-local unresolved business-object binding state.
+- Android-local `PreUploadCheck` eligibility guard.
+- Upload page blocker card.
+- Unit tests proving no fake `businessObjectKey` is produced.
 
 Do not start report, UX, profile, backend/S1 integration, incident creation, fraud, or worker logic in this branch.
 

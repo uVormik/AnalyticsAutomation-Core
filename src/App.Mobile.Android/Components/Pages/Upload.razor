@@ -6,6 +6,8 @@
 @inject global::App.Mobile.Android.Services.Abstractions.IMobileSelectedMediaStore SelectedMediaStore
 @inject global::App.Mobile.Android.Services.Abstractions.IMobileOutboxService MobileOutboxService
 @inject global::App.Mobile.Android.Services.Abstractions.ILocalDuplicatePrecheckService DuplicatePrecheckService
+@inject global::App.Mobile.Android.Services.Abstractions.IMobileBusinessObjectBindingService BusinessObjectBindingService
+@inject global::App.Mobile.Android.Services.Abstractions.IMobilePreUploadEligibilityGate PreUploadEligibilityGate
 
 <h1>@MobileUiText.UploadTitle</h1>
 <p>@MobileUiText.UploadIntro</p>
@@ -100,6 +102,62 @@
     </section>
 }
 
+@if (ShowBusinessObjectBindingBlockerCard)
+{
+    <section class="business-object-card">
+        <h3>@MobileUiText.BusinessObjectBindingCardTitle</h3>
+
+        <dl class="business-object-grid">
+            <div>
+                <dt>@MobileUiText.BusinessObjectBindingStateLabel</dt>
+                <dd>@GetBusinessObjectBindingStateText(BusinessObjectSnapshot)</dd>
+            </div>
+            @if (BusinessObjectSnapshot?.LocalIntent is not null)
+            {
+                <div>
+                    <dt>@MobileUiText.BusinessObjectBindingLocalIntentTitleLabel</dt>
+                    <dd>@BusinessObjectSnapshot.LocalIntent.DisplayTitle</dd>
+                </div>
+            }
+        </dl>
+
+        <p class="business-object-warning">@BusinessObjectSnapshot?.MessageText</p>
+        <p class="business-object-note">@MobileUiText.BusinessObjectBindingLocalOnlyNote</p>
+        <p class="business-object-note">@MobileUiText.BusinessObjectBindingNoFakeKeyNote</p>
+
+        <div class="business-object-fields">
+            <label>
+                @MobileUiText.BusinessObjectBindingLocalIntentTitleLabel
+                <input class="form-control" @bind="BusinessObjectLocalIntentTitle" />
+            </label>
+            <label>
+                @MobileUiText.BusinessObjectBindingLocalIntentNoteLabel
+                <textarea class="form-control" rows="2" @bind="BusinessObjectLocalIntentNote"></textarea>
+            </label>
+        </div>
+
+        <div class="business-object-actions">
+            <button type="button" class="btn btn-outline-primary" @onclick="SaveBusinessObjectLocalIntentAsync">@MobileUiText.BusinessObjectBindingSaveLocalIntentButton</button>
+            <button type="button" class="btn btn-outline-secondary" @onclick="ClearBusinessObjectLocalIntentAsync">@MobileUiText.BusinessObjectBindingClearLocalIntentButton</button>
+            <button type="button" class="btn btn-outline-danger" @onclick="CheckPreUploadEligibilityAsync">@MobileUiText.BusinessObjectBindingCheckReadinessButton</button>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(BusinessObjectResultText))
+        {
+            <p class="business-object-result">@BusinessObjectResultText</p>
+        }
+
+        @if (PreUploadEligibilityResult is not null)
+        {
+            <div class="business-object-blocked">
+                <strong>@MobileUiText.BusinessObjectBindingPreUploadBlockedTitle</strong>
+                <p>@PreUploadEligibilityResult.MessageText</p>
+                <p>@PreUploadEligibilityResult.RequiredActionText</p>
+            </div>
+        }
+    </section>
+}
+
 @if (ShowQueueFoundationAction)
 {
     <section class="outbox-foundation-block">
@@ -120,14 +178,27 @@
 
     private global::App.Mobile.Android.DuplicatePrecheck.LocalDuplicatePrecheckResult? CurrentPrecheckResult { get; set; }
 
+    private global::App.Mobile.Android.BusinessObjectBinding.MobileBusinessObjectBindingSnapshot? BusinessObjectSnapshot { get; set; }
+
+    private global::App.Mobile.Android.BusinessObjectBinding.MobilePreUploadEligibilityResult? PreUploadEligibilityResult { get; set; }
+
     private string MediaResultText { get; set; } = string.Empty;
 
     private string OutboxResultText { get; set; } = string.Empty;
+
+    private string BusinessObjectLocalIntentTitle { get; set; } = string.Empty;
+
+    private string BusinessObjectLocalIntentNote { get; set; } = string.Empty;
+
+    private string BusinessObjectResultText { get; set; } = string.Empty;
 
     private bool OutboxResultIsWarning { get; set; }
 
     private bool ShowQueueFoundationAction =>
         FeatureFlagReader.IsEnabled(global::App.Mobile.Android.Services.Stubs.StubFeatureFlagReader.QueueFoundationCardFlag);
+
+    private bool ShowBusinessObjectBindingBlockerCard =>
+        FeatureFlagReader.IsEnabled(global::App.Mobile.Android.Services.Stubs.StubFeatureFlagReader.BusinessObjectBindingBlockerCardFlag);
 
     private string CapabilitySummaryText =>
         CapabilitySnapshot?.SummaryText
@@ -137,6 +208,7 @@
     {
         NavigationState.SetCurrentView(global::App.Mobile.Android.Navigation.MobileViewId.Upload);
         CapabilitySnapshot = await MobileMediaService.GetCapabilitySnapshotAsync();
+        await RefreshBusinessObjectBindingAsync();
         await RefreshCurrentSelectionAndPrecheckAsync();
     }
 
@@ -176,6 +248,38 @@
         await RefreshCurrentSelectionAndPrecheckAsync();
     }
 
+    private async Task SaveBusinessObjectLocalIntentAsync()
+    {
+        BusinessObjectSnapshot = await BusinessObjectBindingService.CreateOrUpdateLocalIntentAsync(
+            BusinessObjectLocalIntentTitle,
+            BusinessObjectLocalIntentNote);
+        BusinessObjectResultText = MobileUiText.BusinessObjectBindingLocalIntentSavedResult;
+        PreUploadEligibilityResult = null;
+        SyncLocalIntentFields(BusinessObjectSnapshot);
+    }
+
+    private async Task ClearBusinessObjectLocalIntentAsync()
+    {
+        BusinessObjectSnapshot = await BusinessObjectBindingService.ClearLocalIntentAsync();
+        BusinessObjectResultText = MobileUiText.BusinessObjectBindingLocalIntentClearedResult;
+        PreUploadEligibilityResult = null;
+        SyncLocalIntentFields(BusinessObjectSnapshot);
+    }
+
+    private async Task CheckPreUploadEligibilityAsync()
+    {
+        PreUploadEligibilityResult = await PreUploadEligibilityGate.EvaluateAsync();
+        BusinessObjectSnapshot = PreUploadEligibilityResult.BindingSnapshot;
+        BusinessObjectResultText = PreUploadEligibilityResult.MessageText;
+        SyncLocalIntentFields(BusinessObjectSnapshot);
+    }
+
+    private async Task RefreshBusinessObjectBindingAsync()
+    {
+        BusinessObjectSnapshot = await BusinessObjectBindingService.GetCurrentAsync();
+        SyncLocalIntentFields(BusinessObjectSnapshot);
+    }
+
     private async Task RefreshCurrentSelectionAndPrecheckAsync()
     {
         CurrentSelectedMedia = await SelectedMediaStore.GetCurrentAsync();
@@ -188,6 +292,21 @@
 
         var items = await MobileOutboxService.GetItemsAsync();
         CurrentPrecheckResult = DuplicatePrecheckService.CheckAgainstOutbox(CurrentSelectedMedia, items);
+    }
+
+    private static string GetBusinessObjectBindingStateText(
+        global::App.Mobile.Android.BusinessObjectBinding.MobileBusinessObjectBindingSnapshot? snapshot)
+    {
+        return snapshot?.ApprovalState is global::App.Mobile.Android.BusinessObjectBinding.MobileBusinessObjectBindingApprovalState.ApprovedResolved
+            ? MobileUiText.BusinessObjectBindingEligibleMessage
+            : MobileUiText.BusinessObjectBindingUnresolvedStateText;
+    }
+
+    private void SyncLocalIntentFields(
+        global::App.Mobile.Android.BusinessObjectBinding.MobileBusinessObjectBindingSnapshot? snapshot)
+    {
+        BusinessObjectLocalIntentTitle = snapshot?.LocalIntent?.DisplayTitle ?? string.Empty;
+        BusinessObjectLocalIntentNote = snapshot?.LocalIntent?.NoteText ?? string.Empty;
     }
 
     private static string GetCapabilityStateText(global::App.Mobile.Android.Media.MobileMediaCapabilityState? state)

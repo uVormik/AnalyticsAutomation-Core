@@ -11,6 +11,12 @@ public sealed class StubFeatureFlagReaderTests
     }
 
     [Fact]
+    public void BusinessObjectBindingBlockerCardFlagIsEnabled()
+    {
+        Assert.True(Reader.IsEnabled(global::App.Mobile.Android.Services.Stubs.StubFeatureFlagReader.BusinessObjectBindingBlockerCardFlag));
+    }
+
+    [Fact]
     public void UnknownFlagIsDisabled()
     {
         Assert.False(Reader.IsEnabled("mobile.unknown.flag"));

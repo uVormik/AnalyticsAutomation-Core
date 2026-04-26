@@ -72,6 +72,32 @@ internal static class MobileUiText
         "Похоже, выбранное видео уже есть в локальной очереди. Повторная передача заблокирована только локальной предварительной проверкой, это не финальная backend-проверка.";
     public const string LocalDuplicatePrecheckLocalOnlyNote =
         "Сравнение выполняется только по текущему локальному выбору и draft-элементам очереди в памяти устройства.";
+    public const string BusinessObjectBindingCardTitle = "Привязка бизнес-объекта для backend precheck";
+    public const string BusinessObjectBindingStateLabel = "Статус";
+    public const string BusinessObjectBindingUnresolvedStateText = "Не разрешено: approved businessObjectKey отсутствует";
+    public const string BusinessObjectBindingUnresolvedWarning =
+        "approved businessObjectKey source is not documented yet; backend precheck cannot continue as production flow";
+    public const string BusinessObjectBindingSourceDescription =
+        "Android хранит только локальный intent. Он не является businessObjectKey и не отправляется в backend.";
+    public const string BusinessObjectBindingLocalIntentTitleLabel = "Локальный intent";
+    public const string BusinessObjectBindingLocalIntentNoteLabel = "Локальная заметка";
+    public const string BusinessObjectBindingDefaultLocalIntentTitle = "Локальный черновик без approved businessObjectKey";
+    public const string BusinessObjectBindingSaveLocalIntentButton = "Сохранить локальный intent";
+    public const string BusinessObjectBindingClearLocalIntentButton = "Очистить локальный intent";
+    public const string BusinessObjectBindingCheckReadinessButton = "Проверить готовность backend precheck";
+    public const string BusinessObjectBindingLocalIntentSavedResult = "Локальный intent сохранен. Approved businessObjectKey не создан.";
+    public const string BusinessObjectBindingLocalIntentClearedResult = "Локальный intent очищен. Approved businessObjectKey по-прежнему отсутствует.";
+    public const string BusinessObjectBindingPreUploadBlockedTitle = "Backend PreUploadCheck заблокирован";
+    public const string PreUploadCheckBlockedMessage =
+        "approved businessObjectKey source is not documented yet; backend precheck cannot continue as production flow";
+    public const string BusinessObjectBindingRequiredActionText =
+        "Нужен утвержденный источник businessObjectKey / report draft / business object binding до production PreUploadCheck.";
+    public const string BusinessObjectBindingLocalOnlyNote =
+        "Это локальная blocker-карточка Android. Она не вызывает backend, не создает create-report и не запускает upload.";
+    public const string BusinessObjectBindingNoFakeKeyNote =
+        "LocalIntentId не является businessObjectKey. Фейковый ключ, hash файла или group id не используются.";
+    public const string BusinessObjectBindingEligibleMessage =
+        "Approved businessObjectKey найден. Production PreUploadCheck может быть разрешен отдельной approved integration task.";
     public const string UploadEnqueueStubButton = "Передать выбранное видео в локальную очередь";
     public const string UploadOutboxActionHint =
         "Локальный handoff переносит только текущее выбранное видео в черновик очереди на устройстве. " +
