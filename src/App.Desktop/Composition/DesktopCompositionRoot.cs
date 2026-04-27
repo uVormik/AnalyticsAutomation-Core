@@ -1,4 +1,5 @@
 using App.Desktop.Boundaries;
+using App.Desktop.Services.Auth;
 using App.Desktop.Services.Placeholders;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -17,7 +18,13 @@ public static class DesktopCompositionRoot
 #endif
 
         services.AddSingleton<IDesktopShellLifecycle, PlaceholderDesktopShellLifecycle>();
-        services.AddSingleton<IDesktopAuthSessionBoundary, PlaceholderDesktopAuthSessionBoundary>();
+        services.AddSingleton<IDesktopSessionStore, DisabledDesktopSessionStore>();
+        services.AddSingleton<DesktopSessionState>();
+        services.AddSingleton<IDesktopSessionState>(
+            serviceProvider => serviceProvider.GetRequiredService<DesktopSessionState>());
+        services.AddSingleton<IDesktopAuthSessionBoundary>(
+            serviceProvider => serviceProvider.GetRequiredService<DesktopSessionState>());
+        services.AddSingleton<IDesktopAuthClient, UnavailableDesktopAuthClient>();
         services.AddSingleton<ISecureSessionStorage, PlaceholderSecureSessionStorage>();
         services.AddSingleton<IDesktopFilePicker, PlaceholderDesktopFilePicker>();
         services.AddSingleton<ILocalFileMetadataService, PlaceholderLocalFileMetadataService>();

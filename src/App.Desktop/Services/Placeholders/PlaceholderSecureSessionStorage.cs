@@ -16,8 +16,8 @@ public sealed class PlaceholderSecureSessionStorage : ISecureSessionStorage
         ArgumentNullException.ThrowIfNull(session);
         cancellationToken.ThrowIfCancellationRequested();
 
-        throw new NotSupportedException(
-            "S2-48 defines the secure storage boundary only; token persistence is deferred.");
+        // TODO(S2-50 follow-up): replace only after an approved Windows secure token storage task.
+        return ValueTask.CompletedTask;
     }
 
     public ValueTask ClearSessionAsync(CancellationToken cancellationToken)
