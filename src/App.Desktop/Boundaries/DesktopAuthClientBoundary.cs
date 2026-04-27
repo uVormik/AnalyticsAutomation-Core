@@ -30,7 +30,8 @@ public sealed class DesktopSignInRequest
 
     public override string ToString()
     {
-        return $"{nameof(DesktopSignInRequest)} {{ HasLogin = True, HasPassword = True, DeviceId = {DeviceId} }}";
+        return $"{nameof(DesktopSignInRequest)} {{ HasLogin = True, HasPassword = True, "
+            + $"DeviceId = {DeviceId} }}";
     }
 }
 

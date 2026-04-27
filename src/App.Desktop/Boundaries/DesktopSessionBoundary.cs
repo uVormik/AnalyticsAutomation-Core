@@ -57,7 +57,9 @@ public sealed record DesktopSessionSnapshot(
 
     public override string ToString()
     {
-        return $"{nameof(DesktopSessionSnapshot)} {{ Status = {Status}, UserId = {UserId}, DisplayName = {DisplayName}, HasAccessToken = {HasAccessToken}, HasRefreshToken = {HasRefreshToken}, ExpiresAtUtc = {ExpiresAtUtc:O} }}";
+        return $"{nameof(DesktopSessionSnapshot)} {{ Status = {Status}, UserId = {UserId}, "
+            + $"DisplayName = {DisplayName}, HasAccessToken = {HasAccessToken}, "
+            + $"HasRefreshToken = {HasRefreshToken}, ExpiresAtUtc = {ExpiresAtUtc:O} }}";
     }
 }
 

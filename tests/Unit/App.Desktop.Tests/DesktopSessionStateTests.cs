@@ -44,6 +44,28 @@ public sealed class DesktopSessionStateTests
     }
 
     [Fact]
+    public async Task SetSignedInSessionDoesNotMutateStateWhenStoreSaveThrows()
+    {
+        var store = new ThrowingDesktopSessionStore(new InvalidOperationException("store save failed"));
+        var state = new DesktopSessionState(store);
+        var session = CreateAuthenticatedSession();
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            async () => await state.SetSignedInAsync(session, CancellationToken.None));
+
+        var boundarySnapshot = await ((IDesktopAuthSessionBoundary)state).GetCurrentSessionAsync(
+            CancellationToken.None);
+
+        Assert.Equal(DesktopSessionStatus.SignedOut, state.Current.Status);
+        Assert.False(state.Current.IsSignedIn);
+        Assert.False(state.Current.HasAccessToken);
+        Assert.False(state.Current.HasRefreshToken);
+        Assert.False(boundarySnapshot.IsAuthenticated);
+        Assert.Null(boundarySnapshot.DisplayName);
+        Assert.Equal(1, store.SaveCount);
+    }
+
+    [Fact]
     public async Task SignOutClearsCurrentSessionAndStoreBoundary()
     {
         var store = new RecordingDesktopSessionStore();
@@ -141,6 +163,36 @@ public sealed class DesktopSessionStateTests
 
             ClearCount++;
             SavedSession = null;
+            return ValueTask.FromResult(DesktopSessionStoreResult.Cleared("cleared by test helper"));
+        }
+    }
+
+    private sealed class ThrowingDesktopSessionStore(Exception exception) : IDesktopSessionStore
+    {
+        public int SaveCount { get; private set; }
+
+        public ValueTask<DesktopStoredSession?> LoadAsync(CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            return ValueTask.FromResult<DesktopStoredSession?>(null);
+        }
+
+        public ValueTask<DesktopSessionStoreResult> SaveAsync(
+            DesktopStoredSession session,
+            CancellationToken cancellationToken)
+        {
+            ArgumentNullException.ThrowIfNull(session);
+            cancellationToken.ThrowIfCancellationRequested();
+
+            SaveCount++;
+            throw exception;
+        }
+
+        public ValueTask<DesktopSessionStoreResult> ClearAsync(CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
             return ValueTask.FromResult(DesktopSessionStoreResult.Cleared("cleared by test helper"));
         }
     }

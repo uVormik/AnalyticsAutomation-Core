@@ -35,55 +35,90 @@ public sealed class HttpDesktopAuthClient : IDesktopAuthClient
         ArgumentNullException.ThrowIfNull(request);
         cancellationToken.ThrowIfCancellationRequested();
 
-        using var response = await _httpClient.PostAsJsonAsync(
-            _signInEndpoint,
-            new SignInRequestPayload(request.Login, request.Password, request.DeviceId),
-            JsonOptions,
-            cancellationToken);
-
-        if (response.StatusCode == HttpStatusCode.Unauthorized)
+        try
         {
-            return DesktopAuthResult.Rejected(
-                "invalid_credentials",
-                "Control-plane sign-in rejected the supplied credentials.");
-        }
+            using var response = await _httpClient.PostAsJsonAsync(
+                _signInEndpoint,
+                new SignInRequestPayload(request.Login, request.Password, request.DeviceId),
+                JsonOptions,
+                cancellationToken);
 
-        if (!response.IsSuccessStatusCode)
+            if (response.StatusCode == HttpStatusCode.Unauthorized)
+            {
+                return DesktopAuthResult.Rejected(
+                    "invalid_credentials",
+                    "Control-plane sign-in rejected the supplied credentials.");
+            }
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return DesktopAuthResult.Failed(
+                    "sign_in_http_error",
+                    $"Control-plane sign-in failed with HTTP {(int)response.StatusCode}.");
+            }
+
+            SignInResponsePayload? payload = await response.Content.ReadFromJsonAsync<SignInResponsePayload>(
+                JsonOptions,
+                cancellationToken);
+
+            if (payload?.User is null
+                || payload.Session is null
+                || string.IsNullOrWhiteSpace(payload.AccessToken))
+            {
+                return InvalidSessionResponse();
+            }
+
+            string? displayName = string.IsNullOrWhiteSpace(payload.User.DisplayName)
+                ? payload.User.UserName
+                : payload.User.DisplayName;
+
+            DesktopAuthenticatedSession session = DesktopAuthenticatedSession.Create(
+                payload.Session.SessionId,
+                payload.User.UserId,
+                payload.Session.DeviceId,
+                displayName,
+                payload.AccessToken,
+                payload.RefreshToken,
+                payload.Session.IssuedAtUtc,
+                payload.Session.ExpiresAtUtc,
+                payload.Session.IsOfflineRestricted);
+
+            return DesktopAuthResult.Succeeded(session);
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
-            return DesktopAuthResult.Failed(
-                "sign_in_http_error",
-                $"Control-plane sign-in failed with HTTP {(int)response.StatusCode}.");
+            return SignInUnavailable();
         }
-
-        var payload = await response.Content.ReadFromJsonAsync<SignInResponsePayload>(
-            JsonOptions,
-            cancellationToken);
-
-        if (payload?.User is null
-            || payload.Session is null
-            || string.IsNullOrWhiteSpace(payload.AccessToken))
+        catch (HttpRequestException)
         {
-            return DesktopAuthResult.Failed(
-                "sign_in_invalid_response",
-                "Control-plane sign-in returned an invalid session response.");
+            return SignInUnavailable();
         }
+        catch (InvalidOperationException)
+        {
+            return SignInUnavailable();
+        }
+        catch (JsonException)
+        {
+            return InvalidSessionResponse();
+        }
+        catch (NotSupportedException)
+        {
+            return InvalidSessionResponse();
+        }
+    }
 
-        var displayName = string.IsNullOrWhiteSpace(payload.User.DisplayName)
-            ? payload.User.UserName
-            : payload.User.DisplayName;
+    private static DesktopAuthResult SignInUnavailable()
+    {
+        return DesktopAuthResult.Unavailable(
+            "sign_in_unavailable",
+            "Control-plane sign-in is temporarily unavailable.");
+    }
 
-        var session = DesktopAuthenticatedSession.Create(
-            payload.Session.SessionId,
-            payload.User.UserId,
-            payload.Session.DeviceId,
-            displayName,
-            payload.AccessToken,
-            payload.RefreshToken,
-            payload.Session.IssuedAtUtc,
-            payload.Session.ExpiresAtUtc,
-            payload.Session.IsOfflineRestricted);
-
-        return DesktopAuthResult.Succeeded(session);
+    private static DesktopAuthResult InvalidSessionResponse()
+    {
+        return DesktopAuthResult.Failed(
+            "sign_in_invalid_response",
+            "Control-plane sign-in returned an invalid session response.");
     }
 
     private sealed record SignInRequestPayload(

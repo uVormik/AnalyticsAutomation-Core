@@ -35,14 +35,18 @@ public sealed class DesktopSessionState(IDesktopSessionStore sessionStore) :
         ArgumentNullException.ThrowIfNull(session);
         cancellationToken.ThrowIfCancellationRequested();
 
-        _session = session;
-        _current = DesktopSessionSnapshot.FromSession(session);
-
         await sessionStore.SaveAsync(
             DesktopStoredSession.FromAuthenticatedSession(session),
             cancellationToken);
 
-        return _current;
+        cancellationToken.ThrowIfCancellationRequested();
+
+        DesktopSessionSnapshot snapshot = DesktopSessionSnapshot.FromSession(session);
+
+        _session = session;
+        _current = snapshot;
+
+        return snapshot;
     }
 
     public async ValueTask<DesktopSessionSnapshot> SignOutAsync(CancellationToken cancellationToken)

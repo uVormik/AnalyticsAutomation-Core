@@ -111,6 +111,119 @@ public sealed class DesktopAuthClientBoundaryTests
         Assert.DoesNotContain(responseToken, result.Error.Message, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task HttpTransportFailureReturnsUnavailableWithoutExposingSecrets()
+    {
+        var login = $"desktop-{Guid.NewGuid():N}";
+        var password = CreateSensitiveValue("password");
+        var tokenLikeValue = CreateSensitiveValue("access");
+        var handler = new StubHttpMessageHandler(_ => throw new HttpRequestException(
+            $"Transport failed for {login} {password} {tokenLikeValue}"));
+        var httpClient = new HttpClient(handler)
+        {
+            BaseAddress = new Uri("https://control-plane.local")
+        };
+        var client = new HttpDesktopAuthClient(httpClient);
+
+        var result = await client.SignInAsync(
+            new DesktopSignInRequest(login, password, Guid.NewGuid()),
+            CancellationToken.None);
+
+        Assert.Equal(DesktopAuthStatus.Unavailable, result.Status);
+        Assert.Null(result.Session);
+        Assert.NotNull(result.Error);
+        Assert.DoesNotContain(login, result.ToString(), StringComparison.Ordinal);
+        Assert.DoesNotContain(password, result.ToString(), StringComparison.Ordinal);
+        Assert.DoesNotContain(tokenLikeValue, result.ToString(), StringComparison.Ordinal);
+        Assert.DoesNotContain(login, result.Error.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain(password, result.Error.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain(tokenLikeValue, result.Error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task HttpMalformedJsonReturnsFailedWithoutExposingSecrets()
+    {
+        var login = $"desktop-{Guid.NewGuid():N}";
+        var password = CreateSensitiveValue("password");
+        var tokenLikeValue = CreateSensitiveValue("access");
+        var handler = new StubHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(
+                $"{{\"accessToken\":\"{tokenLikeValue}\",",
+                Encoding.UTF8,
+                "application/json")
+        });
+        var httpClient = new HttpClient(handler)
+        {
+            BaseAddress = new Uri("https://control-plane.local")
+        };
+        var client = new HttpDesktopAuthClient(httpClient);
+
+        var result = await client.SignInAsync(
+            new DesktopSignInRequest(login, password, Guid.NewGuid()),
+            CancellationToken.None);
+
+        Assert.Equal(DesktopAuthStatus.Failed, result.Status);
+        Assert.Null(result.Session);
+        Assert.NotNull(result.Error);
+        Assert.DoesNotContain(login, result.ToString(), StringComparison.Ordinal);
+        Assert.DoesNotContain(password, result.ToString(), StringComparison.Ordinal);
+        Assert.DoesNotContain(tokenLikeValue, result.ToString(), StringComparison.Ordinal);
+        Assert.DoesNotContain(login, result.Error.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain(password, result.Error.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain(tokenLikeValue, result.Error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task HttpInvalidSuccessPayloadReturnsFailedWithoutExposingSecrets()
+    {
+        var login = $"desktop-{Guid.NewGuid():N}";
+        var password = CreateSensitiveValue("password");
+        var tokenLikeValue = CreateSensitiveValue("refresh");
+        var handler = new StubHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = JsonContent(new
+            {
+                user = new
+                {
+                    userId = Guid.NewGuid(),
+                    userName = login,
+                    displayName = "Desktop Operator"
+                },
+                session = new
+                {
+                    sessionId = Guid.NewGuid(),
+                    userId = Guid.NewGuid(),
+                    deviceId = Guid.NewGuid(),
+                    isOfflineRestricted = false,
+                    issuedAtUtc = DateTimeOffset.UtcNow,
+                    expiresAtUtc = DateTimeOffset.UtcNow.AddMinutes(15)
+                },
+                accessToken = "",
+                refreshToken = tokenLikeValue
+            })
+        });
+        var httpClient = new HttpClient(handler)
+        {
+            BaseAddress = new Uri("https://control-plane.local")
+        };
+        var client = new HttpDesktopAuthClient(httpClient);
+
+        var result = await client.SignInAsync(
+            new DesktopSignInRequest(login, password, Guid.NewGuid()),
+            CancellationToken.None);
+
+        Assert.Equal(DesktopAuthStatus.Failed, result.Status);
+        Assert.Null(result.Session);
+        Assert.NotNull(result.Error);
+        Assert.DoesNotContain(login, result.ToString(), StringComparison.Ordinal);
+        Assert.DoesNotContain(password, result.ToString(), StringComparison.Ordinal);
+        Assert.DoesNotContain(tokenLikeValue, result.ToString(), StringComparison.Ordinal);
+        Assert.DoesNotContain(login, result.Error.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain(password, result.Error.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain(tokenLikeValue, result.Error.Message, StringComparison.Ordinal);
+    }
+
     private static StringContent JsonContent<T>(T value)
     {
         return new StringContent(
