@@ -67,6 +67,11 @@ public sealed class DesktopAuthOptions
             return false;
         }
 
+        if (baseAddress.AbsolutePath is not "" and not "/")
+        {
+            return false;
+        }
+
         return baseAddress.Scheme == Uri.UriSchemeHttps
             || baseAddress.Scheme == Uri.UriSchemeHttp;
     }

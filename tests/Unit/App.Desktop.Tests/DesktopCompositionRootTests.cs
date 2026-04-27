@@ -35,12 +35,28 @@ public sealed class DesktopCompositionRootTests
     }
 
     [Theory]
+    [InlineData("https://control-plane.local")]
+    [InlineData("https://control-plane.local/")]
+    [InlineData("http://control-plane.local")]
+    [InlineData("http://control-plane.local/")]
+    [InlineData("http://192.168.1.66/")]
+    public void RootBaseAddressOptionsAreConfigured(string baseAddress)
+    {
+        var options = DesktopAuthOptions.FromControlPlaneBaseAddress(baseAddress);
+
+        Assert.True(options.IsControlPlaneSignInConfigured);
+        Assert.NotNull(options.ControlPlaneBaseAddress);
+    }
+
+    [Theory]
     [InlineData("")]
     [InlineData("not a uri")]
     [InlineData("ftp://control-plane.local")]
     [InlineData("https://operator:secret@control-plane.local")]
     [InlineData("https://control-plane.local?token=secret")]
     [InlineData("https://control-plane.local#secret")]
+    [InlineData("https://control-plane.local/prefix")]
+    [InlineData("https://control-plane.local/prefix/")]
     public void InvalidBaseAddressOptionsKeepUnavailableAuthClient(string baseAddress)
     {
         using var services = DesktopCompositionRoot.BuildServices(
