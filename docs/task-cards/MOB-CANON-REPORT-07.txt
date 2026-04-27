@@ -1,0 +1,74 @@
+Title: MOB-CANON-REPORT-07 - Local create-from-last FPV draft action
+Coder: 3
+Module: App.Mobile.Android
+Task type: Android-local UX foundation / local report draft helper
+
+Goal:
+Enable local "Создать из последнего" behavior for FPV drafts after report draft persistence is in main.
+
+Base main SHA:
+aae9392
+
+Coordination log entries reviewed:
+- TEAM COORDINATION LOG #89 latest entries reviewed on 2026-04-27.
+- PR #113 manual replay comment: https://github.com/uVormik/AnalyticsAutomation-Core/issues/89#issuecomment-4324921544
+- Android businessObjectKey decision comment: https://github.com/uVormik/AnalyticsAutomation-Core/issues/89#issuecomment-4321720298
+
+Handoff/task cards reviewed:
+- docs/reports/coder3-android-backend-readiness.md
+- docs/task-cards/MOB-CANON-BACKEND-00.txt
+- docs/task-cards/MOB-CANON-BACKEND-01.txt
+- docs/handoffs/MOB-CANON-BACKEND-01_ANDROID_BUSINESS_OBJECT_BINDING_BLOCKER.md
+- docs/task-cards/MOB-CANON-REPORT-00-03.txt
+- docs/task-cards/MOB-CANON-REPORT-04.txt
+- docs/task-cards/MOB-CANON-REPORT-05.txt
+- docs/task-cards/MOB-CANON-REPORT-06.txt
+- docs/task-cards/MOB-CANON-REPORT-07.txt
+
+What changes:
+- local create-from-last action
+- copies field values from latest draft
+- does not copy attachments
+- does not copy queue state
+- persists copied draft through local snapshot store
+
+Contracts:
+- shared DTO/contracts unchanged
+
+Migration:
+- none
+
+Feature flags:
+- local mobile stub flags only if used
+
+Offline behavior:
+- local snapshot-backed draft creation only
+- no backend save
+- no sync
+- no upload
+
+Security:
+- no auth/session/device binding
+- no tokens/secrets
+
+BusinessObject:
+- businessObjectKey source remains unresolved
+- local report draft id is not businessObjectKey
+- production PreUploadCheck remains blocked
+
+Rollback:
+- revert this PR
+
+Definition of done:
+- build succeeds
+- unit tests pass
+- format/diff-check pass
+- "Создать из последнего" works when drafts exist
+- warning/disabled state works when no drafts exist
+- copied draft has new DraftId
+- copied draft copies field values
+- copied draft does not copy attachments
+- copied draft status is Draft
+- copied draft can be edited, receive new video, validate, and queue locally
+- no backend integration
+- no App.UI.Shared changes

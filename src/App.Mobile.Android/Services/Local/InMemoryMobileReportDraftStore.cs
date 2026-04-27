@@ -104,6 +104,63 @@ internal sealed class InMemoryMobileReportDraftStore :
         return draft;
     }
 
+    public async Task<global::App.Mobile.Android.Reports.MobileReportDraftOperationResult> CreateFromLastFpvDraftAsync(
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        await EnsureSnapshotLoadedAsync(cancellationToken);
+
+        global::App.Mobile.Android.Reports.MobileReportDraftOperationResult operationResult;
+        global::App.Mobile.Android.Reports.MobileReportDraft[]? persistedDrafts = null;
+
+        lock (_gate)
+        {
+            var latestDraft = _drafts
+                .OrderByDescending(draft => draft.UpdatedAtUtc)
+                .ThenByDescending(draft => draft.CreatedAtUtc)
+                .FirstOrDefault();
+
+            if (latestDraft is null)
+            {
+                return new global::App.Mobile.Android.Reports.MobileReportDraftOperationResult(
+                    Applied: false,
+                    Message: global::App.Mobile.Android.Localization.MobileUiText.ReportCreateFromLastNoPreviousDraftWarningText,
+                    Draft: null,
+                    Attachment: null);
+            }
+
+            var now = DateTimeOffset.UtcNow;
+            var sequence = Interlocked.Increment(ref _sequence);
+            var copiedFields = latestDraft.Fields
+                .Select(field => field with
+                {
+                    LastUpdatedAtUtc = field.IsPlaceholder ? null : now
+                })
+                .ToArray();
+
+            var createdDraft = new global::App.Mobile.Android.Reports.MobileReportDraft(
+                DraftId: Guid.NewGuid().ToString("N"),
+                CreatedAtUtc: now,
+                UpdatedAtUtc: now,
+                Title: global::App.Mobile.Android.Localization.MobileUiText.GetReportDraftCreateFromLastTitle(sequence),
+                Status: global::App.Mobile.Android.Reports.MobileReportDraftStatus.Draft,
+                Fields: copiedFields,
+                Attachments: Array.Empty<global::App.Mobile.Android.Reports.MobileReportAttachment>());
+
+            _drafts.Insert(0, createdDraft);
+            persistedDrafts = _drafts.ToArray();
+            operationResult = new global::App.Mobile.Android.Reports.MobileReportDraftOperationResult(
+                Applied: true,
+                Message: global::App.Mobile.Android.Localization.MobileUiText.GetReportCreateFromLastSuccessText(
+                    latestDraft.Title),
+                Draft: createdDraft,
+                Attachment: null);
+        }
+
+        await _snapshotStore.SaveAsync(persistedDrafts, cancellationToken);
+        return operationResult;
+    }
+
     public async Task<global::App.Mobile.Android.Reports.MobileReportDraftOperationResult> AttachSelectedVideoAsync(
         string draftId,
         global::App.Mobile.Android.Media.LocalSelectedMediaDescriptor descriptor,

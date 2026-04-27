@@ -22,6 +22,9 @@ internal static class MobileUiText
         "Локальная оболочка черновиков отчетов сейчас скрыта флагом функции.";
     public const string ReportsLoadingText = "Загружается локальный список черновиков...";
     public const string ReportsCreateFpvDraftButton = "Создать отчет FPV";
+    public const string ReportsCreateFromLastFpvDraftButton = "Создать из последнего";
+    public const string ReportCreateFromLastNoPreviousDraftWarningText =
+        "Сначала создайте хотя бы один локальный FPV-черновик. Копировать пока нечего.";
     public const string ReportsEmptyTitle = "Черновиков пока нет";
     public const string ReportsEmptyMessage =
         "Создайте локальный FPV-черновик, чтобы проверить report-first оболочку без серверного сохранения, синхронизации и загрузки.";
@@ -466,6 +469,16 @@ internal static class MobileUiText
     public static string GetReportDraftTitle(int sequence)
     {
         return $"FPV-отчет #{sequence}";
+    }
+
+    public static string GetReportDraftCreateFromLastTitle(int sequence)
+    {
+        return $"FPV-отчет из последнего #{sequence}";
+    }
+
+    public static string GetReportCreateFromLastSuccessText(string sourceTitle)
+    {
+        return $"Создан новый локальный черновик из «{sourceTitle}». Поля скопированы, вложения и очередь не скопированы.";
     }
 
     public static string GetLookupStubOptionText(int sequence)

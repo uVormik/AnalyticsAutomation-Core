@@ -41,7 +41,19 @@
 
 .reports-shell-actions {
     display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
     justify-content: flex-start;
+}
+
+.reports-action-result {
+    margin: 0;
+    padding: 0.75rem 0.85rem;
+    border-radius: 0.75rem;
+    background: #fff7ed;
+    border: 1px solid #fed7aa;
+    color: #9a3412;
+    line-height: 1.45;
 }
 
 .reports-local-note,
