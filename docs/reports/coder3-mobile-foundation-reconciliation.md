@@ -1,7 +1,7 @@
 # Coder 3 mobile foundation reconciliation
 
 ## Canonical App.Mobile.Android current state
-The canonical repository contains the Android media/outbox/report foundation through REPORT-05:
+The canonical repository contains the Android media/outbox/report foundation through REPORT-06:
 
 - IMPORT-01..07 media/outbox foundation;
 - BACKEND-00 backend readiness checkpoint;
@@ -9,26 +9,25 @@ The canonical repository contains the Android media/outbox/report foundation thr
 - REPORT-00..03 local report-first baseline;
 - REPORT-04 local field editing and selector prototype;
 - REPORT-05 local validation and ready-to-queue gating;
-- REPORT-05 Russian localization fixes.
+- REPORT-05 Russian localization fixes;
+- REPORT-06 local report draft snapshot persistence.
 
 ## Current local UX slice
-MOB-CANON-REPORT-06 is the current Android-local restart-resilience slice.
+MOB-CANON-REPORT-07 is the current Android-local report helper slice.
 
-REPORT-06 means:
-- local FPV report drafts are persisted as JSON metadata snapshots;
-- edited field values are restored after app restart;
-- attachment metadata is restored after app restart;
-- restored attachments are clearly metadata-only;
-- local validation and queue gating still run after restore.
+REPORT-07 means:
+- users can create a new local FPV draft from the latest local draft;
+- copied drafts receive a new DraftId;
+- copied drafts copy field values only;
+- copied drafts do not copy attachments;
+- copied drafts do not copy queued-local state;
+- copied drafts persist through the existing local snapshot store.
 
-REPORT-06 does not mean:
+REPORT-07 does not mean:
 - backend save;
 - backend validation;
 - create-report API;
-- media byte persistence;
-- file copy;
-- stream persistence;
-- SQLite/local DB;
+- backend-side create-from-last;
 - production report flow.
 
 ## BusinessObject and backend boundary
@@ -37,7 +36,7 @@ REPORT-06 does not mean:
 - Android must obtain businessObjectKey from a backend-controlled report/business-object binding source before PreUploadCheck.
 - The concrete backend source/endpoint/contract remains undocumented.
 - Local report draft id is not businessObjectKey.
-- JSON snapshot metadata is not businessObjectKey.
+- Copied local report draft id is not businessObjectKey.
 - Production PreUploadCheck remains blocked.
 
 ## Scope guard

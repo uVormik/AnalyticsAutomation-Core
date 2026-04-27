@@ -26,7 +26,18 @@ else
 
         <div class="reports-shell-actions">
             <button type="button" class="btn btn-primary" @onclick="CreateDraftAsync">@MobileUiText.ReportsCreateFpvDraftButton</button>
+            <button type="button"
+                    class="btn btn-outline-primary"
+                    disabled="@(Drafts.Count == 0)"
+                    @onclick="CreateFromLastDraftAsync">
+                @MobileUiText.ReportsCreateFromLastFpvDraftButton
+            </button>
         </div>
+
+        @if (!string.IsNullOrWhiteSpace(ActionResultText))
+        {
+            <p class="reports-action-result">@ActionResultText</p>
+        }
 
         <p class="reports-local-note">@MobileUiText.GetReportDraftLocalSnapshotNoteText()</p>
 
@@ -82,6 +93,8 @@ else
 
     private bool IsLoading { get; set; }
 
+    private string ActionResultText { get; set; } = string.Empty;
+
     private bool ShowReportDraftShell =>
         FeatureFlagReader.IsEnabled(global::App.Mobile.Android.Services.Stubs.StubFeatureFlagReader.ReportDraftShellFlag);
 
@@ -101,6 +114,19 @@ else
     {
         var draft = await ReportDraftStore.CreateFpvDraftAsync();
         NavigationManager.NavigateTo(GetDraftRoute(draft.DraftId));
+    }
+
+    private async Task CreateFromLastDraftAsync()
+    {
+        var result = await ReportDraftStore.CreateFromLastFpvDraftAsync();
+        if (result.Applied && result.Draft is not null)
+        {
+            NavigationManager.NavigateTo(GetDraftRoute(result.Draft.DraftId));
+            return;
+        }
+
+        ActionResultText = result.Message;
+        await LoadDraftsAsync();
     }
 
     private async Task LoadDraftsAsync()

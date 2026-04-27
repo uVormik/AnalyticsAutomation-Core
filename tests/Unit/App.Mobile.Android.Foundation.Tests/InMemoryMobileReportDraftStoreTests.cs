@@ -1,4 +1,4 @@
-﻿namespace App.Mobile.Android.Foundation.Tests;
+namespace App.Mobile.Android.Foundation.Tests;
 
 public sealed class InMemoryMobileReportDraftStoreTests
 {
@@ -135,6 +135,145 @@ public sealed class InMemoryMobileReportDraftStoreTests
         var restoredDraft = Assert.Single(drafts);
         Assert.Equal(createdDraft.DraftId, restoredDraft.DraftId);
         Assert.True(restoredDraft.IsRestoredFromSnapshot);
+    }
+
+    [Fact]
+    public async Task CreateFromLastFpvDraftAsync_WithNoDrafts_ReturnsAppliedFalse()
+    {
+        using var scope = CreateScope();
+        var store = scope.CreateStore();
+
+        var result = await store.CreateFromLastFpvDraftAsync();
+
+        Assert.False(result.Applied);
+        Assert.Null(result.Draft);
+        Assert.Equal(
+            global::App.Mobile.Android.Localization.MobileUiText.ReportCreateFromLastNoPreviousDraftWarningText,
+            result.Message);
+    }
+
+    [Fact]
+    public async Task CreateFromLastFpvDraftAsync_AfterEditedDraft_CopiesFieldValuesWithNewDraftId()
+    {
+        using var scope = CreateScope();
+        var store = scope.CreateStore();
+        var originalDraft = await store.CreateFpvDraftAsync();
+        await store.UpdateFieldValueAsync(originalDraft.DraftId, "serial_number", "SN-FROM-LAST-001");
+        await store.UpdateFieldValueAsync(originalDraft.DraftId, "reason", "Заглушка - значение 3");
+
+        var result = await store.CreateFromLastFpvDraftAsync();
+
+        Assert.True(result.Applied);
+        Assert.NotNull(result.Draft);
+        Assert.NotEqual(originalDraft.DraftId, result.Draft!.DraftId);
+        Assert.Equal(global::App.Mobile.Android.Reports.MobileReportDraftStatus.Draft, result.Draft.Status);
+        Assert.Equal(
+            "SN-FROM-LAST-001",
+            Assert.Single(result.Draft.Fields, field => field.FieldKey == "serial_number").ValueText);
+        Assert.Equal(
+            "Заглушка - значение 3",
+            Assert.Single(result.Draft.Fields, field => field.FieldKey == "reason").ValueText);
+    }
+
+    [Fact]
+    public async Task CreateFromLastFpvDraftAsync_DoesNotCopyAttachments()
+    {
+        using var scope = CreateScope();
+        var store = scope.CreateStore();
+        var originalDraft = await store.CreateFpvDraftAsync();
+        await store.AttachSelectedVideoAsync(
+            originalDraft.DraftId,
+            CreateDescriptor(cacheKey: "copy-source", fileName: "source.mp4"));
+
+        var result = await store.CreateFromLastFpvDraftAsync();
+
+        Assert.True(result.Applied);
+        Assert.NotNull(result.Draft);
+        Assert.Empty(result.Draft!.Attachments);
+    }
+
+    [Fact]
+    public async Task CreateFromLastFpvDraftAsync_DoesNotCopyQueuedLocalStatus()
+    {
+        using var scope = CreateScope();
+        var store = scope.CreateStore();
+        var originalDraft = await store.CreateFpvDraftAsync();
+        await store.MarkDraftQueuedLocalAsync(originalDraft.DraftId);
+
+        var result = await store.CreateFromLastFpvDraftAsync();
+
+        Assert.True(result.Applied);
+        Assert.NotNull(result.Draft);
+        Assert.Equal(global::App.Mobile.Android.Reports.MobileReportDraftStatus.Draft, result.Draft!.Status);
+    }
+
+    [Fact]
+    public async Task CreateFromLastFpvDraftAsync_CopiedDraftCanBeEditedAndReceiveVideo()
+    {
+        using var scope = CreateScope();
+        var store = scope.CreateStore();
+        var originalDraft = await store.CreateFpvDraftAsync();
+        await store.UpdateFieldValueAsync(originalDraft.DraftId, "serial_number", "SN-BEFORE-COPY");
+        var copyResult = await store.CreateFromLastFpvDraftAsync();
+
+        var updateResult = await store.UpdateFieldValueAsync(
+            copyResult.Draft!.DraftId,
+            "serial_number",
+            "SN-AFTER-COPY");
+        var attachResult = await store.AttachSelectedVideoAsync(
+            copyResult.Draft.DraftId,
+            CreateDescriptor(cacheKey: "copy-draft-video", fileName: "copy-video.mp4"));
+
+        Assert.True(copyResult.Applied);
+        Assert.True(updateResult.Applied);
+        Assert.True(attachResult.Applied);
+        Assert.Equal(
+            "SN-AFTER-COPY",
+            Assert.Single(updateResult.Draft!.Fields, field => field.FieldKey == "serial_number").ValueText);
+        Assert.Single(attachResult.Draft!.Attachments);
+    }
+
+    [Fact]
+    public async Task CreateFromLastFpvDraftAsync_CopiedDraftPersistsInSnapshotStore()
+    {
+        using var scope = CreateScope();
+
+        var firstStore = scope.CreateStore();
+        var originalDraft = await firstStore.CreateFpvDraftAsync();
+        await firstStore.UpdateFieldValueAsync(originalDraft.DraftId, "serial_number", "SN-PERSIST-COPY");
+        var createResult = await firstStore.CreateFromLastFpvDraftAsync();
+
+        var secondStore = scope.CreateStore();
+        var restoredDraft = await secondStore.GetDraftAsync(createResult.Draft!.DraftId);
+
+        Assert.True(createResult.Applied);
+        Assert.NotNull(restoredDraft);
+        Assert.Equal(global::App.Mobile.Android.Reports.MobileReportDraftStatus.Draft, restoredDraft!.Status);
+        Assert.Empty(restoredDraft.Attachments);
+        Assert.True(restoredDraft.IsRestoredFromSnapshot);
+        Assert.Equal(
+            "SN-PERSIST-COPY",
+            Assert.Single(restoredDraft.Fields, field => field.FieldKey == "serial_number").ValueText);
+    }
+
+    [Fact]
+    public async Task CreateFromLastFpvDraftAsync_UsesLatestUpdatedDraft()
+    {
+        using var scope = CreateScope();
+        var store = scope.CreateStore();
+        var firstDraft = await store.CreateFpvDraftAsync();
+        var secondDraft = await store.CreateFpvDraftAsync();
+        await store.UpdateFieldValueAsync(secondDraft.DraftId, "serial_number", "SN-OLDER");
+        await Task.Delay(TimeSpan.FromMilliseconds(10));
+        await store.UpdateFieldValueAsync(firstDraft.DraftId, "serial_number", "SN-LATEST");
+
+        var result = await store.CreateFromLastFpvDraftAsync();
+
+        Assert.True(result.Applied);
+        Assert.NotNull(result.Draft);
+        Assert.Equal(
+            "SN-LATEST",
+            Assert.Single(result.Draft!.Fields, field => field.FieldKey == "serial_number").ValueText);
     }
 
     [Fact]
