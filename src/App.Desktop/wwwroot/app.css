@@ -49,7 +49,97 @@ body {
 
 .desktop-shell__main {
     flex: 1;
-    display: grid;
-    place-items: center;
+    width: 100%;
+    max-width: 960px;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 24px;
+    box-sizing: border-box;
+    margin: 0 auto;
     padding: 32px;
+}
+
+.desktop-signin {
+    display: grid;
+    grid-template-columns: minmax(180px, 0.8fr) minmax(320px, 1.2fr);
+    gap: 20px;
+    align-items: start;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 22px;
+    background: #ffffff;
+    border: 1px solid #d7dde5;
+    border-radius: 8px;
+}
+
+.desktop-signin__heading h2 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 650;
+}
+
+.desktop-signin__message {
+    margin: 10px 0 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.desktop-signin__message--success {
+    color: #17643c;
+}
+
+.desktop-signin__message--neutral {
+    color: #6b4b00;
+}
+
+.desktop-signin__form {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 14px;
+    align-items: end;
+}
+
+.desktop-signin__field {
+    display: grid;
+    gap: 6px;
+    color: #2b3644;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.desktop-signin__field input {
+    min-width: 0;
+    height: 38px;
+    box-sizing: border-box;
+    padding: 7px 9px;
+    border: 1px solid #bac4d0;
+    border-radius: 6px;
+    color: #18212f;
+    font: inherit;
+    font-weight: 400;
+}
+
+.desktop-signin__submit {
+    min-height: 38px;
+    padding: 0 14px;
+    border: 1px solid #18406b;
+    border-radius: 6px;
+    background: #18406b;
+    color: #ffffff;
+    font: inherit;
+    font-size: 0.9rem;
+    font-weight: 650;
+}
+
+.desktop-signin__submit:disabled {
+    border-color: #8da3b8;
+    background: #8da3b8;
+}
+
+@media (max-width: 860px) {
+    .desktop-signin,
+    .desktop-signin__form {
+        grid-template-columns: 1fr;
+    }
 }

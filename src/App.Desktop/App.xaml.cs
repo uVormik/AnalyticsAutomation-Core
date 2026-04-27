@@ -15,7 +15,7 @@ public partial class DesktopApplication : Application
     {
         base.OnStartup(e);
 
-        _services = DesktopCompositionRoot.BuildServices();
+        _services = DesktopCompositionRoot.BuildServicesFromEnvironment();
         _services
             .GetRequiredService<IDesktopShellLifecycle>()
             .OnStartingAsync(CancellationToken.None)

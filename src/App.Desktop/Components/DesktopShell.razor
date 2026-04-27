@@ -1,4 +1,5 @@
 @inject IBlazorWebViewHostBoundary BlazorHostBoundary
+@inject DesktopSignInViewModel SignInViewModel
 
 <div class="desktop-shell">
     <header class="desktop-shell__header">
@@ -6,10 +7,59 @@
             <p class="desktop-shell__eyebrow">@BlazorHostBoundary.SurfaceName</p>
             <h1>AnalyticsAutomation Desktop</h1>
         </div>
-        <span class="desktop-shell__status">Skeleton</span>
+        <span class="desktop-shell__status">SignIn</span>
     </header>
 
     <main class="desktop-shell__main">
+        <section class="desktop-signin" aria-labelledby="desktop-signin-title">
+            <div class="desktop-signin__heading">
+                <h2 id="desktop-signin-title">Sign in</h2>
+                @if (SignInViewModel.LastResult.Status != DesktopSignInStatus.NotStarted)
+                {
+                    <p class="@GetSignInStatusClass()">@SignInViewModel.LastResult.Message</p>
+                }
+            </div>
+
+            <form class="desktop-signin__form" @onsubmit="SignInAsync" @onsubmit:preventDefault="true">
+                <label class="desktop-signin__field" for="desktop-signin-login">
+                    <span>Login</span>
+                    <input
+                        id="desktop-signin-login"
+                        name="login"
+                        autocomplete="username"
+                        @bind="SignInViewModel.Login" />
+                </label>
+
+                <label class="desktop-signin__field" for="desktop-signin-password">
+                    <span>Password</span>
+                    <input
+                        id="desktop-signin-password"
+                        name="password"
+                        type="password"
+                        autocomplete="current-password"
+                        @bind="SignInViewModel.Password" />
+                </label>
+
+                <button class="desktop-signin__submit" type="submit" disabled="@SignInViewModel.IsBusy">
+                    @(SignInViewModel.IsBusy ? "Signing in" : "Sign in")
+                </button>
+            </form>
+        </section>
+
         <UploadPlaceholder />
     </main>
 </div>
+
+@code {
+    private async Task SignInAsync()
+    {
+        await SignInViewModel.SignInAsync(CancellationToken.None);
+    }
+
+    private string GetSignInStatusClass()
+    {
+        return SignInViewModel.LastResult.Status == DesktopSignInStatus.Succeeded
+            ? "desktop-signin__message desktop-signin__message--success"
+            : "desktop-signin__message desktop-signin__message--neutral";
+    }
+}
