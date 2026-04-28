@@ -1,4 +1,5 @@
 using App.Maintenance.Configuration;
+using App.Maintenance.IdentityAdmin;
 using App.Maintenance.IdentityBootstrap;
 using App.Maintenance.IncidentRoutingAdmins;
 using App.Maintenance.IntegrationAccounts;
@@ -72,18 +73,27 @@ internal static class AppMaintenanceProgram
                         return 0;
                     }
 
+                case MaintenanceCommand.IdentityAdminResetPassword:
+                    {
+                        var service = scope.ServiceProvider.GetRequiredService<IdentityAdminPasswordRecoveryMaintenanceService>();
+                        var result = await service.ResetPasswordAsync(cancellationToken);
+
+                        WriteIdentityAdminPasswordRecoveryResult(standardOutput, result);
+                        return 0;
+                    }
+
                 default:
                     throw new InvalidOperationException("Maintenance command is not supported.");
             }
         }
         catch (InvalidOperationException ex)
         {
-            errorOutput.WriteLine(ex.Message);
+            WriteSafeError(errorOutput, ex.Message);
             return 1;
         }
-        catch (Exception ex)
+        catch
         {
-            errorOutput.WriteLine($"Maintenance command failed: {ex.Message}");
+            errorOutput.WriteLine("Maintenance command failed.");
             return 1;
         }
     }
@@ -99,6 +109,7 @@ internal static class AppMaintenanceProgram
         builder.Services.AddSingleton<IPasswordHasher<AuthUser>, PasswordHasher<AuthUser>>();
         builder.Services.AddScoped<IncidentRoutingAdminMaintenanceService>();
         builder.Services.AddScoped<FirstAdminBootstrapMaintenanceService>();
+        builder.Services.AddScoped<IdentityAdminPasswordRecoveryMaintenanceService>();
         builder.Services.AddScoped<IntegrationAccountMaintenanceService>();
 
         return builder.Build();
@@ -127,6 +138,14 @@ internal static class AppMaintenanceProgram
             && string.Equals(args[1], "first-admin", StringComparison.OrdinalIgnoreCase))
         {
             command = MaintenanceCommand.IdentityBootstrapFirstAdmin;
+            return true;
+        }
+
+        if (args.Length == 2
+            && string.Equals(args[0], "identity-admin", StringComparison.OrdinalIgnoreCase)
+            && string.Equals(args[1], "reset-password", StringComparison.OrdinalIgnoreCase))
+        {
+            command = MaintenanceCommand.IdentityAdminResetPassword;
             return true;
         }
 
@@ -192,18 +211,96 @@ internal static class AppMaintenanceProgram
         return wasCreated ? "created" : "exists";
     }
 
+    private static void WriteIdentityAdminPasswordRecoveryResult(
+        TextWriter writer,
+        IdentityAdminPasswordRecoveryResult result)
+    {
+        writer.WriteLine($"login: {result.Login}");
+        writer.WriteLine($"mode: reset-password");
+        writer.WriteLine($"status: {FormatIdentityAdminPasswordRecoveryStatus(result.Status)}");
+        writer.WriteLine($"role: {result.AssignedRoleCode}");
+        writer.WriteLine($"group-node: {result.AssignedGroupNodeCode}");
+        writer.WriteLine($"audit: {result.AuditAction}");
+    }
+
+    private static string FormatIdentityAdminPasswordRecoveryStatus(
+        IdentityAdminPasswordRecoveryStatus status)
+    {
+        return status switch
+        {
+            IdentityAdminPasswordRecoveryStatus.PasswordReset => "password_reset",
+            _ => "unknown"
+        };
+    }
+
     private static void WriteUsage(TextWriter writer)
     {
         writer.WriteLine("Usage:");
         writer.WriteLine("  dotnet run --project tools\\App.Maintenance\\App.Maintenance.csproj -- integration-account upsert");
         writer.WriteLine("  dotnet run --project tools\\App.Maintenance\\App.Maintenance.csproj -- incident-routing-admin upsert");
         writer.WriteLine("  dotnet run --project tools\\App.Maintenance\\App.Maintenance.csproj -- identity-bootstrap first-admin");
+        writer.WriteLine("  dotnet run --project tools\\App.Maintenance\\App.Maintenance.csproj -- identity-admin reset-password");
+    }
+
+    private static void WriteSafeError(TextWriter writer, string message)
+    {
+        writer.WriteLine(RedactSecretLikeValues(message));
+    }
+
+    private static string RedactSecretLikeValues(string message)
+    {
+        var redacted = RedactKeyValue(message, "Password");
+        redacted = RedactKeyValue(redacted, "Pwd");
+        redacted = RedactKeyValue(redacted, "AccessToken");
+        redacted = RedactKeyValue(redacted, "RefreshToken");
+        redacted = RedactAuthorizationHeader(redacted);
+
+        return redacted;
+    }
+
+    private static string RedactKeyValue(string message, string key)
+    {
+        var marker = $"{key}=";
+        var start = message.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+        if (start < 0)
+        {
+            return message;
+        }
+
+        var valueStart = start + marker.Length;
+        var valueEnd = message.IndexOfAny([';', ' ', '\r', '\n'], valueStart);
+        if (valueEnd < 0)
+        {
+            valueEnd = message.Length;
+        }
+
+        return message[..valueStart] + "<redacted>" + message[valueEnd..];
+    }
+
+    private static string RedactAuthorizationHeader(string message)
+    {
+        const string marker = "Authorization:";
+        var start = message.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+        if (start < 0)
+        {
+            return message;
+        }
+
+        var valueStart = start + marker.Length;
+        var valueEnd = message.IndexOfAny(['\r', '\n'], valueStart);
+        if (valueEnd < 0)
+        {
+            valueEnd = message.Length;
+        }
+
+        return message[..valueStart] + " <redacted>" + message[valueEnd..];
     }
 
     private enum MaintenanceCommand
     {
         IntegrationAccountUpsert,
         IncidentRoutingAdminUpsert,
-        IdentityBootstrapFirstAdmin
+        IdentityBootstrapFirstAdmin,
+        IdentityAdminResetPassword
     }
 }
