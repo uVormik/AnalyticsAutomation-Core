@@ -1,4 +1,5 @@
 using App.Maintenance.Configuration;
+using App.Maintenance.IdentityBootstrap;
 using App.Maintenance.IncidentRoutingAdmins;
 using App.Maintenance.IntegrationAccounts;
 
@@ -62,6 +63,15 @@ internal static class AppMaintenanceProgram
                         return 0;
                     }
 
+                case MaintenanceCommand.IdentityBootstrapFirstAdmin:
+                    {
+                        var service = scope.ServiceProvider.GetRequiredService<FirstAdminBootstrapMaintenanceService>();
+                        var result = await service.BootstrapAsync(cancellationToken);
+
+                        WriteFirstAdminBootstrapResult(standardOutput, result);
+                        return 0;
+                    }
+
                 default:
                     throw new InvalidOperationException("Maintenance command is not supported.");
             }
@@ -88,6 +98,7 @@ internal static class AppMaintenanceProgram
         builder.Services.AddPlatformPersistence(databaseOptions);
         builder.Services.AddSingleton<IPasswordHasher<AuthUser>, PasswordHasher<AuthUser>>();
         builder.Services.AddScoped<IncidentRoutingAdminMaintenanceService>();
+        builder.Services.AddScoped<FirstAdminBootstrapMaintenanceService>();
         builder.Services.AddScoped<IntegrationAccountMaintenanceService>();
 
         return builder.Build();
@@ -108,6 +119,14 @@ internal static class AppMaintenanceProgram
             && string.Equals(args[1], "upsert", StringComparison.OrdinalIgnoreCase))
         {
             command = MaintenanceCommand.IncidentRoutingAdminUpsert;
+            return true;
+        }
+
+        if (args.Length == 2
+            && string.Equals(args[0], "identity-bootstrap", StringComparison.OrdinalIgnoreCase)
+            && string.Equals(args[1], "first-admin", StringComparison.OrdinalIgnoreCase))
+        {
+            command = MaintenanceCommand.IdentityBootstrapFirstAdmin;
             return true;
         }
 
@@ -137,16 +156,54 @@ internal static class AppMaintenanceProgram
         writer.WriteLine($"assignment: {(result.WasAssignmentCreated ? "created" : "exists")}");
     }
 
+    private static void WriteFirstAdminBootstrapResult(
+        TextWriter writer,
+        FirstAdminBootstrapResult result)
+    {
+        writer.WriteLine($"login: {result.Login}");
+        writer.WriteLine($"status: {FormatFirstAdminStatus(result.Status)}");
+        writer.WriteLine($"role: {result.AssignedRoleCode}");
+        writer.WriteLine($"role-link: {FormatCreatedOrExists(result.WasRoleLinkCreated, result.Status)}");
+        writer.WriteLine($"group-node: {result.AssignedGroupNodeCode}");
+        writer.WriteLine($"assignment: {FormatCreatedOrExists(result.WasAssignmentCreated, result.Status)}");
+        writer.WriteLine($"audit: {result.AuditAction}");
+    }
+
+    private static string FormatFirstAdminStatus(FirstAdminBootstrapStatus status)
+    {
+        return status switch
+        {
+            FirstAdminBootstrapStatus.Created => "created",
+            FirstAdminBootstrapStatus.Updated => "updated",
+            FirstAdminBootstrapStatus.SkippedExistingAdmin => "skipped_existing_admin",
+            _ => "unknown"
+        };
+    }
+
+    private static string FormatCreatedOrExists(
+        bool wasCreated,
+        FirstAdminBootstrapStatus status)
+    {
+        if (status == FirstAdminBootstrapStatus.SkippedExistingAdmin)
+        {
+            return "skipped";
+        }
+
+        return wasCreated ? "created" : "exists";
+    }
+
     private static void WriteUsage(TextWriter writer)
     {
         writer.WriteLine("Usage:");
         writer.WriteLine("  dotnet run --project tools\\App.Maintenance\\App.Maintenance.csproj -- integration-account upsert");
         writer.WriteLine("  dotnet run --project tools\\App.Maintenance\\App.Maintenance.csproj -- incident-routing-admin upsert");
+        writer.WriteLine("  dotnet run --project tools\\App.Maintenance\\App.Maintenance.csproj -- identity-bootstrap first-admin");
     }
 
     private enum MaintenanceCommand
     {
         IntegrationAccountUpsert,
-        IncidentRoutingAdminUpsert
+        IncidentRoutingAdminUpsert,
+        IdentityBootstrapFirstAdmin
     }
 }
