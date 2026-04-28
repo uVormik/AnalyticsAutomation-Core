@@ -40,6 +40,8 @@ public sealed class AppMaintenanceProgramTests
         var databaseName = $"app-maintenance-program-admin-recovery-{Guid.NewGuid():N}";
         var databaseRoot = new InMemoryDatabaseRoot();
         string oldHash;
+        string sessionAccessTokenHash;
+        string sessionRefreshTokenHash;
 
         await using (var setupContext = CreateDbContext(databaseName, databaseRoot))
         {
@@ -50,6 +52,15 @@ public sealed class AppMaintenanceProgramTests
                 login,
                 oldPassword);
             oldHash = seed.PasswordHash;
+            sessionAccessTokenHash = "program-reset-active-access-hash";
+            sessionRefreshTokenHash = "program-reset-active-refresh-hash";
+            await AddAuthSessionAsync(
+                setupContext,
+                seed.Id,
+                sessionAccessTokenHash,
+                sessionRefreshTokenHash,
+                expiresAtUtc: DateTimeOffset.UtcNow.AddMinutes(30),
+                refreshExpiresAtUtc: DateTimeOffset.UtcNow.AddHours(12));
         }
 
         var stdout = new StringWriter();
@@ -65,6 +76,7 @@ public sealed class AppMaintenanceProgramTests
         await using var assertContext = CreateDbContext(databaseName, databaseRoot);
         var user = await assertContext.AuthUsers
             .SingleAsync(item => item.NormalizedLogin == "INCIDENT-ROUTING-ADMIN");
+        var session = await assertContext.AuthSessions.SingleAsync();
 
         var standardOutput = stdout.ToString();
         var errorOutput = stderr.ToString();
@@ -76,11 +88,15 @@ public sealed class AppMaintenanceProgramTests
         Assert.Contains("status: password_reset", standardOutput, StringComparison.Ordinal);
         Assert.Contains("role: platform_owner", standardOutput, StringComparison.Ordinal);
         Assert.Contains("group-node: root", standardOutput, StringComparison.Ordinal);
+        Assert.Contains("sessions-revoked: 1", standardOutput, StringComparison.Ordinal);
         Assert.Contains("audit: admin_password_recovery_succeeded", standardOutput, StringComparison.Ordinal);
+        Assert.NotNull(session.RevokedAtUtc);
         Assert.DoesNotContain(oldPassword, standardOutput, StringComparison.Ordinal);
         Assert.DoesNotContain(newPassword, standardOutput, StringComparison.Ordinal);
         Assert.DoesNotContain(oldHash, standardOutput, StringComparison.Ordinal);
         Assert.DoesNotContain(user.PasswordHash, standardOutput, StringComparison.Ordinal);
+        Assert.DoesNotContain(sessionAccessTokenHash, standardOutput, StringComparison.Ordinal);
+        Assert.DoesNotContain(sessionRefreshTokenHash, standardOutput, StringComparison.Ordinal);
         Assert.DoesNotContain("accessToken", standardOutput, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("refreshToken", standardOutput, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("Authorization", standardOutput, StringComparison.OrdinalIgnoreCase);
@@ -405,6 +421,30 @@ public sealed class AppMaintenanceProgramTests
         await dbContext.SaveChangesAsync();
 
         return user;
+    }
+
+    private static async Task AddAuthSessionAsync(
+        PlatformDbContext dbContext,
+        Guid userId,
+        string accessTokenHash,
+        string refreshTokenHash,
+        DateTimeOffset expiresAtUtc,
+        DateTimeOffset refreshExpiresAtUtc)
+    {
+        dbContext.AuthSessions.Add(new AuthSession
+        {
+            Id = Guid.NewGuid(),
+            UserId = userId,
+            DeviceId = Guid.NewGuid(),
+            AccessTokenHash = accessTokenHash,
+            RefreshTokenHash = refreshTokenHash,
+            IsOfflineRestricted = false,
+            IssuedAtUtc = DateTimeOffset.UtcNow.AddMinutes(-5),
+            ExpiresAtUtc = expiresAtUtc,
+            RefreshExpiresAtUtc = refreshExpiresAtUtc
+        });
+
+        await dbContext.SaveChangesAsync();
     }
 
     private static async Task SeedRoleAndRootAsync(PlatformDbContext dbContext)

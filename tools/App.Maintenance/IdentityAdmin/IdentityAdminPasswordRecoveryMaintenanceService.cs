@@ -180,6 +180,9 @@ public sealed class IdentityAdminPasswordRecoveryMaintenanceService(
                 $"Target account '{user.Login}' is not an active root/platform admin. Password was not changed.");
         }
 
+        var now = DateTimeOffset.UtcNow;
+        var sessionsRevoked = await RevokeActiveSessionsAsync(user.Id, now, cancellationToken);
+
         user.PasswordHash = passwordHasher.HashPassword(user, password);
 
         await WriteAuditRecordAsync(
@@ -192,7 +195,8 @@ public sealed class IdentityAdminPasswordRecoveryMaintenanceService(
             rootGroupNode.Code,
             hasPlatformOwnerRole,
             hasRootGroupAdminAssignment,
-            cancellationToken);
+            cancellationToken,
+            sessionsRevoked);
 
         await dbContext.SaveChangesAsync(cancellationToken);
         await CommitIfStartedAsync(transaction, cancellationToken);
@@ -202,6 +206,7 @@ public sealed class IdentityAdminPasswordRecoveryMaintenanceService(
             IdentityAdminPasswordRecoveryStatus.PasswordReset,
             role.Code,
             rootGroupNode.Code,
+            sessionsRevoked,
             "admin_password_recovery_succeeded");
     }
 
@@ -271,6 +276,25 @@ public sealed class IdentityAdminPasswordRecoveryMaintenanceService(
         await transaction.CommitAsync(cancellationToken);
     }
 
+    private async Task<int> RevokeActiveSessionsAsync(
+        Guid userId,
+        DateTimeOffset revokedAtUtc,
+        CancellationToken cancellationToken)
+    {
+        var activeSessions = await dbContext.AuthSessions
+            .Where(item => item.UserId == userId
+                && item.RevokedAtUtc == null
+                && (item.ExpiresAtUtc > revokedAtUtc || item.RefreshExpiresAtUtc > revokedAtUtc))
+            .ToArrayAsync(cancellationToken);
+
+        foreach (var session in activeSessions)
+        {
+            session.RevokedAtUtc = revokedAtUtc;
+        }
+
+        return activeSessions.Length;
+    }
+
     private Task WriteAuditRecordAsync(
         string action,
         Guid? subjectUserId,
@@ -281,7 +305,8 @@ public sealed class IdentityAdminPasswordRecoveryMaintenanceService(
         string? groupNodeCode,
         bool? hasPlatformOwnerRole,
         bool? hasRootGroupAdminAssignment,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        int? sessionsRevoked = null)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -294,7 +319,8 @@ public sealed class IdentityAdminPasswordRecoveryMaintenanceService(
             roleCode,
             groupNodeCode,
             hasPlatformOwnerRole,
-            hasRootGroupAdminAssignment
+            hasRootGroupAdminAssignment,
+            sessionsRevoked
         };
 
         dbContext.AuditRecords.Add(new AuditRecord
@@ -388,4 +414,5 @@ public sealed record IdentityAdminPasswordRecoveryResult(
     IdentityAdminPasswordRecoveryStatus Status,
     string AssignedRoleCode,
     string AssignedGroupNodeCode,
+    int SessionsRevoked,
     string AuditAction);

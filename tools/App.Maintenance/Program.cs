@@ -220,6 +220,7 @@ internal static class AppMaintenanceProgram
         writer.WriteLine($"status: {FormatIdentityAdminPasswordRecoveryStatus(result.Status)}");
         writer.WriteLine($"role: {result.AssignedRoleCode}");
         writer.WriteLine($"group-node: {result.AssignedGroupNodeCode}");
+        writer.WriteLine($"sessions-revoked: {result.SessionsRevoked}");
         writer.WriteLine($"audit: {result.AuditAction}");
     }
 
