@@ -96,6 +96,90 @@ public sealed class FirstAdminBootstrapMaintenanceServiceTests
     }
 
     [Fact]
+    public async Task BootstrapAsyncCreatesFirstAdminWhenPlatformOwnerServiceAccountHasNoRootAssignment()
+    {
+        const string login = "first-admin-smoke";
+        const string normalizedLogin = "FIRST-ADMIN-SMOKE";
+        var password = CreateEphemeralSecret();
+
+        using var environment = new FirstAdminBootstrapEnvironment(
+            enabled: "true",
+            login,
+            password,
+            displayName: null);
+
+        using var dbContext = CreateDbContext();
+        var role = new AuthRole
+        {
+            Id = Guid.NewGuid(),
+            Code = FirstAdminBootstrapMaintenanceService.PlatformOwnerRoleCode,
+            Name = "Platform Owner"
+        };
+        var rootNode = new GroupNode
+        {
+            Id = Guid.NewGuid(),
+            Code = FirstAdminBootstrapMaintenanceService.RootGroupNodeCode,
+            Name = "Root",
+            Depth = 0,
+            IsActive = true
+        };
+        var serviceAccount = new AuthUser
+        {
+            Id = Guid.NewGuid(),
+            Login = "integration-web-android",
+            NormalizedLogin = "INTEGRATION-WEB-ANDROID",
+            DisplayName = "Web/Android Integration Account",
+            PasswordHash = "service-hash",
+            IsActive = true,
+            CurrentGroupNodeId = rootNode.Id,
+            CreatedAtUtc = DateTimeOffset.UtcNow.AddDays(-1)
+        };
+
+        serviceAccount.UserRoles.Add(new AuthUserRole
+        {
+            UserId = serviceAccount.Id,
+            RoleId = role.Id
+        });
+
+        dbContext.AuthRoles.Add(role);
+        dbContext.GroupNodes.Add(rootNode);
+        dbContext.AuthUsers.Add(serviceAccount);
+        await dbContext.SaveChangesAsync();
+
+        var passwordHasher = new PasswordHasher<AuthUser>();
+        var service = new FirstAdminBootstrapMaintenanceService(dbContext, passwordHasher);
+
+        var result = await service.BootstrapAsync(CancellationToken.None);
+
+        dbContext.ChangeTracker.Clear();
+
+        var users = await dbContext.AuthUsers
+            .Include(item => item.UserRoles)
+            .OrderBy(item => item.Login)
+            .ToArrayAsync();
+        var createdAdmin = users.Single(item => item.NormalizedLogin == normalizedLogin);
+        var unchangedServiceAccount = users.Single(item => item.NormalizedLogin == "INTEGRATION-WEB-ANDROID");
+        var assignment = await dbContext.GroupAdminAssignments
+            .SingleAsync(item => item.GroupNodeId == rootNode.Id && item.UserId == createdAdmin.Id);
+        var auditRecord = await dbContext.AuditRecords.SingleAsync();
+
+        Assert.Equal(FirstAdminBootstrapStatus.Created, result.Status);
+        Assert.Equal(login, result.Login);
+        Assert.Equal(2, users.Length);
+        Assert.Equal("service-hash", unchangedServiceAccount.PasswordHash);
+        Assert.Single(createdAdmin.UserRoles);
+        Assert.Equal(role.Id, createdAdmin.UserRoles.Single().RoleId);
+        Assert.Equal(rootNode.Id, assignment.GroupNodeId);
+        Assert.Equal(createdAdmin.Id, assignment.UserId);
+        Assert.NotEqual(
+            PasswordVerificationResult.Failed,
+            passwordHasher.VerifyHashedPassword(createdAdmin, createdAdmin.PasswordHash, password));
+        Assert.Equal("first_admin_bootstrapped", auditRecord.Action);
+        Assert.Equal(createdAdmin.Id, auditRecord.SubjectUserId);
+        Assert.DoesNotContain(password, auditRecord.PayloadJson, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task BootstrapAsyncSkipsWithoutPasswordChangeWhenActivePlatformOwnerAlreadyExists()
     {
         const string requestedLogin = "requested-first-admin";
@@ -143,6 +227,12 @@ public sealed class FirstAdminBootstrapMaintenanceServiceTests
         dbContext.AuthRoles.Add(role);
         dbContext.GroupNodes.Add(rootNode);
         dbContext.AuthUsers.Add(existingAdmin);
+        dbContext.GroupAdminAssignments.Add(new GroupAdminAssignment
+        {
+            GroupNodeId = rootNode.Id,
+            UserId = existingAdmin.Id,
+            AssignedAtUtc = DateTimeOffset.UtcNow.AddDays(-1)
+        });
         await dbContext.SaveChangesAsync();
 
         var service = new FirstAdminBootstrapMaintenanceService(
@@ -166,7 +256,7 @@ public sealed class FirstAdminBootstrapMaintenanceServiceTests
         Assert.Equal("old-hash", user.PasswordHash);
         Assert.Equal(1, await dbContext.AuthUsers.CountAsync());
         Assert.Equal(1, await dbContext.AuthUserRoles.CountAsync());
-        Assert.False(await dbContext.GroupAdminAssignments.AnyAsync());
+        Assert.Equal(1, await dbContext.GroupAdminAssignments.CountAsync());
         Assert.Equal("first_admin_bootstrap_skipped_existing_admin", auditRecord.Action);
         Assert.DoesNotContain(password, auditRecord.PayloadJson, StringComparison.Ordinal);
         Assert.DoesNotContain("accessToken", auditRecord.PayloadJson, StringComparison.OrdinalIgnoreCase);

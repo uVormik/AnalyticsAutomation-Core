@@ -1,3 +1,4 @@
+using System.Data;
 using System.Text.Json;
 
 using BuildingBlocks.Infrastructure.Observability;
@@ -8,6 +9,7 @@ using BuildingBlocks.Infrastructure.Persistence.Entities.GroupTree;
 
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace App.Maintenance.IdentityBootstrap;
 
@@ -32,6 +34,8 @@ public sealed class FirstAdminBootstrapMaintenanceService(
         var password = ReadRequiredPassword();
         var displayName = ReadOptionalText(DisplayNameEnvironmentVariableName, 256) ?? login;
 
+        await using var transaction = await BeginSerializableTransactionIfSupportedAsync(cancellationToken);
+
         var role = await dbContext.AuthRoles
             .SingleOrDefaultAsync(
                 item => item.Code == PlatformOwnerRoleCode,
@@ -50,6 +54,8 @@ public sealed class FirstAdminBootstrapMaintenanceService(
             .AsNoTracking()
             .Where(item => item.IsActive)
             .Where(item => item.UserRoles.Any(roleLink => roleLink.RoleId == role.Id))
+            .Where(item => dbContext.GroupAdminAssignments.Any(assignment =>
+                assignment.GroupNodeId == rootGroupNode.Id && assignment.UserId == item.Id))
             .OrderBy(item => item.CreatedAtUtc)
             .FirstOrDefaultAsync(cancellationToken);
 
@@ -67,6 +73,7 @@ public sealed class FirstAdminBootstrapMaintenanceService(
                 cancellationToken);
 
             await dbContext.SaveChangesAsync(cancellationToken);
+            await CommitIfStartedAsync(transaction, cancellationToken);
 
             return new FirstAdminBootstrapResult(
                 existingActiveAdmin.Login,
@@ -144,6 +151,7 @@ public sealed class FirstAdminBootstrapMaintenanceService(
             cancellationToken);
 
         await dbContext.SaveChangesAsync(cancellationToken);
+        await CommitIfStartedAsync(transaction, cancellationToken);
 
         return new FirstAdminBootstrapResult(
             user.Login,
@@ -153,6 +161,34 @@ public sealed class FirstAdminBootstrapMaintenanceService(
             rootGroupNode.Code,
             wasAssignmentCreated,
             "first_admin_bootstrapped");
+    }
+
+    private async Task<IDbContextTransaction?> BeginSerializableTransactionIfSupportedAsync(
+        CancellationToken cancellationToken)
+    {
+        if (string.Equals(
+            dbContext.Database.ProviderName,
+            "Microsoft.EntityFrameworkCore.InMemory",
+            StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        return await dbContext.Database.BeginTransactionAsync(
+            IsolationLevel.Serializable,
+            cancellationToken);
+    }
+
+    private static async Task CommitIfStartedAsync(
+        IDbContextTransaction? transaction,
+        CancellationToken cancellationToken)
+    {
+        if (transaction is null)
+        {
+            return;
+        }
+
+        await transaction.CommitAsync(cancellationToken);
     }
 
     private Task WriteAuditRecordAsync(
