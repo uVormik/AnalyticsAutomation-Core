@@ -1,0 +1,221 @@
+Title:
+S2-52 Identity Bootstrap / First Admin Task Card
+
+Owner:
+Coder 1 acting as Coder 2 / Desktop Client and Auth coordination
+
+Module:
+Modules.Auth / App.Api / App.Desktop bootstrap coordination
+
+Client form:
+desktop standalone
+
+Type:
+runtime implementation task card, no runtime changes in this PR
+
+Status:
+Docs-only task card and implementation handoff for a future controlled identity bootstrap / first admin account path.
+
+Goal:
+Define the approved future path for creating the first account, first admin account, or smoke account needed to run a real App.Desktop SignIn smoke.
+
+This task deliberately does not implement runtime code. It records the product and security boundaries that must be satisfied before any future bootstrap implementation can create credentials usable by App.Desktop.
+
+Context:
+S2-50 auth/session boundary runtime is merged. App.Desktop has auth/session boundaries, an HTTP client for the existing backend sign-in endpoint, disabled local token persistence, and tests for redaction/session behavior.
+
+S2-51 SignIn runtime enablement is merged. App.Desktop can show the SignIn surface, accept user-entered credentials, call the existing control-plane sign-in endpoint, and update in-memory session state when credentials are valid.
+
+Manual smoke after S2-51 showed that App.Desktop can reach the SignIn flow, but the operator cannot sign in because no account/password was provisioned. First run also does not offer user registration.
+
+That gap must not be solved by adding open desktop self-registration. Identity creation must remain server-controlled.
+
+User smoke finding:
+- App.Desktop SignIn surface can be shown.
+- App.Desktop can be configured to use a control-plane API base address.
+- The operator has no provisioned account/password for sign-in.
+- First run has no registration flow.
+- The next approved runtime work must create or document a safe account/bootstrap path before further manual SignIn smoke can be meaningful.
+
+Upstream context / reviewed sources:
+- Base origin/main SHA checked at task start: 7c2b4495635255fb5d0514f93db7d6dd4002fdeb
+- Coordination log issue reviewed: #89 TEAM COORDINATION LOG
+- Relevant coordination entries reviewed:
+  - PR #115 S2-50 desktop auth session boundary runtime
+  - PR #117 S2-51 Desktop SignIn Runtime Enablement Task Card
+  - PR #118 S2-51 desktop signin runtime enablement
+  - No later merge entry was present in issue #89 at review time.
+- Handoff/task cards and source context reviewed:
+  - 00_START_HERE_README.txt
+  - 01_MASTER_PLAN_AND_ARCHITECTURE.txt
+  - 02_SHARED_RULES_AND_PROTOCOLS.txt
+  - 04_GITHUB_WORKFLOW_AND_INFRA_RULES.txt
+  - docs/task-cards/S2-50_desktop-auth-session-boundary-task-card.txt
+  - docs/handoffs/S2_50_DESKTOP_AUTH_SESSION_BOUNDARY_PROMPT.md
+  - docs/task-cards/S2-51_desktop-signin-runtime-enablement-task-card.txt
+  - docs/handoffs/S2_51_DESKTOP_SIGNIN_RUNTIME_ENABLEMENT_PROMPT.md
+  - src/App.Desktop/Services/Auth/DesktopSignInService.cs read-only
+  - src/App.Desktop/Services/Auth/DesktopAuthOptions.cs read-only
+  - src/App.Desktop/Services/Auth/HttpDesktopAuthClient.cs read-only
+  - src/Modules/Auth/** read-only
+  - src/App.Api/** read-only
+  - tools/App.Maintenance/** read-only
+  - tests/Unit/App.Desktop.Tests/** and tests/Integration/App.Api/** read-only as needed
+
+Current auth/bootstrap observations:
+- App.Desktop posts credentials only to the existing App.Api `/api/auth/sign-in` endpoint through `HttpDesktopAuthClient`.
+- `DesktopSignInService` rejects missing credentials, avoids raw exception leakage, and updates only `IDesktopSessionState` after successful auth.
+- `DesktopAuthOptions` accepts a safe absolute HTTP/HTTPS control-plane base address and rejects user-info, query, fragment, or non-root paths.
+- `App.Api` maps `/api/auth/sign-in` to `IAuthService.SignInAsync` and writes authentication audit entries for sign-in success/failure.
+- `Modules.Auth` owns password verification, opaque access/refresh token creation, session persistence, and role/permission mapping.
+- `DevelopmentAuthBootstrapService` exists only for Development environment and feature-flagged development bootstrap. It is not an approved production/operator bootstrap path.
+- `tools/App.Maintenance` already has operator-style account upsert patterns for integration and incident-routing accounts. Those commands read passwords from operator environment variables and do not accept command-line password arguments.
+
+Scope of this docs-only PR:
+- Create this S2-52 task card.
+- Create the S2-52 handoff/prompt for a future runtime implementation chat/Codex session.
+- Record that identity bootstrap must be controlled, server-side, and operator-owned.
+- Record that open desktop self-registration is not approved.
+- Do not change runtime code.
+- Do not change tests.
+- Do not change solution/project files.
+- Do not change API/contracts/migrations/workflows/deploy/server runtime.
+- Do not change App.Web.
+- Do not change App.Mobile.Android.
+- Do not change App.UI.Shared or shared modules.
+
+Future runtime scope:
+- Inspect existing auth/domain/maintenance code before choosing an implementation.
+- Prefer the existing server auth/domain model and existing maintenance tooling if present.
+- Create or reuse a controlled server-side account/bootstrap path for the first account, first admin, or smoke account.
+- Keep `Modules.Auth` or the existing auth domain as the authority for user, password hash, roles, sessions, and permissions.
+- Keep the existing App.Api sign-in contract backward-compatible.
+- Prefer a narrowly scoped operator-only maintenance command or equivalent approved bootstrap mechanism if existing tooling is not sufficient.
+- Add an API bootstrap endpoint only if a separate explicit approval is recorded before implementation.
+- Make bootstrap safe to disable after use and ensure it cannot become an ongoing auth bypass.
+- Support a real manual smoke:
+  - create or update the approved account through the bootstrap path;
+  - run App.Desktop against `http://192.168.1.66/`;
+  - sign in with operator-provisioned credentials;
+  - confirm passwords, access tokens, refresh tokens, and Authorization values are not printed, logged, committed, or copied into PR/report text.
+
+Out of scope:
+- Public self-registration.
+- Desktop-created arbitrary users.
+- Account management UI.
+- Password reset flow.
+- User invitation flow.
+- Long-lived bootstrap bypass.
+- Full RBAC redesign.
+- App.Desktop upload flow.
+- GroupTree UI.
+- PreUploadCheck UI.
+- Site upload.
+- UploadReceipt.
+- Offline queue.
+- App.Web changes.
+- App.Mobile.Android changes.
+- App.UI.Shared changes.
+- BuildingBlocks.Contracts changes unless a future approved task proves a contract is required.
+- Runtime code in this docs-only PR.
+- DB migrations in this docs-only PR.
+- Deploy or workflow changes.
+
+Contracts:
+No shared contract changes are allowed in this docs-only PR.
+
+The future runtime implementation should keep `/api/auth/sign-in` backward-compatible. A maintenance command that works operator-locally is preferred over any public network bootstrap contract.
+
+If a bootstrap API endpoint is proposed later, it requires explicit approval before coding and must not be public/open by default. It must be narrowly scoped, disabled by default or disabled after use, protected by an operator-controlled mechanism, and covered by tests.
+
+Feature flag:
+No feature flag is added in this docs-only PR.
+
+The future implementation may use a feature flag or equivalent operator-controlled setting to gate bootstrap, but it must not silently enable open account creation. Existing development-only bootstrap flags must not be treated as production approval.
+
+Migration:
+No migration is added in this docs-only PR.
+
+If future runtime work requires a database change, it must be additive-first. The future implementer must first inspect existing `AuthUser`, `AuthRole`, role-link, group-node, and group-admin assignment persistence before proposing schema changes.
+
+Events / audit:
+No events are added in this docs-only PR.
+
+Future bootstrap/user creation must write audit/security events if the existing audit/event infrastructure supports it. At minimum, future work must inspect the current App.Api authentication audit pattern and determine whether maintenance-command bootstrap can record an equivalent operator-visible audit trail.
+
+Offline behavior:
+No offline behavior changes are approved in this docs-only PR.
+
+Bootstrap is an online/operator-controlled provisioning concern. It must not create cached offline sign-in, offline password validation, plaintext credential storage, or offline registration.
+
+Security / secrets:
+- Do not pass passwords in chat.
+- Do not commit passwords.
+- Do not put passwords in task cards, handoffs, PR bodies, reports, screenshots, logs, or test fixtures.
+- Do not print passwords from maintenance tools.
+- Do not print access tokens, refresh tokens, or Authorization headers.
+- Prefer interactive secret input or a protected operator-local secret mechanism over command-line password arguments.
+- Environment-variable password input may be considered only after code inspection confirms it is the smallest safe operator-local path and does not leak into logs/process output in the target operating procedure.
+- Bootstrap credentials must be rotated or disabled according to the future approved procedure.
+- Bootstrap must not bypass normal password hashing, user activation, roles, or audit/security controls.
+
+Desktop UX behavior:
+- App.Desktop must not create users directly.
+- App.Desktop must not expose open registration.
+- App.Desktop first-run or SignIn UX may show a safe message such as: "No account is configured; ask an administrator or run the approved bootstrap procedure."
+- Any desktop UX change must be minimal and must not become account management.
+- SignIn should continue to use user-entered credentials and the existing auth client boundary.
+- Missing account bootstrap must be reported as an operator setup issue, not solved client-side.
+
+Korobochka / deployment behavior:
+- Merge to `main` is not deployment.
+- Korobochka deploy remains manual-only through the approved GitHub Actions `workflow_dispatch` policy.
+- Any future runtime bootstrap smoke on Korobochka or LAN must follow the manual deploy policy and must not place passwords in PR bodies, reports, or coordination comments.
+- This docs-only PR does not deploy anything.
+
+Validation expectations:
+For this docs-only PR:
+- `git diff --name-only`
+- `git diff --check`
+- `dotnet format whitespace AnalyticsAutomation-Core.sln --verify-no-changes --no-restore`
+- Confirm only these files changed:
+  - docs/task-cards/S2-52_identity-bootstrap-first-admin-task-card.txt
+  - docs/handoffs/S2_52_IDENTITY_BOOTSTRAP_FIRST_ADMIN_PROMPT.md
+- Confirm no runtime/API/contracts/migrations/workflows/deploy changes.
+- Confirm no App.Desktop runtime changes.
+- Confirm no App.Api changes.
+- Confirm no App.Web or App.Mobile.Android changes.
+- Confirm no secrets or passwords were added.
+
+For the future runtime PR:
+- `git diff --name-only`
+- `git diff --check`
+- Targeted unit/integration tests for the chosen bootstrap mechanism.
+- `dotnet format whitespace AnalyticsAutomation-Core.sln --verify-no-changes --no-restore`
+- Build/test commands appropriate to the files changed.
+- Manual smoke:
+  - provision account through approved bootstrap path;
+  - run App.Desktop against `http://192.168.1.66/`;
+  - sign in successfully;
+  - confirm no password/token/Authorization leakage.
+
+Rollback:
+Revert this docs-only task card and S2-52 handoff/prompt.
+
+For the future runtime implementation, rollback must disable or remove the bootstrap path without leaving an auth bypass. If a migration is later approved, rollback must follow the additive-first migration policy.
+
+Definition of done:
+- S2-52 docs-only task card exists.
+- S2-52 handoff/prompt exists.
+- Controlled server-side first account / first admin / smoke account bootstrap direction is recorded.
+- Open desktop self-registration is explicitly not approved.
+- App.Desktop arbitrary user creation is explicitly not approved.
+- Existing auth, API, maintenance, and audit context is referenced.
+- Future runtime scope and no-go boundaries are recorded.
+- Security/secrets handling requirements are recorded.
+- Manual SignIn smoke expectation is recorded.
+- Runtime/API/contracts/migrations/workflows/deploy files are not changed in this PR.
+- App.Desktop runtime code is not changed in this PR.
+- Tests are not changed in this PR.
+- Solution/project files are not changed in this PR.
+- App.Web and App.Mobile.Android are not changed in this PR.
