@@ -1,0 +1,89 @@
+Title:
+S2-54 Desktop SignIn Feedback Fix Task Card
+
+Owner:
+Coder 1 acting as Coder 2 / Desktop Client
+
+Module:
+App.Desktop / SignIn feedback
+
+Client form:
+desktop standalone
+
+Type:
+narrow runtime UX bugfix for the existing S2-51 desktop SignIn surface
+
+Status:
+Runtime bugfix task card created before code changes.
+
+Goal:
+Make the existing desktop SignIn surface visibly communicate sign-in state and results after manual smoke found no visible feedback for rejected or successful credentials.
+
+Context:
+S2-51 desktop SignIn runtime is already approved and merged. The desktop window opens and fields are visible, but the user needs explicit visible feedback for progress, rejected credentials, unavailable control plane, and successful sign-in.
+
+Scope:
+- Add explicit UI-facing SignIn status/result feedback inside App.Desktop.
+- Keep result text safe and sanitized.
+- Prevent duplicate concurrent submit from the ViewModel/UI.
+- Keep password clearing after attempted sign-in reliable.
+- Add focused App.Desktop unit tests for visible result behavior and secret-safe messages.
+
+Contracts:
+No App.Api or shared DTO contract changes.
+
+Migrations:
+None.
+
+Feature flag:
+Not needed. This is a UI bugfix for the existing desktop SignIn surface.
+
+Events / audit:
+None client-side. Server auth audit behavior is unchanged.
+
+Offline behavior:
+Unchanged.
+
+Session storage:
+Preserve the current disabled/no-op token persistence. Do not add plaintext token storage or real Windows secure storage.
+
+Security guardrails:
+- Do not expose raw server response bodies.
+- Do not expose raw exception text.
+- Do not expose passwords, access tokens, refresh tokens, Authorization headers, or token-like values in UI result text.
+- Do not persist passwords.
+- Do not add credentials or secrets to repo files, tests, reports, PR body, or logs.
+
+Explicitly out of scope:
+- App.Api changes.
+- Shared contract changes.
+- DB migrations.
+- Deploy or workflow changes.
+- App.Web changes.
+- App.Mobile.Android changes.
+- Upload flow.
+- GroupTree.
+- PreUploadCheck.
+- Direct site upload.
+- UploadReceipt.
+- Offline queue.
+- Duplicate/fraud/admin review UI.
+- Real secure token storage.
+
+Allowed changed areas:
+- docs/task-cards/S2-54_desktop-signin-feedback-fix-task-card.txt
+- src/App.Desktop/**
+- tests/Unit/App.Desktop.Tests/**
+
+Validation:
+- git diff --check
+- dotnet restore AnalyticsAutomation-Core.sln -nologo
+- dotnet format whitespace AnalyticsAutomation-Core.sln --verify-no-changes --no-restore
+- dotnet build src/App.Desktop/App.Desktop.csproj -nologo -v minimal
+- dotnet build AnalyticsAutomation-Core.sln -nologo -v minimal
+- dotnet test tests/Unit/App.Desktop.Tests/App.Desktop.Tests.csproj -nologo -v minimal
+- hidden Unicode scan for changed text files
+- App.Desktop launch smoke if UI composition/startup impact justifies it
+
+Rollback:
+Revert the S2-54 PR. No contracts, migrations, deploy, or storage schema rollback is required.

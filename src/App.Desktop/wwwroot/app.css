@@ -89,8 +89,16 @@ body {
     color: #17643c;
 }
 
+.desktop-signin__message--progress {
+    color: #18406b;
+}
+
+.desktop-signin__message--error {
+    color: #9b1c1c;
+}
+
 .desktop-signin__message--neutral {
-    color: #6b4b00;
+    color: #52616f;
 }
 
 .desktop-signin__form {
