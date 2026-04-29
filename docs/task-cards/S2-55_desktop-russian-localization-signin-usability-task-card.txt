@@ -1,0 +1,86 @@
+Title:
+S2-55 Desktop Russian Localization and SignIn Usability Task Card
+
+Owner:
+Coder 1 acting as Coder 2 / Desktop Client
+
+Module:
+App.Desktop / SignIn UX and Russian localization
+
+Client form:
+desktop standalone
+
+Type:
+runtime usability fix task card
+
+Status:
+Runtime desktop-only usability/localization fix created after manual smoke found that the SignIn button could stay disabled without a visible reason.
+
+Goal:
+Make the current App.Desktop SignIn surface understandable for Russian-speaking operators and make SignIn state visible. The UI must clearly show when SignIn cannot be submitted, when a sign-in request is in progress, when credentials are rejected, when the server is unavailable, and when sign-in succeeds.
+
+Context:
+S2-51 introduced the minimal desktop SignIn runtime slice.
+S2-52 introduced operator-controlled first-admin bootstrap.
+S2-53 introduced operator-controlled admin password recovery.
+S2-54 added visible SignIn feedback; manual smoke then found that the SignIn button could remain disabled and the desktop surface still needed Russian localization.
+
+Upstream context / reviewed sources:
+- Base main SHA at task start: ccff4130b2593f4bfce00cce87cbc8a2b399c787
+- Coordination log entries reviewed: TEAM COORDINATION LOG issue #89 metadata re-read by setup/PR gates; implementation report states issue #89 context was reviewed.
+- Handoff/task cards reviewed: S2-51 desktop SignIn runtime context, S2-54 desktop SignIn feedback context, App.Desktop runtime/tests.
+
+Scope:
+Allowed:
+- docs/task-cards/S2-55_desktop-russian-localization-signin-usability-task-card.txt
+- src/App.Desktop/**
+- tests/Unit/App.Desktop.Tests/**
+
+Forbidden:
+- App.Api changes
+- App.Worker changes
+- App.Web changes
+- App.Mobile.Android changes
+- App.UI.Shared changes
+- BuildingBlocks.Contracts/shared DTO changes
+- Modules changes
+- DB migrations
+- GitHub workflows
+- deploy scripts
+- full upload flow
+- registration UI
+- password reset UI
+- token persistence changes
+
+What changes:
+- Centralize current desktop SignIn visible strings in App.Desktop.
+- Use Russian labels, help, status, rejected/unavailable/failed, and success messages for the current desktop SignIn surface.
+- Make disabled SignIn state explainable to the user.
+- Enable SignIn as soon as both login and password fields contain non-whitespace input and the app is not already signing in.
+- Keep progress state visible while signing in.
+- Keep safe success indication visible after a successful sign-in.
+- Clear password after sign-in attempt.
+- Do not display passwords, access tokens, refresh tokens, Authorization headers, raw exception messages, raw response bodies, or token-like values.
+
+Validation:
+- git diff --check
+- dotnet restore AnalyticsAutomation-Core.sln -nologo
+- dotnet format whitespace AnalyticsAutomation-Core.sln --verify-no-changes --no-restore
+- dotnet build src/App.Desktop/App.Desktop.csproj -nologo -v minimal
+- dotnet build AnalyticsAutomation-Core.sln -nologo -v minimal
+- dotnet test tests/Unit/App.Desktop.Tests/App.Desktop.Tests.csproj -nologo -v minimal
+- hidden/control Unicode scan over changed text files
+- manual launch smoke after merge before next feature step
+
+Rollback:
+Revert the S2-55 PR. This returns App.Desktop SignIn strings/usability behavior to the previous S2-54 state.
+
+Definition of done:
+- App.Desktop SignIn surface is Russian for current visible strings.
+- Disabled SignIn state is understandable.
+- Wrong credentials and server unavailable states have safe visible messages.
+- Successful sign-in has a safe visible indication.
+- Password is cleared after an attempt.
+- App.Api/contracts/migrations/deploy/App.Web/App.Mobile.Android are unchanged.
+- App.Desktop unit tests cover Russian visible messages and usability behavior.
+- No deploy is run for this desktop-only client change.
