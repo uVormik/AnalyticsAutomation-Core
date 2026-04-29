@@ -45,7 +45,7 @@ public sealed class DesktopSignInServiceTests
         var result = await viewModel.SignInAsync(CancellationToken.None);
 
         Assert.Equal(DesktopSignInStatus.Succeeded, result.Status);
-        Assert.Contains("Signed in", result.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Вход выполнен", result.Message, StringComparison.Ordinal);
         Assert.Contains("Desktop Operator", result.Message, StringComparison.Ordinal);
         Assert.Equal(result, viewModel.LastResult);
         Assert.False(viewModel.IsBusy);
@@ -68,7 +68,7 @@ public sealed class DesktopSignInServiceTests
         var result = await viewModel.SignInAsync(CancellationToken.None);
 
         Assert.Equal(DesktopSignInStatus.Rejected, result.Status);
-        Assert.Contains("not accepted", result.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Логин или пароль не приняты", result.Message, StringComparison.Ordinal);
         Assert.DoesNotContain(password, result.Message, StringComparison.Ordinal);
         Assert.DoesNotContain(accessToken, result.Message, StringComparison.Ordinal);
         Assert.DoesNotContain("Authorization", result.Message, StringComparison.OrdinalIgnoreCase);
@@ -90,7 +90,7 @@ public sealed class DesktopSignInServiceTests
         var result = await viewModel.SignInAsync(CancellationToken.None);
 
         Assert.Equal(DesktopSignInStatus.Unavailable, result.Status);
-        Assert.Contains("unavailable", result.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Сервис входа недоступен", result.Message, StringComparison.Ordinal);
         Assert.DoesNotContain(password, result.Message, StringComparison.Ordinal);
         Assert.DoesNotContain("Authorization", result.Message, StringComparison.OrdinalIgnoreCase);
         Assert.Equal(result, viewModel.LastResult);
@@ -118,7 +118,7 @@ public sealed class DesktopSignInServiceTests
         var result = await viewModel.SignInAsync(CancellationToken.None);
 
         Assert.Equal(DesktopSignInStatus.Succeeded, result.Status);
-        Assert.Equal("Signed in.", result.Message);
+        Assert.Equal("Вход выполнен.", result.Message);
         Assert.DoesNotContain(password, result.Message, StringComparison.Ordinal);
         Assert.DoesNotContain(accessToken, result.Message, StringComparison.Ordinal);
         Assert.DoesNotContain(refreshToken, result.Message, StringComparison.Ordinal);
@@ -278,6 +278,22 @@ public sealed class DesktopSignInServiceTests
 
         Assert.Equal(DesktopSignInStatus.Rejected, result.Status);
         Assert.Equal(0, authClient.CallCount);
+        Assert.Equal(DesktopSignInText.NotStartedMessage, result.Message);
+    }
+
+    [Fact]
+    public void VisibleSignInTextUsesRussianLabelsAndActions()
+    {
+        Assert.Equal("Вход", DesktopSignInText.HeaderStatus);
+        Assert.Equal("Выполняется вход", DesktopSignInText.HeaderStatusBusy);
+        Assert.Equal("Вход выполнен", DesktopSignInText.HeaderStatusSignedIn);
+        Assert.Equal("Вход в систему", DesktopSignInText.Title);
+        Assert.Equal("Логин", DesktopSignInText.LoginLabel);
+        Assert.Equal("Введите логин", DesktopSignInText.LoginPlaceholder);
+        Assert.Equal("Пароль", DesktopSignInText.PasswordLabel);
+        Assert.Equal("Введите пароль", DesktopSignInText.PasswordPlaceholder);
+        Assert.Equal("Войти", DesktopSignInText.SubmitButton);
+        Assert.Equal("Выполняется вход...", DesktopSignInText.SubmitButtonBusy);
     }
 
     public static IEnumerable<object[]> FailedAuthResults()

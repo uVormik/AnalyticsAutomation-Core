@@ -9,6 +9,83 @@ public interface IDesktopSignInService
         CancellationToken cancellationToken);
 }
 
+public static class DesktopSignInText
+{
+    public const string HeaderStatus = "Вход";
+    public const string HeaderStatusBusy = "Выполняется вход";
+    public const string HeaderStatusSignedIn = "Вход выполнен";
+    public const string Title = "Вход в систему";
+    public const string LoginLabel = "Логин";
+    public const string LoginPlaceholder = "Введите логин";
+    public const string PasswordLabel = "Пароль";
+    public const string PasswordPlaceholder = "Введите пароль";
+    public const string SubmitButton = "Войти";
+    public const string SubmitButtonBusy = "Выполняется вход...";
+    public const string NotStartedMessage = "Введите логин и пароль для входа.";
+    public const string RejectedMessage = "Логин или пароль не приняты.";
+    public const string UnavailableMessage = "Сервис входа недоступен. Проверьте подключение или настройку.";
+    public const string FailedMessage = "Не удалось выполнить вход. Попробуйте еще раз.";
+
+    public static string CreateSuccessMessage(DesktopSessionSnapshot session)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+
+        if (TryCreateSafeDisplayName(session.DisplayName, out string? displayName))
+        {
+            return $"Вход выполнен: {displayName}.";
+        }
+
+        return "Вход выполнен.";
+    }
+
+    private static bool TryCreateSafeDisplayName(string? value, out string? displayName)
+    {
+        displayName = null;
+
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        string trimmed = value.Trim();
+        if (trimmed.Length > 80)
+        {
+            return false;
+        }
+
+        foreach (char character in trimmed)
+        {
+            if (char.IsControl(character))
+            {
+                return false;
+            }
+        }
+
+        string lower = trimmed.ToLowerInvariant();
+        string[] blockedFragments =
+        [
+            "authorization",
+            "bearer",
+            "password",
+            "accesstoken",
+            "access_token",
+            "refresh_token",
+            "refreshtoken"
+        ];
+
+        foreach (string blockedFragment in blockedFragments)
+        {
+            if (lower.Contains(blockedFragment, StringComparison.Ordinal))
+            {
+                return false;
+            }
+        }
+
+        displayName = trimmed;
+        return true;
+    }
+}
+
 public sealed class DesktopSignInResult
 {
     private DesktopSignInResult(
@@ -37,13 +114,13 @@ public sealed class DesktopSignInResult
         DesktopSignInStatus.NotStarted,
         session: null,
         error: null,
-        "Enter login and password to sign in.");
+        DesktopSignInText.NotStartedMessage);
 
     public static DesktopSignInResult InProgress { get; } = new(
         DesktopSignInStatus.InProgress,
         session: null,
         error: null,
-        "Signing in...");
+        DesktopSignInText.SubmitButtonBusy);
 
     public static DesktopSignInResult Succeeded(DesktopSessionSnapshot session)
     {
@@ -53,7 +130,7 @@ public sealed class DesktopSignInResult
             DesktopSignInStatus.Succeeded,
             session,
             error: null,
-            CreateSuccessMessage(session));
+            DesktopSignInText.CreateSuccessMessage(session));
     }
 
     public static DesktopSignInResult Rejected(string? code)
@@ -135,63 +212,6 @@ public sealed class DesktopSignInResult
         return trimmed;
     }
 
-    private static string CreateSuccessMessage(DesktopSessionSnapshot session)
-    {
-        if (TryCreateSafeDisplayName(session.DisplayName, out string? displayName))
-        {
-            return $"Signed in as {displayName}.";
-        }
-
-        return "Signed in.";
-    }
-
-    private static bool TryCreateSafeDisplayName(string? value, out string? displayName)
-    {
-        displayName = null;
-
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return false;
-        }
-
-        string trimmed = value.Trim();
-        if (trimmed.Length > 80)
-        {
-            return false;
-        }
-
-        foreach (char character in trimmed)
-        {
-            if (char.IsControl(character))
-            {
-                return false;
-            }
-        }
-
-        string lower = trimmed.ToLowerInvariant();
-        string[] blockedFragments =
-        [
-            "authorization",
-            "bearer",
-            "password",
-            "accesstoken",
-            "access_token",
-            "refresh_token",
-            "refreshtoken"
-        ];
-
-        foreach (string blockedFragment in blockedFragments)
-        {
-            if (lower.Contains(blockedFragment, StringComparison.Ordinal))
-            {
-                return false;
-            }
-        }
-
-        displayName = trimmed;
-        return true;
-    }
-
     private static string CreateErrorMessage(
         DesktopSignInStatus status,
         string? code,
@@ -200,14 +220,14 @@ public sealed class DesktopSignInResult
         string normalizedCode = NormalizeCode(code, fallbackCode);
         if (string.Equals(normalizedCode, "missing_credentials", StringComparison.Ordinal))
         {
-            return "Enter login and password to sign in.";
+            return DesktopSignInText.NotStartedMessage;
         }
 
         return status switch
         {
-            DesktopSignInStatus.Rejected => "Login or password was not accepted.",
-            DesktopSignInStatus.Unavailable => "Sign-in service is unavailable. Check connection or configuration.",
-            _ => "Sign-in could not be completed. Try again."
+            DesktopSignInStatus.Rejected => DesktopSignInText.RejectedMessage,
+            DesktopSignInStatus.Unavailable => DesktopSignInText.UnavailableMessage,
+            _ => DesktopSignInText.FailedMessage
         };
     }
 }

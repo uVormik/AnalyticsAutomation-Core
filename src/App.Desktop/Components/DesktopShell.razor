@@ -7,42 +7,52 @@
             <p class="desktop-shell__eyebrow">@BlazorHostBoundary.SurfaceName</p>
             <h1>AnalyticsAutomation Desktop</h1>
         </div>
-        <span class="desktop-shell__status">SignIn</span>
+        <span class="desktop-shell__status">@GetHeaderStatusText()</span>
     </header>
 
     <main class="desktop-shell__main">
         <section class="desktop-signin" aria-labelledby="desktop-signin-title">
             <div class="desktop-signin__heading">
-                <h2 id="desktop-signin-title">Sign in</h2>
-                <p class="@GetSignInStatusClass()" role="status" aria-live="polite">
+                <h2 id="desktop-signin-title">@DesktopSignInText.Title</h2>
+                <p id="desktop-signin-result" class="@GetSignInStatusClass()" role="status" aria-live="polite">
                     @SignInViewModel.LastResult.Message
                 </p>
             </div>
 
             <form class="desktop-signin__form" @onsubmit="SignInAsync" @onsubmit:preventDefault="true">
                 <label class="desktop-signin__field" for="desktop-signin-login">
-                    <span>Login</span>
+                    <span>@DesktopSignInText.LoginLabel</span>
                     <input
                         id="desktop-signin-login"
                         name="login"
                         autocomplete="username"
+                        placeholder="@DesktopSignInText.LoginPlaceholder"
+                        aria-describedby="desktop-signin-result"
+                        spellcheck="false"
+                        autofocus
+                        required
+                        disabled="@SignInViewModel.IsBusy"
                         @bind="SignInViewModel.Login"
                         @bind:event="oninput" />
                 </label>
 
                 <label class="desktop-signin__field" for="desktop-signin-password">
-                    <span>Password</span>
+                    <span>@DesktopSignInText.PasswordLabel</span>
                     <input
                         id="desktop-signin-password"
                         name="password"
                         type="password"
                         autocomplete="current-password"
+                        placeholder="@DesktopSignInText.PasswordPlaceholder"
+                        aria-describedby="desktop-signin-result"
+                        required
+                        disabled="@SignInViewModel.IsBusy"
                         @bind="SignInViewModel.Password"
                         @bind:event="oninput" />
                 </label>
 
                 <button class="desktop-signin__submit" type="submit" disabled="@(!SignInViewModel.CanSubmit)">
-                    @(SignInViewModel.IsBusy ? "Signing in..." : "Sign in")
+                    @(SignInViewModel.IsBusy ? DesktopSignInText.SubmitButtonBusy : DesktopSignInText.SubmitButton)
                 </button>
             </form>
         </section>
@@ -55,6 +65,16 @@
     private async Task SignInAsync()
     {
         await SignInViewModel.SignInAsync(CancellationToken.None);
+    }
+
+    private string GetHeaderStatusText()
+    {
+        return SignInViewModel.LastResult.Status switch
+        {
+            DesktopSignInStatus.Succeeded => DesktopSignInText.HeaderStatusSignedIn,
+            DesktopSignInStatus.InProgress => DesktopSignInText.HeaderStatusBusy,
+            _ => DesktopSignInText.HeaderStatus
+        };
     }
 
     private string GetSignInStatusClass()

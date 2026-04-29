@@ -83,6 +83,7 @@ body {
     margin: 10px 0 0;
     font-size: 0.9rem;
     font-weight: 600;
+    line-height: 1.35;
 }
 
 .desktop-signin__message--success {
@@ -103,7 +104,7 @@ body {
 
 .desktop-signin__form {
     display: grid;
-    grid-template-columns: 1fr 1fr auto;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(132px, auto);
     gap: 14px;
     align-items: end;
 }
@@ -138,6 +139,7 @@ body {
     font: inherit;
     font-size: 0.9rem;
     font-weight: 650;
+    white-space: nowrap;
 }
 
 .desktop-signin__submit:disabled {
