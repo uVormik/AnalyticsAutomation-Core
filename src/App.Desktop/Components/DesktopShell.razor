@@ -28,12 +28,12 @@
                         autocomplete="username"
                         placeholder="@DesktopSignInText.LoginPlaceholder"
                         aria-describedby="desktop-signin-result"
+                        aria-required="true"
                         spellcheck="false"
                         autofocus
-                        required
                         disabled="@SignInViewModel.IsBusy"
-                        value="@SignInViewModel.Login"
-                        @oninput="UpdateLogin" />
+                        @bind-value="SignInViewModel.Login"
+                        @bind-value:event="oninput" />
                 </label>
 
                 <label class="desktop-signin__field" for="desktop-signin-password">
@@ -45,16 +45,16 @@
                         autocomplete="current-password"
                         placeholder="@DesktopSignInText.PasswordPlaceholder"
                         aria-describedby="desktop-signin-result"
-                        required
+                        aria-required="true"
                         disabled="@SignInViewModel.IsBusy"
-                        value="@SignInViewModel.Password"
-                        @oninput="UpdatePassword" />
+                        @bind-value="SignInViewModel.Password"
+                        @bind-value:event="oninput" />
                 </label>
 
                 <button
                     class="desktop-signin__submit"
                     type="submit"
-                    disabled="@(!SignInViewModel.CanSubmit)"
+                    disabled="@SignInViewModel.IsBusy"
                     @onclick="SubmitSignInAsync"
                     @onclick:preventDefault="true">
                     @(SignInViewModel.IsBusy ? DesktopSignInText.SubmitButtonBusy : DesktopSignInText.SubmitButton)
@@ -67,21 +67,9 @@
 </div>
 
 @code {
-    private void UpdateLogin(ChangeEventArgs args)
-    {
-        SignInViewModel.SetLoginInput(ReadInputValue(args));
-        StateHasChanged();
-    }
-
-    private void UpdatePassword(ChangeEventArgs args)
-    {
-        SignInViewModel.SetPasswordInput(ReadInputValue(args));
-        StateHasChanged();
-    }
-
     private async Task SubmitSignInAsync()
     {
-        if (!SignInViewModel.CanSubmit)
+        if (SignInViewModel.IsBusy)
         {
             return;
         }
@@ -90,6 +78,8 @@
         StateHasChanged();
 
         await signInAttempt;
+
+        StateHasChanged();
     }
 
     private string GetHeaderStatusText()
@@ -114,8 +104,4 @@
         };
     }
 
-    private static string ReadInputValue(ChangeEventArgs args)
-    {
-        return args.Value?.ToString() ?? string.Empty;
-    }
 }

@@ -92,7 +92,7 @@ public sealed class DesktopSignInServiceTests
     }
 
     [Fact]
-    public void DesktopShellUpdatesViewModelFromLiveInputEvents()
+    public void DesktopShellBindsInputsWithLiveInputEvents()
     {
         string markup = File.ReadAllText(Path.Combine(
             FindRepositoryRoot(),
@@ -101,15 +101,29 @@ public sealed class DesktopSignInServiceTests
             "Components",
             "DesktopShell.razor"));
 
-        Assert.Contains("value=\"@SignInViewModel.Login\"", markup, StringComparison.Ordinal);
-        Assert.Contains("@oninput=\"UpdateLogin\"", markup, StringComparison.Ordinal);
-        Assert.Contains("SignInViewModel.SetLoginInput(ReadInputValue(args));", markup, StringComparison.Ordinal);
-        Assert.Contains("value=\"@SignInViewModel.Password\"", markup, StringComparison.Ordinal);
-        Assert.Contains("@oninput=\"UpdatePassword\"", markup, StringComparison.Ordinal);
-        Assert.Contains("SignInViewModel.SetPasswordInput(ReadInputValue(args));", markup, StringComparison.Ordinal);
-        Assert.Contains("StateHasChanged();", markup, StringComparison.Ordinal);
-        Assert.DoesNotContain("@bind=\"SignInViewModel.Login\"", markup, StringComparison.Ordinal);
-        Assert.DoesNotContain("@bind=\"SignInViewModel.Password\"", markup, StringComparison.Ordinal);
+        Assert.Contains("@bind-value=\"SignInViewModel.Login\"", markup, StringComparison.Ordinal);
+        Assert.Contains("@bind-value=\"SignInViewModel.Password\"", markup, StringComparison.Ordinal);
+        Assert.Equal(2, CountOccurrences(markup, "@bind-value:event=\"oninput\""));
+        Assert.DoesNotContain("@oninput=\"UpdateLogin\"", markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("@oninput=\"UpdatePassword\"", markup, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void DesktopShellKeepsSubmitClickableWhileIdleAndLetsViewModelValidate()
+    {
+        string markup = File.ReadAllText(Path.Combine(
+            FindRepositoryRoot(),
+            "src",
+            "App.Desktop",
+            "Components",
+            "DesktopShell.razor"));
+
+        Assert.Contains("disabled=\"@SignInViewModel.IsBusy\"", markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("disabled=\"@(!SignInViewModel.CanSubmit)\"", markup, StringComparison.Ordinal);
+        Assert.DoesNotContain(" required", markup, StringComparison.Ordinal);
+        Assert.Equal(2, CountOccurrences(markup, "aria-required=\"true\""));
+        Assert.Contains("if (SignInViewModel.IsBusy)", markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("if (!SignInViewModel.CanSubmit)", markup, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -287,6 +301,27 @@ public sealed class DesktopSignInServiceTests
         Assert.True(viewModel.CanSubmit);
     }
 
+    [Fact]
+    public async Task ViewModelMissingCredentialsRejectsWithoutCallingSignInService()
+    {
+        var signInService = new RecordingSignInService(DesktopSignInResult.Succeeded(
+            DesktopSessionSnapshot.FromSession(CreateAuthenticatedSession())));
+        var viewModel = new DesktopSignInViewModel(signInService)
+        {
+            Login = " ",
+            Password = CreateSensitiveValue("password")
+        };
+
+        DesktopSignInResult result = await viewModel.SignInAsync(CancellationToken.None);
+
+        Assert.Equal(DesktopSignInStatus.Rejected, result.Status);
+        Assert.Equal(DesktopSignInText.NotStartedMessage, result.Message);
+        Assert.Equal(result, viewModel.LastResult);
+        Assert.Equal(0, signInService.CallCount);
+        Assert.Equal(string.Empty, viewModel.Password);
+        Assert.False(viewModel.IsBusy);
+    }
+
     [Theory]
     [InlineData("", "password")]
     [InlineData(" ", "password")]
@@ -415,6 +450,20 @@ public sealed class DesktopSignInServiceTests
         }
 
         throw new InvalidOperationException("Repository root was not found.");
+    }
+
+    private static int CountOccurrences(string value, string match)
+    {
+        int count = 0;
+        int startIndex = 0;
+
+        while ((startIndex = value.IndexOf(match, startIndex, StringComparison.Ordinal)) >= 0)
+        {
+            count++;
+            startIndex += match.Length;
+        }
+
+        return count;
     }
 
     private sealed class RecordingAuthClient(DesktopAuthResult result) : IDesktopAuthClient

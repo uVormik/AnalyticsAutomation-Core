@@ -97,3 +97,9 @@ Definition of done:
 - Password is cleared after an attempted SignIn.
 - Safe visible Russian result text is preserved.
 - App.Api/contracts/migrations/deploy/App.Web/App.Mobile.Android are unchanged.
+
+Review follow-up after PR #126 manual smoke:
+- Manual smoke against PR head e6a3ba03512bb09c6dcfaca4b3cfa4e6f026c305 reported BUTTON_STILL_DISABLED after typing credentials.
+- Follow-up fix keeps the submit button clickable whenever SignIn is idle, disables it only while a request is in progress, and lets the ViewModel enforce missing-credentials validation with the existing safe Russian message.
+- Login/password inputs now use canonical live Blazor binding with oninput so typed values continue to flow into the ViewModel before click or Enter submit.
+- Native required attributes were replaced with aria-required so browser constraint validation cannot block the ViewModel validation path.
