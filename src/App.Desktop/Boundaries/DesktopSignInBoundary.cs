@@ -37,7 +37,13 @@ public sealed class DesktopSignInResult
         DesktopSignInStatus.NotStarted,
         session: null,
         error: null,
-        "Sign-in has not been attempted.");
+        "Enter login and password to sign in.");
+
+    public static DesktopSignInResult InProgress { get; } = new(
+        DesktopSignInStatus.InProgress,
+        session: null,
+        error: null,
+        "Signing in...");
 
     public static DesktopSignInResult Succeeded(DesktopSessionSnapshot session)
     {
@@ -47,7 +53,7 @@ public sealed class DesktopSignInResult
             DesktopSignInStatus.Succeeded,
             session,
             error: null,
-            "Signed in.");
+            CreateSuccessMessage(session));
     }
 
     public static DesktopSignInResult Rejected(string? code)
@@ -56,7 +62,10 @@ public sealed class DesktopSignInResult
             DesktopSignInStatus.Rejected,
             code,
             fallbackCode: "sign_in_rejected",
-            message: "Sign-in was rejected.");
+            message: CreateErrorMessage(
+                DesktopSignInStatus.Rejected,
+                code,
+                "sign_in_rejected"));
     }
 
     public static DesktopSignInResult Failed(string? code)
@@ -65,7 +74,10 @@ public sealed class DesktopSignInResult
             DesktopSignInStatus.Failed,
             code,
             fallbackCode: "sign_in_failed",
-            message: "Sign-in failed.");
+            message: CreateErrorMessage(
+                DesktopSignInStatus.Failed,
+                code,
+                "sign_in_failed"));
     }
 
     public static DesktopSignInResult Unavailable(string? code)
@@ -74,7 +86,10 @@ public sealed class DesktopSignInResult
             DesktopSignInStatus.Unavailable,
             code,
             fallbackCode: "sign_in_unavailable",
-            message: "Desktop sign-in is unavailable.");
+            message: CreateErrorMessage(
+                DesktopSignInStatus.Unavailable,
+                code,
+                "sign_in_unavailable"));
     }
 
     public override string ToString()
@@ -119,6 +134,82 @@ public sealed class DesktopSignInResult
 
         return trimmed;
     }
+
+    private static string CreateSuccessMessage(DesktopSessionSnapshot session)
+    {
+        if (TryCreateSafeDisplayName(session.DisplayName, out string? displayName))
+        {
+            return $"Signed in as {displayName}.";
+        }
+
+        return "Signed in.";
+    }
+
+    private static bool TryCreateSafeDisplayName(string? value, out string? displayName)
+    {
+        displayName = null;
+
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        string trimmed = value.Trim();
+        if (trimmed.Length > 80)
+        {
+            return false;
+        }
+
+        foreach (char character in trimmed)
+        {
+            if (char.IsControl(character))
+            {
+                return false;
+            }
+        }
+
+        string lower = trimmed.ToLowerInvariant();
+        string[] blockedFragments =
+        [
+            "authorization",
+            "bearer",
+            "password",
+            "accesstoken",
+            "access_token",
+            "refresh_token",
+            "refreshtoken"
+        ];
+
+        foreach (string blockedFragment in blockedFragments)
+        {
+            if (lower.Contains(blockedFragment, StringComparison.Ordinal))
+            {
+                return false;
+            }
+        }
+
+        displayName = trimmed;
+        return true;
+    }
+
+    private static string CreateErrorMessage(
+        DesktopSignInStatus status,
+        string? code,
+        string fallbackCode)
+    {
+        string normalizedCode = NormalizeCode(code, fallbackCode);
+        if (string.Equals(normalizedCode, "missing_credentials", StringComparison.Ordinal))
+        {
+            return "Enter login and password to sign in.";
+        }
+
+        return status switch
+        {
+            DesktopSignInStatus.Rejected => "Login or password was not accepted.",
+            DesktopSignInStatus.Unavailable => "Sign-in service is unavailable. Check connection or configuration.",
+            _ => "Sign-in could not be completed. Try again."
+        };
+    }
 }
 
 public sealed record DesktopSignInError(
@@ -128,6 +219,7 @@ public sealed record DesktopSignInError(
 public enum DesktopSignInStatus
 {
     NotStarted,
+    InProgress,
     Succeeded,
     Rejected,
     Failed,

@@ -14,10 +14,9 @@
         <section class="desktop-signin" aria-labelledby="desktop-signin-title">
             <div class="desktop-signin__heading">
                 <h2 id="desktop-signin-title">Sign in</h2>
-                @if (SignInViewModel.LastResult.Status != DesktopSignInStatus.NotStarted)
-                {
-                    <p class="@GetSignInStatusClass()">@SignInViewModel.LastResult.Message</p>
-                }
+                <p class="@GetSignInStatusClass()" role="status" aria-live="polite">
+                    @SignInViewModel.LastResult.Message
+                </p>
             </div>
 
             <form class="desktop-signin__form" @onsubmit="SignInAsync" @onsubmit:preventDefault="true">
@@ -27,7 +26,8 @@
                         id="desktop-signin-login"
                         name="login"
                         autocomplete="username"
-                        @bind="SignInViewModel.Login" />
+                        @bind="SignInViewModel.Login"
+                        @bind:event="oninput" />
                 </label>
 
                 <label class="desktop-signin__field" for="desktop-signin-password">
@@ -37,11 +37,12 @@
                         name="password"
                         type="password"
                         autocomplete="current-password"
-                        @bind="SignInViewModel.Password" />
+                        @bind="SignInViewModel.Password"
+                        @bind:event="oninput" />
                 </label>
 
-                <button class="desktop-signin__submit" type="submit" disabled="@SignInViewModel.IsBusy">
-                    @(SignInViewModel.IsBusy ? "Signing in" : "Sign in")
+                <button class="desktop-signin__submit" type="submit" disabled="@(!SignInViewModel.CanSubmit)">
+                    @(SignInViewModel.IsBusy ? "Signing in..." : "Sign in")
                 </button>
             </form>
         </section>
@@ -58,8 +59,13 @@
 
     private string GetSignInStatusClass()
     {
-        return SignInViewModel.LastResult.Status == DesktopSignInStatus.Succeeded
-            ? "desktop-signin__message desktop-signin__message--success"
-            : "desktop-signin__message desktop-signin__message--neutral";
+        return SignInViewModel.LastResult.Status switch
+        {
+            DesktopSignInStatus.Succeeded => "desktop-signin__message desktop-signin__message--success",
+            DesktopSignInStatus.InProgress => "desktop-signin__message desktop-signin__message--progress",
+            DesktopSignInStatus.Rejected or DesktopSignInStatus.Failed or DesktopSignInStatus.Unavailable =>
+                "desktop-signin__message desktop-signin__message--error",
+            _ => "desktop-signin__message desktop-signin__message--neutral"
+        };
     }
 }
