@@ -59,10 +59,13 @@ public sealed class DesktopSignInServiceTests
         var signInService = new RecordingSignInService(DesktopSignInResult.Rejected("invalid_credentials"));
         var viewModel = new DesktopSignInViewModel(signInService)
         {
-            Login = "desktop-operator",
-            Password = password,
+            Login = "stale-login",
+            Password = CreateSensitiveValue("stale-password"),
             DeviceId = deviceId
         };
+
+        viewModel.SetLoginInput("desktop-operator");
+        viewModel.SetPasswordInput(password);
 
         _ = await viewModel.SignInAsync(CancellationToken.None);
 
@@ -86,6 +89,27 @@ public sealed class DesktopSignInServiceTests
         Assert.Contains("type=\"submit\"", markup, StringComparison.Ordinal);
         Assert.Contains("@onclick=\"SubmitSignInAsync\"", markup, StringComparison.Ordinal);
         Assert.Contains("@onclick:preventDefault=\"true\"", markup, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void DesktopShellUpdatesViewModelFromLiveInputEvents()
+    {
+        string markup = File.ReadAllText(Path.Combine(
+            FindRepositoryRoot(),
+            "src",
+            "App.Desktop",
+            "Components",
+            "DesktopShell.razor"));
+
+        Assert.Contains("value=\"@SignInViewModel.Login\"", markup, StringComparison.Ordinal);
+        Assert.Contains("@oninput=\"UpdateLogin\"", markup, StringComparison.Ordinal);
+        Assert.Contains("SignInViewModel.SetLoginInput(ReadInputValue(args));", markup, StringComparison.Ordinal);
+        Assert.Contains("value=\"@SignInViewModel.Password\"", markup, StringComparison.Ordinal);
+        Assert.Contains("@oninput=\"UpdatePassword\"", markup, StringComparison.Ordinal);
+        Assert.Contains("SignInViewModel.SetPasswordInput(ReadInputValue(args));", markup, StringComparison.Ordinal);
+        Assert.Contains("StateHasChanged();", markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("@bind=\"SignInViewModel.Login\"", markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("@bind=\"SignInViewModel.Password\"", markup, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -254,13 +278,28 @@ public sealed class DesktopSignInServiceTests
 
         Assert.False(viewModel.CanSubmit);
 
-        viewModel.Login = "desktop-operator";
+        viewModel.SetLoginInput("desktop-operator");
 
         Assert.False(viewModel.CanSubmit);
 
-        viewModel.Password = CreateSensitiveValue("password");
+        viewModel.SetPasswordInput(CreateSensitiveValue("password"));
 
         Assert.True(viewModel.CanSubmit);
+    }
+
+    [Theory]
+    [InlineData("", "password")]
+    [InlineData(" ", "password")]
+    [InlineData("desktop-operator", "")]
+    [InlineData("desktop-operator", " ")]
+    public void ViewModelCanSubmitRejectsMissingOrWhitespaceInput(string login, string password)
+    {
+        var viewModel = new DesktopSignInViewModel(new RecordingSignInService(DesktopSignInResult.InProgress));
+
+        viewModel.SetLoginInput(login);
+        viewModel.SetPasswordInput(password);
+
+        Assert.False(viewModel.CanSubmit);
     }
 
     [Fact]

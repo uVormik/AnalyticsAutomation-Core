@@ -1,0 +1,99 @@
+Title:
+S2-57 Desktop SignIn Input Binding Fix Task Card
+
+Owner:
+Codex / Desktop Client
+
+Module:
+App.Desktop / SignIn UI usability
+
+Client form:
+desktop standalone
+
+Type:
+runtime desktop-only input binding bugfix
+
+Status:
+Runtime bugfix created after S2-56 manual smoke found the SignIn button stayed disabled after typing credentials.
+
+Goal:
+Make the current App.Desktop SignIn surface update its submit-enabled state immediately as the operator types non-whitespace login and password values.
+
+Context:
+S2-51 enabled the minimal desktop SignIn runtime slice.
+S2-54 added safe visible SignIn feedback.
+S2-55 localized the SignIn surface and clarified disabled/progress/result states.
+S2-56 routed button click and keyboard submit to the same safe ViewModel submit path.
+
+Manual evidence after S2-56:
+The desktop window launched and the Russian UI appeared, but the SignIn button remained disabled after credentials were typed.
+
+Scope:
+Allowed:
+- docs/task-cards/S2-57_desktop-signin-input-binding-fix-task-card.txt
+- src/App.Desktop/Components/DesktopShell.razor
+- src/App.Desktop/Services/Auth/DesktopSignInViewModel.cs
+- src/App.Desktop/Boundaries/DesktopSignInBoundary.cs only for a small text constant update if needed
+- src/App.Desktop/wwwroot/app.css only for visible validation/help state if needed
+- tests/Unit/App.Desktop.Tests/DesktopSignInServiceTests.cs
+- new desktop SignIn-specific tests under tests/Unit/App.Desktop.Tests/ if needed
+
+Forbidden:
+- App.Api changes
+- App.Worker changes
+- App.Web changes
+- App.Mobile.Android changes
+- App.UI.Shared changes
+- BuildingBlocks.Contracts/shared DTO changes
+- Modules changes
+- DB migrations
+- GitHub workflows
+- deploy scripts
+- token persistence changes
+
+Implementation summary:
+- Replace implicit Razor input binding for the SignIn login/password fields with explicit live oninput handlers.
+- Update the DesktopSignInViewModel with the current typed values before the submit button disabled state is recalculated.
+- Keep the existing ViewModel CanSubmit, busy guard, submit handler, Enter-submit form behavior, and password clearing.
+
+Security guardrails:
+- Do not log or display passwords.
+- Do not display access tokens, refresh tokens, Authorization headers, raw response bodies, raw exception text, or token-like values.
+- Keep safe Russian UI result text.
+
+Contracts:
+No App.Api or shared DTO contract changes.
+
+Migrations:
+None.
+
+Feature flags:
+None.
+
+Events/audit:
+No client-side event or audit changes. Server auth audit behavior is unchanged.
+
+Offline behavior:
+Unchanged. Desktop SignIn remains online-only for this slice.
+
+Rollback:
+Revert the S2-57 PR. This returns App.Desktop SignIn input handling to the S2-56 behavior.
+
+Validation:
+- git diff --check
+- dotnet restore AnalyticsAutomation-Core.sln -nologo
+- dotnet format whitespace AnalyticsAutomation-Core.sln --verify-no-changes --no-restore
+- dotnet build src/App.Desktop/App.Desktop.csproj -nologo -v minimal
+- dotnet build AnalyticsAutomation-Core.sln -nologo -v minimal
+- dotnet test tests/Unit/App.Desktop.Tests/App.Desktop.Tests.csproj -nologo -v minimal
+- hidden/control Unicode scan over changed text files
+- launch App.Desktop only enough to verify the window starts; manual button validation remains owner/user-driven
+
+Definition of done:
+- The SignIn button becomes enabled as soon as login and password have non-whitespace text and sign-in is idle.
+- The current typed login/password values are used for the SignIn attempt.
+- Empty, whitespace, or busy submit stays disabled/ignored.
+- Button click and keyboard Enter submit continue to target the same safe submit path.
+- Password is cleared after an attempted SignIn.
+- Safe visible Russian result text is preserved.
+- App.Api/contracts/migrations/deploy/App.Web/App.Mobile.Android are unchanged.

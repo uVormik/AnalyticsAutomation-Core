@@ -21,6 +21,16 @@ public sealed class DesktopSignInViewModel(IDesktopSignInService signInService)
 
     public DesktopSignInResult LastResult { get; private set; } = DesktopSignInResult.NotStarted;
 
+    public void SetLoginInput(string? login)
+    {
+        Login = login ?? string.Empty;
+    }
+
+    public void SetPasswordInput(string? password)
+    {
+        Password = password ?? string.Empty;
+    }
+
     public async ValueTask<DesktopSignInResult> SignInAsync(CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();

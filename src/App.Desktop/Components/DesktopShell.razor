@@ -32,8 +32,8 @@
                         autofocus
                         required
                         disabled="@SignInViewModel.IsBusy"
-                        @bind="SignInViewModel.Login"
-                        @bind:event="oninput" />
+                        value="@SignInViewModel.Login"
+                        @oninput="UpdateLogin" />
                 </label>
 
                 <label class="desktop-signin__field" for="desktop-signin-password">
@@ -47,8 +47,8 @@
                         aria-describedby="desktop-signin-result"
                         required
                         disabled="@SignInViewModel.IsBusy"
-                        @bind="SignInViewModel.Password"
-                        @bind:event="oninput" />
+                        value="@SignInViewModel.Password"
+                        @oninput="UpdatePassword" />
                 </label>
 
                 <button
@@ -67,6 +67,18 @@
 </div>
 
 @code {
+    private void UpdateLogin(ChangeEventArgs args)
+    {
+        SignInViewModel.SetLoginInput(ReadInputValue(args));
+        StateHasChanged();
+    }
+
+    private void UpdatePassword(ChangeEventArgs args)
+    {
+        SignInViewModel.SetPasswordInput(ReadInputValue(args));
+        StateHasChanged();
+    }
+
     private async Task SubmitSignInAsync()
     {
         if (!SignInViewModel.CanSubmit)
@@ -100,5 +112,10 @@
                 "desktop-signin__message desktop-signin__message--error",
             _ => "desktop-signin__message desktop-signin__message--neutral"
         };
+    }
+
+    private static string ReadInputValue(ChangeEventArgs args)
+    {
+        return args.Value?.ToString() ?? string.Empty;
     }
 }
