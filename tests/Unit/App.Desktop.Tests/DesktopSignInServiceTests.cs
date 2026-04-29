@@ -76,7 +76,7 @@ public sealed class DesktopSignInServiceTests
     }
 
     [Fact]
-    public void DesktopShellBindsButtonClickAndFormSubmitToSameHandler()
+    public void DesktopShellUsesExplicitClickAndEnterSubmitWithoutNativeFormSubmit()
     {
         string markup = File.ReadAllText(Path.Combine(
             FindRepositoryRoot(),
@@ -85,10 +85,14 @@ public sealed class DesktopSignInServiceTests
             "Components",
             "DesktopShell.razor"));
 
-        Assert.Contains("@onsubmit=\"SubmitSignInAsync\"", markup, StringComparison.Ordinal);
-        Assert.Contains("type=\"submit\"", markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("<form", markup, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("@onsubmit", markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("type=\"submit\"", markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("@onclick:preventDefault", markup, StringComparison.Ordinal);
+        Assert.Contains("type=\"button\"", markup, StringComparison.Ordinal);
         Assert.Contains("@onclick=\"SubmitSignInAsync\"", markup, StringComparison.Ordinal);
-        Assert.Contains("@onclick:preventDefault=\"true\"", markup, StringComparison.Ordinal);
+        Assert.Equal(2, CountOccurrences(markup, "@onkeyup=\"SubmitSignInOnEnterAsync\""));
+        Assert.Contains("if (!string.Equals(args.Key, \"Enter\", StringComparison.Ordinal))", markup, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -285,6 +289,32 @@ public sealed class DesktopSignInServiceTests
         Assert.DoesNotContain(password, viewModel.LastResult.ToString(), StringComparison.Ordinal);
     }
 
+    [Theory]
+    [MemberData(nameof(ViewModelAttemptResults))]
+    public async Task ViewModelPreservesLoginClearsPasswordAndKeepsVisibleResultAfterAttempt(
+        DesktopSignInResult signInResult,
+        DesktopSignInStatus expectedStatus,
+        string expectedMessage)
+    {
+        const string login = "desktop-operator";
+        var password = CreateSensitiveValue("password");
+        var viewModel = new DesktopSignInViewModel(new RecordingSignInService(signInResult))
+        {
+            Login = login,
+            Password = password
+        };
+
+        DesktopSignInResult result = await viewModel.SignInAsync(CancellationToken.None);
+
+        Assert.Equal(expectedStatus, result.Status);
+        Assert.Equal(expectedMessage, result.Message);
+        Assert.Equal(result, viewModel.LastResult);
+        Assert.Equal(login, viewModel.Login);
+        Assert.Equal(string.Empty, viewModel.Password);
+        Assert.False(string.IsNullOrWhiteSpace(viewModel.LastResult.Message));
+        Assert.DoesNotContain(password, viewModel.LastResult.ToString(), StringComparison.Ordinal);
+    }
+
     [Fact]
     public void ViewModelCanSubmitRequiresLoginPasswordAndIdleState()
     {
@@ -302,14 +332,15 @@ public sealed class DesktopSignInServiceTests
     }
 
     [Fact]
-    public async Task ViewModelMissingCredentialsRejectsWithoutCallingSignInService()
+    public async Task ViewModelMissingCredentialsRejectsWithoutCallingSignInServiceAndPreservesLogin()
     {
         var signInService = new RecordingSignInService(DesktopSignInResult.Succeeded(
             DesktopSessionSnapshot.FromSession(CreateAuthenticatedSession())));
+        const string login = "desktop-operator";
         var viewModel = new DesktopSignInViewModel(signInService)
         {
-            Login = " ",
-            Password = CreateSensitiveValue("password")
+            Login = login,
+            Password = " "
         };
 
         DesktopSignInResult result = await viewModel.SignInAsync(CancellationToken.None);
@@ -318,6 +349,7 @@ public sealed class DesktopSignInServiceTests
         Assert.Equal(DesktopSignInText.NotStartedMessage, result.Message);
         Assert.Equal(result, viewModel.LastResult);
         Assert.Equal(0, signInService.CallCount);
+        Assert.Equal(login, viewModel.Login);
         Assert.Equal(string.Empty, viewModel.Password);
         Assert.False(viewModel.IsBusy);
     }
@@ -412,6 +444,36 @@ public sealed class DesktopSignInServiceTests
         yield return [DesktopAuthResult.Rejected("invalid_credentials", "Rejected.")];
         yield return [DesktopAuthResult.Failed("sign_in_failed", "Failed.")];
         yield return [DesktopAuthResult.Unavailable("sign_in_unavailable", "Unavailable.")];
+    }
+
+    public static IEnumerable<object[]> ViewModelAttemptResults()
+    {
+        yield return
+        [
+            DesktopSignInResult.Rejected("invalid_credentials"),
+            DesktopSignInStatus.Rejected,
+            DesktopSignInText.RejectedMessage
+        ];
+        yield return
+        [
+            DesktopSignInResult.Unavailable("sign_in_unavailable"),
+            DesktopSignInStatus.Unavailable,
+            DesktopSignInText.UnavailableMessage
+        ];
+        yield return
+        [
+            DesktopSignInResult.Failed("sign_in_failed"),
+            DesktopSignInStatus.Failed,
+            DesktopSignInText.FailedMessage
+        ];
+
+        var session = CreateAuthenticatedSession(displayName: "Desktop Operator");
+        yield return
+        [
+            DesktopSignInResult.Succeeded(DesktopSessionSnapshot.FromSession(session)),
+            DesktopSignInStatus.Succeeded,
+            DesktopSignInText.CreateSuccessMessage(DesktopSessionSnapshot.FromSession(session))
+        ];
     }
 
     private static DesktopAuthenticatedSession CreateAuthenticatedSession(

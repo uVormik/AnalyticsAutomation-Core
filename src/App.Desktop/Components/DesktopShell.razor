@@ -1,5 +1,6 @@
 @inject IBlazorWebViewHostBoundary BlazorHostBoundary
 @inject DesktopSignInViewModel SignInViewModel
+@using Microsoft.AspNetCore.Components.Web
 
 <div class="desktop-shell">
     <header class="desktop-shell__header">
@@ -19,7 +20,7 @@
                 </p>
             </div>
 
-            <form class="desktop-signin__form" @onsubmit="SubmitSignInAsync" @onsubmit:preventDefault="true">
+            <div class="desktop-signin__form" role="group" aria-describedby="desktop-signin-result">
                 <label class="desktop-signin__field" for="desktop-signin-login">
                     <span>@DesktopSignInText.LoginLabel</span>
                     <input
@@ -33,7 +34,8 @@
                         autofocus
                         disabled="@SignInViewModel.IsBusy"
                         @bind-value="SignInViewModel.Login"
-                        @bind-value:event="oninput" />
+                        @bind-value:event="oninput"
+                        @onkeyup="SubmitSignInOnEnterAsync" />
                 </label>
 
                 <label class="desktop-signin__field" for="desktop-signin-password">
@@ -48,18 +50,18 @@
                         aria-required="true"
                         disabled="@SignInViewModel.IsBusy"
                         @bind-value="SignInViewModel.Password"
-                        @bind-value:event="oninput" />
+                        @bind-value:event="oninput"
+                        @onkeyup="SubmitSignInOnEnterAsync" />
                 </label>
 
                 <button
                     class="desktop-signin__submit"
-                    type="submit"
+                    type="button"
                     disabled="@SignInViewModel.IsBusy"
-                    @onclick="SubmitSignInAsync"
-                    @onclick:preventDefault="true">
+                    @onclick="SubmitSignInAsync">
                     @(SignInViewModel.IsBusy ? DesktopSignInText.SubmitButtonBusy : DesktopSignInText.SubmitButton)
                 </button>
-            </form>
+            </div>
         </section>
 
         <UploadPlaceholder />
@@ -67,6 +69,16 @@
 </div>
 
 @code {
+    private async Task SubmitSignInOnEnterAsync(KeyboardEventArgs args)
+    {
+        if (!string.Equals(args.Key, "Enter", StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        await SubmitSignInAsync();
+    }
+
     private async Task SubmitSignInAsync()
     {
         if (SignInViewModel.IsBusy)

@@ -103,3 +103,8 @@ Review follow-up after PR #126 manual smoke:
 - Follow-up fix keeps the submit button clickable whenever SignIn is idle, disables it only while a request is in progress, and lets the ViewModel enforce missing-credentials validation with the existing safe Russian message.
 - Login/password inputs now use canonical live Blazor binding with oninput so typed values continue to flow into the ViewModel before click or Enter submit.
 - Native required attributes were replaced with aria-required so browser constraint validation cannot block the ViewModel validation path.
+
+Second review follow-up after PR #126 manual smoke:
+- Manual smoke against PR head ce45969f79ee2587300599768fc978152a33c9f3 confirmed the button is clickable, but clicking it cleared both login and password fields.
+- Follow-up fix removes the native form submit dependency from DesktopShell and uses an explicit button click plus explicit Enter key handler, preventing form reset/navigation behavior in WPF BlazorWebView.
+- The ViewModel contract is preserved: login remains after rejected, unavailable, failed, successful, and missing-credential attempts; password is cleared after each attempt; the visible Russian result message remains available.
