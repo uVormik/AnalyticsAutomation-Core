@@ -52,9 +52,10 @@ Forbidden:
 - token persistence changes
 
 Implementation summary:
-- Replace implicit Razor input binding for the SignIn login/password fields with explicit live oninput handlers.
-- Update the DesktopSignInViewModel with the current typed values before the submit button disabled state is recalculated.
-- Keep the existing ViewModel CanSubmit, busy guard, submit handler, Enter-submit form behavior, and password clearing.
+- Replace implicit Razor input binding for the SignIn login/password fields with live oninput binding.
+- Keep the submit button clickable whenever SignIn is idle, and let the ViewModel validate missing input safely.
+- Remove the native form submit dependency; route button click and Enter submit through explicit Blazor handlers.
+- Preserve login after attempted SignIn, clear password after attempted SignIn, and keep the visible Russian result message available.
 
 Security guardrails:
 - Do not log or display passwords.
@@ -87,7 +88,14 @@ Validation:
 - dotnet build AnalyticsAutomation-Core.sln -nologo -v minimal
 - dotnet test tests/Unit/App.Desktop.Tests/App.Desktop.Tests.csproj -nologo -v minimal
 - hidden/control Unicode scan over changed text files
-- launch App.Desktop only enough to verify the window starts; manual button validation remains owner/user-driven
+- App.Desktop launch smoke
+- visual screenshots saved under C:\CODEX\Temp and not committed:
+  - baseline SignIn screen
+  - login/password entered before submit
+  - after rejected/unavailable submit
+  - after Enter-submit when practical
+  - after successful sign-in if safe credentials are available to the operator
+- report includes screenshot paths and confirms no password, accessToken, refreshToken, Authorization header, raw token-like value, or secret-bearing response is shown
 
 Definition of done:
 - The SignIn button becomes enabled as soon as login and password have non-whitespace text and sign-in is idle.
@@ -96,6 +104,10 @@ Definition of done:
 - Button click and keyboard Enter submit continue to target the same safe submit path.
 - Password is cleared after an attempted SignIn.
 - Safe visible Russian result text is preserved.
+- App.Desktop launch smoke is captured.
+- Visual smoke screenshots are captured under C:\CODEX\Temp and are not committed.
+- Visual smoke evidence includes baseline, filled login/password before submit, after rejected/unavailable submit, after Enter-submit when practical, and after successful sign-in if safe credentials are available to the operator.
+- Reports include screenshot paths without logging passwords, access tokens, refresh tokens, Authorization headers, raw token-like values, or secret-bearing responses.
 - App.Api/contracts/migrations/deploy/App.Web/App.Mobile.Android are unchanged.
 
 Review follow-up after PR #126 manual smoke:
