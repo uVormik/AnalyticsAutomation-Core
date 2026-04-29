@@ -52,6 +52,43 @@ public sealed class DesktopSignInServiceTests
     }
 
     [Fact]
+    public async Task ViewModelSubmitUsesCurrentBoundInputValues()
+    {
+        var password = CreateSensitiveValue("password");
+        var deviceId = Guid.NewGuid();
+        var signInService = new RecordingSignInService(DesktopSignInResult.Rejected("invalid_credentials"));
+        var viewModel = new DesktopSignInViewModel(signInService)
+        {
+            Login = "desktop-operator",
+            Password = password,
+            DeviceId = deviceId
+        };
+
+        _ = await viewModel.SignInAsync(CancellationToken.None);
+
+        Assert.Equal(1, signInService.CallCount);
+        Assert.Equal("desktop-operator", signInService.LastLogin);
+        Assert.Equal(password, signInService.LastPassword);
+        Assert.Equal(deviceId, signInService.LastDeviceId);
+    }
+
+    [Fact]
+    public void DesktopShellBindsButtonClickAndFormSubmitToSameHandler()
+    {
+        string markup = File.ReadAllText(Path.Combine(
+            FindRepositoryRoot(),
+            "src",
+            "App.Desktop",
+            "Components",
+            "DesktopShell.razor"));
+
+        Assert.Contains("@onsubmit=\"SubmitSignInAsync\"", markup, StringComparison.Ordinal);
+        Assert.Contains("type=\"submit\"", markup, StringComparison.Ordinal);
+        Assert.Contains("@onclick=\"SubmitSignInAsync\"", markup, StringComparison.Ordinal);
+        Assert.Contains("@onclick:preventDefault=\"true\"", markup, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task ViewModelRejectedCredentialsSetVisibleSafeErrorMessage()
     {
         var password = CreateSensitiveValue("password");
@@ -325,6 +362,22 @@ public sealed class DesktopSignInServiceTests
         return $"{prefix}-{Guid.NewGuid():N}";
     }
 
+    private static string FindRepositoryRoot()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null)
+        {
+            if (File.Exists(Path.Combine(directory.FullName, "AnalyticsAutomation-Core.sln")))
+            {
+                return directory.FullName;
+            }
+
+            directory = directory.Parent;
+        }
+
+        throw new InvalidOperationException("Repository root was not found.");
+    }
+
     private sealed class RecordingAuthClient(DesktopAuthResult result) : IDesktopAuthClient
     {
         public int CallCount { get; private set; }
@@ -359,6 +412,14 @@ public sealed class DesktopSignInServiceTests
 
     private sealed class RecordingSignInService(DesktopSignInResult result) : IDesktopSignInService
     {
+        public int CallCount { get; private set; }
+
+        public string? LastLogin { get; private set; }
+
+        public string? LastPassword { get; private set; }
+
+        public Guid? LastDeviceId { get; private set; }
+
         public ValueTask<DesktopSignInResult> SignInAsync(
             string login,
             string password,
@@ -366,6 +427,11 @@ public sealed class DesktopSignInServiceTests
             CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
+
+            CallCount++;
+            LastLogin = login;
+            LastPassword = password;
+            LastDeviceId = deviceId;
 
             return ValueTask.FromResult(result);
         }

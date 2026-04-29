@@ -1,0 +1,91 @@
+Title:
+S2-56 Desktop SignIn Submit Binding Fix Task Card
+
+Owner:
+Coder 1 acting as Coder 2 / Desktop Client
+
+Module:
+App.Desktop / SignIn submit binding
+
+Client form:
+desktop standalone
+
+Type:
+runtime bugfix task card
+
+Status:
+Runtime desktop-only fix created after the S2-55 desktop SignIn usability pass.
+
+Goal:
+Make the current App.Desktop SignIn submit action robust when the operator clicks the SignIn button or submits the form from the keyboard.
+
+Context:
+S2-51 enabled the minimal desktop SignIn runtime slice.
+S2-54 added visible SignIn feedback.
+S2-55 localized the SignIn surface and clarified disabled/progress/result states.
+S2-56 keeps that approved surface but tightens the submit binding so the visible SignIn action invokes the existing ViewModel path directly.
+
+Scope:
+Allowed:
+- docs/task-cards/S2-56_desktop-signin-submit-binding-fix-task-card.txt
+- src/App.Desktop/**
+- tests/Unit/App.Desktop.Tests/**
+
+Forbidden:
+- App.Api changes
+- App.Worker changes
+- App.Web changes
+- App.Mobile.Android changes
+- App.UI.Shared changes
+- BuildingBlocks.Contracts/shared DTO changes
+- Modules changes
+- DB migrations
+- GitHub workflows
+- deploy scripts
+- full upload flow
+- registration UI
+- password reset UI
+- token persistence changes
+
+What changes:
+- Keep the existing form submit path for keyboard Enter submit.
+- Add an explicit SignIn button click binding to the same submit handler.
+- Guard the component handler with the existing ViewModel CanSubmit state.
+- Preserve ViewModel duplicate-submit protection.
+- Preserve password clearing and safe visible result messages.
+- Do not display passwords, access tokens, refresh tokens, Authorization headers, raw exception messages, raw response bodies, or token-like values.
+
+Contracts:
+No App.Api or shared DTO contract changes.
+
+Migrations:
+None.
+
+Feature flags:
+Not needed. This is a UI binding bugfix for the existing desktop SignIn surface.
+
+Events/audit:
+No client-side events or audit changes. Server auth audit behavior is unchanged.
+
+Offline behavior:
+Unchanged. Desktop SignIn remains online-only for this slice.
+
+Rollback:
+Revert the S2-56 PR. This returns App.Desktop SignIn submit binding to the S2-55 behavior.
+
+Validation:
+- git diff --check
+- dotnet restore AnalyticsAutomation-Core.sln -nologo
+- dotnet format whitespace AnalyticsAutomation-Core.sln --verify-no-changes --no-restore
+- dotnet build src/App.Desktop/App.Desktop.csproj -nologo -v minimal
+- dotnet build AnalyticsAutomation-Core.sln -nologo -v minimal
+- dotnet test tests/Unit/App.Desktop.Tests/App.Desktop.Tests.csproj -nologo -v minimal
+- hidden/control Unicode scan over changed text files
+- launch smoke if practical after App.Desktop build
+
+Definition of done:
+- App.Desktop SignIn button click and keyboard form submit both target the existing safe ViewModel SignIn path.
+- Empty or busy submit is ignored by the component before calling the ViewModel.
+- Existing safe status/result/password-clearing behavior is preserved.
+- App.Desktop unit tests cover the submit binding and ViewModel current input handoff.
+- App.Api/contracts/migrations/deploy/App.Web/App.Mobile.Android are unchanged.

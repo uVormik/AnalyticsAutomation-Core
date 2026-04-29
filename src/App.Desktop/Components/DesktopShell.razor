@@ -19,7 +19,7 @@
                 </p>
             </div>
 
-            <form class="desktop-signin__form" @onsubmit="SignInAsync" @onsubmit:preventDefault="true">
+            <form class="desktop-signin__form" @onsubmit="SubmitSignInAsync" @onsubmit:preventDefault="true">
                 <label class="desktop-signin__field" for="desktop-signin-login">
                     <span>@DesktopSignInText.LoginLabel</span>
                     <input
@@ -51,7 +51,12 @@
                         @bind:event="oninput" />
                 </label>
 
-                <button class="desktop-signin__submit" type="submit" disabled="@(!SignInViewModel.CanSubmit)">
+                <button
+                    class="desktop-signin__submit"
+                    type="submit"
+                    disabled="@(!SignInViewModel.CanSubmit)"
+                    @onclick="SubmitSignInAsync"
+                    @onclick:preventDefault="true">
                     @(SignInViewModel.IsBusy ? DesktopSignInText.SubmitButtonBusy : DesktopSignInText.SubmitButton)
                 </button>
             </form>
@@ -62,9 +67,17 @@
 </div>
 
 @code {
-    private async Task SignInAsync()
+    private async Task SubmitSignInAsync()
     {
-        await SignInViewModel.SignInAsync(CancellationToken.None);
+        if (!SignInViewModel.CanSubmit)
+        {
+            return;
+        }
+
+        ValueTask<DesktopSignInResult> signInAttempt = SignInViewModel.SignInAsync(CancellationToken.None);
+        StateHasChanged();
+
+        await signInAttempt;
     }
 
     private string GetHeaderStatusText()
