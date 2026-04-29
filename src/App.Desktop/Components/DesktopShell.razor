@@ -1,5 +1,6 @@
 @inject IBlazorWebViewHostBoundary BlazorHostBoundary
 @inject DesktopSignInViewModel SignInViewModel
+@using Microsoft.AspNetCore.Components.Web
 
 <div class="desktop-shell">
     <header class="desktop-shell__header">
@@ -19,7 +20,7 @@
                 </p>
             </div>
 
-            <form class="desktop-signin__form" @onsubmit="SubmitSignInAsync" @onsubmit:preventDefault="true">
+            <div class="desktop-signin__form" role="group" aria-describedby="desktop-signin-result">
                 <label class="desktop-signin__field" for="desktop-signin-login">
                     <span>@DesktopSignInText.LoginLabel</span>
                     <input
@@ -28,12 +29,13 @@
                         autocomplete="username"
                         placeholder="@DesktopSignInText.LoginPlaceholder"
                         aria-describedby="desktop-signin-result"
+                        aria-required="true"
                         spellcheck="false"
                         autofocus
-                        required
                         disabled="@SignInViewModel.IsBusy"
-                        @bind="SignInViewModel.Login"
-                        @bind:event="oninput" />
+                        @bind-value="SignInViewModel.Login"
+                        @bind-value:event="oninput"
+                        @onkeyup="SubmitSignInOnEnterAsync" />
                 </label>
 
                 <label class="desktop-signin__field" for="desktop-signin-password">
@@ -45,21 +47,21 @@
                         autocomplete="current-password"
                         placeholder="@DesktopSignInText.PasswordPlaceholder"
                         aria-describedby="desktop-signin-result"
-                        required
+                        aria-required="true"
                         disabled="@SignInViewModel.IsBusy"
-                        @bind="SignInViewModel.Password"
-                        @bind:event="oninput" />
+                        @bind-value="SignInViewModel.Password"
+                        @bind-value:event="oninput"
+                        @onkeyup="SubmitSignInOnEnterAsync" />
                 </label>
 
                 <button
                     class="desktop-signin__submit"
-                    type="submit"
-                    disabled="@(!SignInViewModel.CanSubmit)"
-                    @onclick="SubmitSignInAsync"
-                    @onclick:preventDefault="true">
+                    type="button"
+                    disabled="@SignInViewModel.IsBusy"
+                    @onclick="SubmitSignInAsync">
                     @(SignInViewModel.IsBusy ? DesktopSignInText.SubmitButtonBusy : DesktopSignInText.SubmitButton)
                 </button>
-            </form>
+            </div>
         </section>
 
         <UploadPlaceholder />
@@ -67,9 +69,19 @@
 </div>
 
 @code {
+    private async Task SubmitSignInOnEnterAsync(KeyboardEventArgs args)
+    {
+        if (!string.Equals(args.Key, "Enter", StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        await SubmitSignInAsync();
+    }
+
     private async Task SubmitSignInAsync()
     {
-        if (!SignInViewModel.CanSubmit)
+        if (SignInViewModel.IsBusy)
         {
             return;
         }
@@ -78,6 +90,8 @@
         StateHasChanged();
 
         await signInAttempt;
+
+        StateHasChanged();
     }
 
     private string GetHeaderStatusText()
@@ -101,4 +115,5 @@
             _ => "desktop-signin__message desktop-signin__message--neutral"
         };
     }
+
 }
