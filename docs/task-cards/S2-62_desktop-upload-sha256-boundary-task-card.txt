@@ -1,0 +1,141 @@
+Title:
+S2-62 Desktop Upload Local SHA-256 Boundary / Hash Preview Placeholder
+
+Module:
+App.Desktop / upload SHA-256 boundary
+
+Owner:
+Coder 1 acting as Coder 2 / Desktop Client
+
+Client form:
+desktop standalone
+
+Type:
+narrow runtime desktop UI slice after S2-61 upload file picker boundary
+
+Status:
+Runtime task card created with implementation.
+
+Goal:
+Add an App.Desktop-local SHA-256 boundary for the selected video file, plus a safe upload-section hash preview state. The file is read only after an explicit operator action and only inside the desktop-local hash boundary.
+
+Context:
+S2-58 added debug-only fake auth visual smoke guarded by AA_DESKTOP_DEV_FAKE_AUTH_ENABLED=true.
+S2-59 added the Russian signed-in shell.
+S2-60 added the active "Загрузка видео" section placeholder.
+S2-61 added the App.Desktop-local video file picker boundary and safe metadata preview without reading file contents or computing SHA-256.
+
+Scope:
+- Keep the existing Russian SignIn UI before authentication.
+- After fake-auth SignIn, show the signed-in shell.
+- Open the upload section from "Загрузка видео".
+- Keep S2-61 safe metadata preview: file name, size, and content type only.
+- Add "Рассчитать SHA-256" after a file is selected.
+- Compute SHA-256 only through the App.Desktop-local hash boundary.
+- Show busy/status text and the resulting lowercase 64-character SHA-256 hex.
+- Keep local paths out of visible UI strings and safe error states.
+- Clear file/hash state on back and sign-out.
+
+Allowed changed areas:
+- docs/task-cards/S2-62_desktop-upload-sha256-boundary-task-card.txt
+- src/App.Desktop/**
+- tests/Unit/App.Desktop.Tests/**
+
+Forbidden changed areas:
+- src/App.Api/**
+- src/App.Worker/**
+- src/App.Web/**
+- src/App.Mobile.Android/**
+- src/App.UI.Shared/**
+- src/BuildingBlocks.Contracts/**
+- src/Modules/**
+- DB migrations
+- .github/workflows/**
+- deploy scripts
+- docs/ops/**
+- committed screenshots or runtime artifacts
+
+Contracts:
+none
+
+Migrations:
+none
+
+Feature flags/env guard:
+- Existing fake auth visual-smoke guard:
+  AA_DESKTOP_DEV_FAKE_AUTH_ENABLED=true
+- Existing fake picker visual-smoke guard:
+  AA_DESKTOP_DEV_FAKE_UPLOAD_FILE_ENABLED=true
+- Optional fake hash visual-smoke guard:
+  AA_DESKTOP_DEV_FAKE_UPLOAD_HASH_ENABLED=true
+- Fake hash is debug/dev-test only, disabled by default, and returns only:
+  0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+
+Events:
+none
+
+Offline behavior:
+none
+
+Security guardrails:
+- Do not show the full local path.
+- Do not display or log password, accessToken, refreshToken, Authorization, raw session id, raw response body, or token-like values.
+- Do not introduce PreUploadCheck, businessObjectKey, direct site upload, UploadReceipt, offline queue, GroupTree runtime, or App.Api calls from the upload section.
+- Do not persist selected files, local paths, hashes, upload drafts, tokens, or passwords.
+- Screenshots and runtime artifacts stay under C:\CODEX\Temp and are not committed.
+
+Explicitly out of scope:
+- PreUploadCheck.
+- businessObjectKey.
+- Direct site upload.
+- UploadReceipt.
+- Offline queue.
+- GroupTree runtime.
+- App.Api changes or App.Api calls.
+- Shared contract changes.
+- DB migrations.
+- Deploy/workflow changes.
+- App.Web changes.
+- App.Mobile.Android changes.
+- App.UI.Shared changes.
+
+Rollback:
+revert S2-62 PR
+
+Validation:
+- git diff --check
+- dotnet restore AnalyticsAutomation-Core.sln -nologo
+- dotnet format whitespace AnalyticsAutomation-Core.sln --verify-no-changes --no-restore
+- dotnet build src/App.Desktop/App.Desktop.csproj -nologo -v minimal
+- dotnet build AnalyticsAutomation-Core.sln -nologo -v minimal
+- dotnet test tests/Unit/App.Desktop.Tests/App.Desktop.Tests.csproj -nologo -v minimal
+- hidden/control Unicode scan over changed text files
+- App.Desktop fake-auth/fake-picker/fake-hash visual smoke with screenshots
+
+Definition of done:
+- App.Desktop has an IDesktopVideoHashService boundary.
+- The default implementation computes SHA-256 from the selected local file only when the operator invokes the hash action.
+- Hashing is cancellable through CancellationToken and exposes safe busy/status state in the upload section.
+- The fake/dev hash implementation is disabled by default and enabled only by AA_DESKTOP_DEV_FAKE_UPLOAD_HASH_ENABLED=true in debug/dev-test flow.
+- Fake hash does not read disk and returns the expected lowercase 64-character hex value.
+- Hash button/action is unavailable until a file is selected.
+- Successful hash result is visible after file selection and hash action.
+- Back/sign-out clear selection and hash state.
+- Safe errors do not expose the full local path.
+- Automated App.Desktop tests cover the env guard, fake hash, hash action availability, success state, reset behavior, forbidden upload-chain calls, and visible-string safety.
+- Required visual-smoke screenshots are saved under C:\CODEX\Temp and kept out of git.
+
+Visual-smoke definition of done:
+- Run App.Desktop with AA_DESKTOP_DEV_FAKE_AUTH_ENABLED=true, AA_DESKTOP_DEV_FAKE_UPLOAD_FILE_ENABLED=true, and AA_DESKTOP_DEV_FAKE_UPLOAD_HASH_ENABLED=true.
+- Do not set AA_DESKTOP_CONTROL_PLANE_BASE_ADDRESS.
+- Use non-secret test data visual-smoke-user / visual-smoke-password.
+- Capture screenshots under C:\CODEX\Temp\S2-62_DESKTOP_SHA256_BOUNDARY_VISUAL_SMOKE_<timestamp>\.
+- Required screenshots:
+  - 01_baseline_signin.png
+  - 02_signed_in_shell.png
+  - 03_upload_section_after_fake_file_selection.png
+  - 04_hash_in_progress_or_ready_state.png
+  - 05_after_fake_sha256_result.png
+  - 06_after_sign_out.png
+- Confirm no password, accessToken, refreshToken, Authorization, raw session id, raw response body, raw path, or real secret is visible.
+- Confirm screenshots and runtime artifacts are not committed.

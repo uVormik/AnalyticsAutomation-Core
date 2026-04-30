@@ -84,6 +84,33 @@
                                 </dl>
                             }
                         </div>
+
+                        <div class="desktop-upload__step">
+                            <h3>@DesktopUploadSectionText.StepTwoTitle</h3>
+                            <p class="desktop-upload__message" role="status" aria-live="polite">
+                                @UploadSectionViewModel.HashStatusMessage
+                            </p>
+
+                            <button
+                                class="desktop-upload__hash"
+                                type="button"
+                                disabled="@(!UploadSectionViewModel.CanCalculateHash)"
+                                @onclick="CalculateSha256Async">
+                                @(UploadSectionViewModel.IsHashing
+                                    ? DesktopUploadSectionText.CalculateSha256BusyButton
+                                    : DesktopUploadSectionText.CalculateSha256Button)
+                            </button>
+
+                            @if (UploadSectionViewModel.HasSha256Hash)
+                            {
+                                <dl class="desktop-upload__hash-result">
+                                    <div>
+                                        <dt>@DesktopUploadSectionText.Sha256ResultLabel</dt>
+                                        <dd>@UploadSectionViewModel.Sha256Hex</dd>
+                                    </div>
+                                </dl>
+                            }
+                        </div>
                     </section>
                 }
                 else
@@ -219,6 +246,17 @@
     private async Task SelectVideoFileAsync()
     {
         await UploadSectionViewModel.SelectVideoFileAsync(CancellationToken.None);
+    }
+
+    private async Task CalculateSha256Async()
+    {
+        ValueTask<DesktopVideoHashResult?> hashAttempt =
+            UploadSectionViewModel.CalculateSha256Async(CancellationToken.None);
+        StateHasChanged();
+
+        await hashAttempt;
+
+        StateHasChanged();
     }
 
     private string GetHeaderStatusText()

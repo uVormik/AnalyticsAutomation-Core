@@ -2,10 +2,16 @@ using App.Desktop.Boundaries;
 
 namespace App.Desktop.Services.Upload;
 
-public sealed class DesktopUploadSectionViewModel(IDesktopVideoFilePicker videoFilePicker)
+public sealed class DesktopUploadSectionViewModel(
+    IDesktopVideoFilePicker videoFilePicker,
+    IDesktopVideoHashService videoHashService)
 {
     private readonly IDesktopVideoFilePicker _videoFilePicker =
         videoFilePicker ?? throw new ArgumentNullException(nameof(videoFilePicker));
+    private readonly IDesktopVideoHashService _videoHashService =
+        videoHashService ?? throw new ArgumentNullException(nameof(videoHashService));
+
+    private DesktopVideoHashRequest? _selectedFileHashRequest;
 
     public DesktopWorkspaceSection CurrentSection { get; private set; } = DesktopWorkspaceSection.Workspace;
 
@@ -13,10 +19,21 @@ public sealed class DesktopUploadSectionViewModel(IDesktopVideoFilePicker videoF
 
     public bool IsSelectingFile { get; private set; }
 
+    public bool IsHashing { get; private set; }
+
+    public bool CanCalculateHash => SelectedFile is not null && !IsSelectingFile && !IsHashing;
+
     public DesktopUploadSelectedFile? SelectedFile { get; private set; }
 
     public string SelectionStatusMessage { get; private set; } =
         DesktopUploadSectionText.PlaceholderResult;
+
+    public string HashStatusMessage { get; private set; } =
+        DesktopUploadSectionText.HashNotReadyMessage;
+
+    public string? Sha256Hex { get; private set; }
+
+    public bool HasSha256Hash => Sha256Hex is not null;
 
     public void OpenUploadSection()
     {
@@ -44,6 +61,7 @@ public sealed class DesktopUploadSectionViewModel(IDesktopVideoFilePicker videoF
 
         IsSelectingFile = true;
         SelectionStatusMessage = DesktopUploadSectionText.SelectingFileMessage;
+        ResetSelectedFileHashState();
 
         try
         {
@@ -52,7 +70,11 @@ public sealed class DesktopUploadSectionViewModel(IDesktopVideoFilePicker videoF
             if (result.Status == DesktopVideoFilePickerStatus.Selected && result.SelectedFile is not null)
             {
                 SelectedFile = result.SelectedFile;
+                _selectedFileHashRequest = result.HashSource is null
+                    ? null
+                    : DesktopVideoHashRequest.FromSource(result.HashSource);
                 SelectionStatusMessage = DesktopUploadSectionText.SelectedFilePreviewMessage;
+                HashStatusMessage = DesktopUploadSectionText.HashReadyMessage;
                 return SelectedFile;
             }
 
@@ -68,9 +90,68 @@ public sealed class DesktopUploadSectionViewModel(IDesktopVideoFilePicker videoF
         }
     }
 
+    public async ValueTask<DesktopVideoHashResult?> CalculateSha256Async(CancellationToken cancellationToken)
+    {
+        if (!CanCalculateHash)
+        {
+            HashStatusMessage = DesktopUploadSectionText.HashNotReadyMessage;
+            return null;
+        }
+
+        IsHashing = true;
+        Sha256Hex = null;
+        HashStatusMessage = DesktopUploadSectionText.HashInProgressMessage;
+
+        try
+        {
+            if (_selectedFileHashRequest is null)
+            {
+                HashStatusMessage = DesktopUploadSectionText.HashUnavailableMessage;
+                return DesktopVideoHashResult.Unavailable;
+            }
+
+            DesktopVideoHashResult result = await _videoHashService.CalculateSha256Async(
+                _selectedFileHashRequest,
+                cancellationToken);
+
+            if (result.Status == DesktopVideoHashStatus.Succeeded && result.Sha256Hex is not null)
+            {
+                Sha256Hex = result.Sha256Hex;
+                HashStatusMessage = DesktopUploadSectionText.HashSucceededMessage;
+                return result;
+            }
+
+            HashStatusMessage = result.Status switch
+            {
+                DesktopVideoHashStatus.Canceled => DesktopUploadSectionText.HashCanceledMessage,
+                _ => DesktopUploadSectionText.HashUnavailableMessage
+            };
+
+            return result;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            HashStatusMessage = DesktopUploadSectionText.HashCanceledMessage;
+            return DesktopVideoHashResult.Canceled;
+        }
+        finally
+        {
+            IsHashing = false;
+        }
+    }
+
     private void ResetSelection()
     {
         SelectedFile = null;
         SelectionStatusMessage = DesktopUploadSectionText.PlaceholderResult;
+        ResetSelectedFileHashState();
+    }
+
+    private void ResetSelectedFileHashState()
+    {
+        _selectedFileHashRequest = null;
+        IsHashing = false;
+        Sha256Hex = null;
+        HashStatusMessage = DesktopUploadSectionText.HashNotReadyMessage;
     }
 }

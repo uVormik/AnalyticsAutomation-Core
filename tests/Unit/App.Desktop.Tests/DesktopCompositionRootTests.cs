@@ -21,7 +21,9 @@ public sealed class DesktopCompositionRootTests
         Assert.IsType<DesktopSignInService>(services.GetRequiredService<IDesktopSignInService>());
         Assert.IsType<DesktopUploadSectionViewModel>(services.GetRequiredService<DesktopUploadSectionViewModel>());
         Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeUploadFileEnabled);
+        Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeUploadHashEnabled);
         Assert.IsType<WpfDesktopVideoFilePicker>(services.GetRequiredService<IDesktopVideoFilePicker>());
+        Assert.IsType<DesktopVideoHashService>(services.GetRequiredService<IDesktopVideoHashService>());
     }
 
     [Fact]
@@ -30,14 +32,17 @@ public sealed class DesktopCompositionRootTests
         using var environment = new EnvironmentVariableScope()
             .Set(DesktopAuthOptions.ControlPlaneBaseAddressEnvironmentVariable, null)
             .Set(DesktopAuthOptions.DevFakeAuthEnabledEnvironmentVariable, null)
-            .Set(DesktopUploadSectionOptions.DevFakeUploadFileEnabledEnvironmentVariable, null);
+            .Set(DesktopUploadSectionOptions.DevFakeUploadFileEnabledEnvironmentVariable, null)
+            .Set(DesktopUploadSectionOptions.DevFakeUploadHashEnabledEnvironmentVariable, null);
 
         using var services = DesktopCompositionRoot.BuildServicesFromEnvironment();
 
         Assert.False(services.GetRequiredService<DesktopAuthOptions>().IsDevFakeAuthEnabled);
         Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeUploadFileEnabled);
+        Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeUploadHashEnabled);
         Assert.IsType<UnavailableDesktopAuthClient>(services.GetRequiredService<IDesktopAuthClient>());
         Assert.IsType<WpfDesktopVideoFilePicker>(services.GetRequiredService<IDesktopVideoFilePicker>());
+        Assert.IsType<DesktopVideoHashService>(services.GetRequiredService<IDesktopVideoHashService>());
     }
 
     [Fact]
@@ -46,16 +51,69 @@ public sealed class DesktopCompositionRootTests
         using var environment = new EnvironmentVariableScope()
             .Set(DesktopAuthOptions.ControlPlaneBaseAddressEnvironmentVariable, null)
             .Set(DesktopAuthOptions.DevFakeAuthEnabledEnvironmentVariable, null)
-            .Set(DesktopUploadSectionOptions.DevFakeUploadFileEnabledEnvironmentVariable, "true");
+            .Set(DesktopUploadSectionOptions.DevFakeUploadFileEnabledEnvironmentVariable, "true")
+            .Set(DesktopUploadSectionOptions.DevFakeUploadHashEnabledEnvironmentVariable, null);
 
         using var services = DesktopCompositionRoot.BuildServicesFromEnvironment();
 
 #if DEBUG
         Assert.True(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeUploadFileEnabled);
+        Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeUploadHashEnabled);
         Assert.IsType<FakeDesktopVideoFilePicker>(services.GetRequiredService<IDesktopVideoFilePicker>());
+        Assert.IsType<DesktopVideoHashService>(services.GetRequiredService<IDesktopVideoHashService>());
 #else
         Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeUploadFileEnabled);
+        Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeUploadHashEnabled);
         Assert.IsType<WpfDesktopVideoFilePicker>(services.GetRequiredService<IDesktopVideoFilePicker>());
+        Assert.IsType<DesktopVideoHashService>(services.GetRequiredService<IDesktopVideoHashService>());
+#endif
+    }
+
+    [Fact]
+    public void EnvironmentOptionsEnableFakeUploadHashOnlyWhenExplicitlyRequested()
+    {
+        using var environment = new EnvironmentVariableScope()
+            .Set(DesktopAuthOptions.ControlPlaneBaseAddressEnvironmentVariable, null)
+            .Set(DesktopAuthOptions.DevFakeAuthEnabledEnvironmentVariable, null)
+            .Set(DesktopUploadSectionOptions.DevFakeUploadFileEnabledEnvironmentVariable, null)
+            .Set(DesktopUploadSectionOptions.DevFakeUploadHashEnabledEnvironmentVariable, "true");
+
+        using var services = DesktopCompositionRoot.BuildServicesFromEnvironment();
+
+#if DEBUG
+        Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeUploadFileEnabled);
+        Assert.True(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeUploadHashEnabled);
+        Assert.IsType<WpfDesktopVideoFilePicker>(services.GetRequiredService<IDesktopVideoFilePicker>());
+        Assert.IsType<FakeDesktopVideoHashService>(services.GetRequiredService<IDesktopVideoHashService>());
+#else
+        Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeUploadFileEnabled);
+        Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeUploadHashEnabled);
+        Assert.IsType<WpfDesktopVideoFilePicker>(services.GetRequiredService<IDesktopVideoFilePicker>());
+        Assert.IsType<DesktopVideoHashService>(services.GetRequiredService<IDesktopVideoHashService>());
+#endif
+    }
+
+    [Fact]
+    public void EnvironmentOptionsEnableFakeUploadFileAndHashTogetherForVisualSmoke()
+    {
+        using var environment = new EnvironmentVariableScope()
+            .Set(DesktopAuthOptions.ControlPlaneBaseAddressEnvironmentVariable, null)
+            .Set(DesktopAuthOptions.DevFakeAuthEnabledEnvironmentVariable, null)
+            .Set(DesktopUploadSectionOptions.DevFakeUploadFileEnabledEnvironmentVariable, "true")
+            .Set(DesktopUploadSectionOptions.DevFakeUploadHashEnabledEnvironmentVariable, "true");
+
+        using var services = DesktopCompositionRoot.BuildServicesFromEnvironment();
+
+#if DEBUG
+        Assert.True(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeUploadFileEnabled);
+        Assert.True(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeUploadHashEnabled);
+        Assert.IsType<FakeDesktopVideoFilePicker>(services.GetRequiredService<IDesktopVideoFilePicker>());
+        Assert.IsType<FakeDesktopVideoHashService>(services.GetRequiredService<IDesktopVideoHashService>());
+#else
+        Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeUploadFileEnabled);
+        Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeUploadHashEnabled);
+        Assert.IsType<WpfDesktopVideoFilePicker>(services.GetRequiredService<IDesktopVideoFilePicker>());
+        Assert.IsType<DesktopVideoHashService>(services.GetRequiredService<IDesktopVideoHashService>());
 #endif
     }
 

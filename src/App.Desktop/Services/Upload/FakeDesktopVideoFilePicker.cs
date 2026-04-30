@@ -11,6 +11,7 @@ public sealed class FakeDesktopVideoFilePicker : IDesktopVideoFilePicker
         return ValueTask.FromResult(DesktopVideoFilePickerResult.Selected(
             DesktopUploadSelectedFile.VisualSmokeFileName,
             DesktopUploadSelectedFile.VisualSmokeFileSizeBytes,
-            DesktopUploadSelectedFile.VisualSmokeContentType));
+            DesktopUploadSelectedFile.VisualSmokeContentType,
+            DesktopVideoHashSource.VisualSmoke));
     }
 }

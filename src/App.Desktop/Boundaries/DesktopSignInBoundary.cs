@@ -149,6 +149,16 @@ public static class DesktopUploadSectionText
     public const string SelectedFileSizeLabel = "Размер";
     public const string SelectedFileContentTypeLabel = "Тип содержимого";
     public const string UnknownContentTypeValue = "Не определён";
+    public const string StepTwoTitle = "Шаг 2. SHA-256";
+    public const string CalculateSha256Button = "Рассчитать SHA-256";
+    public const string CalculateSha256BusyButton = "Рассчитывается...";
+    public const string HashNotReadyMessage = "Выберите видеофайл, чтобы рассчитать SHA-256.";
+    public const string HashReadyMessage = "Файл выбран. Можно рассчитать SHA-256 локально на этом компьютере.";
+    public const string HashInProgressMessage = "Рассчитывается SHA-256. Файл читается только в локальной desktop-границе.";
+    public const string HashSucceededMessage = "SHA-256 рассчитан локально.";
+    public const string HashUnavailableMessage = "Не удалось рассчитать SHA-256 для выбранного файла.";
+    public const string HashCanceledMessage = "Расчёт SHA-256 отменён.";
+    public const string Sha256ResultLabel = "SHA-256";
 }
 
 public sealed record DesktopUploadSelectedFile(
