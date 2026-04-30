@@ -21,6 +21,19 @@ public sealed class DesktopCompositionRootTests
     }
 
     [Fact]
+    public void EnvironmentOptionsKeepFakeAuthDisabledByDefault()
+    {
+        using var environment = new EnvironmentVariableScope()
+            .Set(DesktopAuthOptions.ControlPlaneBaseAddressEnvironmentVariable, null)
+            .Set(DesktopAuthOptions.DevFakeAuthEnabledEnvironmentVariable, null);
+
+        using var services = DesktopCompositionRoot.BuildServicesFromEnvironment();
+
+        Assert.False(services.GetRequiredService<DesktopAuthOptions>().IsDevFakeAuthEnabled);
+        Assert.IsType<UnavailableDesktopAuthClient>(services.GetRequiredService<IDesktopAuthClient>());
+    }
+
+    [Fact]
     public void BuildServicesWithConfiguredBaseAddressResolvesHttpAuthClient()
     {
         using var services = DesktopCompositionRoot.BuildServices(
@@ -29,6 +42,39 @@ public sealed class DesktopCompositionRootTests
         Assert.IsType<HttpDesktopAuthClient>(services.GetRequiredService<IDesktopAuthClient>());
         Assert.IsType<DisabledDesktopSessionStore>(services.GetRequiredService<IDesktopSessionStore>());
         Assert.True(services.GetRequiredService<DesktopAuthOptions>().IsControlPlaneSignInConfigured);
+        Assert.Equal(
+            new Uri("https://control-plane.local"),
+            services.GetRequiredService<HttpClient>().BaseAddress);
+    }
+
+    [Fact]
+    public void ExplicitFakeAuthFlagResolvesFakeAuthClientOnlyWithoutLiveBaseAddress()
+    {
+        using var services = DesktopCompositionRoot.BuildServices(
+            DesktopAuthOptions.FromEnvironmentValues(
+                baseAddress: null,
+                devFakeAuthEnabled: "true"));
+
+#if DEBUG
+        Assert.True(services.GetRequiredService<DesktopAuthOptions>().IsDevFakeAuthEnabled);
+        Assert.IsType<FakeDesktopAuthClient>(services.GetRequiredService<IDesktopAuthClient>());
+        Assert.Null(services.GetService<HttpClient>());
+#else
+        Assert.False(services.GetRequiredService<DesktopAuthOptions>().IsDevFakeAuthEnabled);
+        Assert.IsType<UnavailableDesktopAuthClient>(services.GetRequiredService<IDesktopAuthClient>());
+#endif
+    }
+
+    [Fact]
+    public void ExplicitFakeAuthFlagDoesNotReplaceConfiguredLiveAuthClient()
+    {
+        using var services = DesktopCompositionRoot.BuildServices(
+            DesktopAuthOptions.FromEnvironmentValues(
+                "https://control-plane.local",
+                devFakeAuthEnabled: "true"));
+
+        Assert.False(services.GetRequiredService<DesktopAuthOptions>().IsDevFakeAuthEnabled);
+        Assert.IsType<HttpDesktopAuthClient>(services.GetRequiredService<IDesktopAuthClient>());
         Assert.Equal(
             new Uri("https://control-plane.local"),
             services.GetRequiredService<HttpClient>().BaseAddress);
@@ -64,5 +110,29 @@ public sealed class DesktopCompositionRootTests
 
         Assert.IsType<UnavailableDesktopAuthClient>(services.GetRequiredService<IDesktopAuthClient>());
         Assert.False(services.GetRequiredService<DesktopAuthOptions>().IsControlPlaneSignInConfigured);
+    }
+
+    private sealed class EnvironmentVariableScope : IDisposable
+    {
+        private readonly Dictionary<string, string?> _originalValues = [];
+
+        public EnvironmentVariableScope Set(string name, string? value)
+        {
+            if (!_originalValues.ContainsKey(name))
+            {
+                _originalValues.Add(name, Environment.GetEnvironmentVariable(name));
+            }
+
+            Environment.SetEnvironmentVariable(name, value);
+            return this;
+        }
+
+        public void Dispose()
+        {
+            foreach (KeyValuePair<string, string?> entry in _originalValues)
+            {
+                Environment.SetEnvironmentVariable(entry.Key, entry.Value);
+            }
+        }
     }
 }

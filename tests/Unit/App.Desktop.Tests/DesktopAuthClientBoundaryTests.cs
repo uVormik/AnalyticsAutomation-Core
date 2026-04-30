@@ -224,6 +224,71 @@ public sealed class DesktopAuthClientBoundaryTests
         Assert.DoesNotContain(tokenLikeValue, result.Error.Message, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task FakeAuthClientReturnsSuccessForVisualSmokeCredentials()
+    {
+        var client = new FakeDesktopAuthClient();
+        var deviceId = Guid.NewGuid();
+
+        var result = await client.SignInAsync(
+            new DesktopSignInRequest(
+                FakeDesktopAuthClient.VisualSmokeLogin,
+                FakeDesktopAuthClient.VisualSmokePassword,
+                deviceId),
+            CancellationToken.None);
+
+        Assert.Equal(DesktopAuthStatus.Succeeded, result.Status);
+        Assert.NotNull(result.Session);
+        Assert.Equal("Visual Smoke User", result.Session.DisplayName);
+        Assert.Equal(deviceId, result.Session.DeviceId);
+        Assert.True(result.Session.IsOfflineRestricted);
+        Assert.DoesNotContain(FakeDesktopAuthClient.VisualSmokePassword, result.ToString(), StringComparison.Ordinal);
+        Assert.DoesNotContain(result.Session.AccessToken, result.ToString(), StringComparison.Ordinal);
+        Assert.DoesNotContain(result.Session.AccessToken, result.Session.ToString(), StringComparison.Ordinal);
+        Assert.DoesNotContain("Authorization", result.ToString(), StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task FakeAuthClientRejectsWrongCredentialsWithoutExposingInputValues()
+    {
+        var client = new FakeDesktopAuthClient();
+        var login = $"visual-smoke-{Guid.NewGuid():N}";
+        var password = CreateSensitiveValue("password");
+
+        var result = await client.SignInAsync(
+            new DesktopSignInRequest(login, password, Guid.NewGuid()),
+            CancellationToken.None);
+
+        Assert.Equal(DesktopAuthStatus.Rejected, result.Status);
+        Assert.Null(result.Session);
+        Assert.NotNull(result.Error);
+        Assert.DoesNotContain(login, result.ToString(), StringComparison.Ordinal);
+        Assert.DoesNotContain(password, result.ToString(), StringComparison.Ordinal);
+        Assert.DoesNotContain(FakeDesktopAuthClient.VisualSmokePassword, result.ToString(), StringComparison.Ordinal);
+        Assert.DoesNotContain("Authorization", result.ToString(), StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task FakeAuthClientVisibleSignInResultDoesNotExposePasswordOrTokens()
+    {
+        var service = new DesktopSignInService(
+            new FakeDesktopAuthClient(),
+            new DesktopSessionState(new DisabledDesktopSessionStore()));
+
+        DesktopSignInResult result = await service.SignInAsync(
+            FakeDesktopAuthClient.VisualSmokeLogin,
+            FakeDesktopAuthClient.VisualSmokePassword,
+            Guid.NewGuid(),
+            CancellationToken.None);
+
+        Assert.Equal(DesktopSignInStatus.Succeeded, result.Status);
+        Assert.Contains("Visual Smoke User", result.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain(FakeDesktopAuthClient.VisualSmokePassword, result.ToString(), StringComparison.Ordinal);
+        Assert.DoesNotContain("dev-fake-auth-access", result.ToString(), StringComparison.Ordinal);
+        Assert.DoesNotContain("Authorization", result.ToString(), StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("refreshToken", result.ToString(), StringComparison.OrdinalIgnoreCase);
+    }
+
     private static StringContent JsonContent<T>(T value)
     {
         return new StringContent(
