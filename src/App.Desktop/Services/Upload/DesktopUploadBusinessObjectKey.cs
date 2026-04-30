@@ -39,6 +39,13 @@ public static class DesktopUploadBusinessObjectKeyValidator
             return Invalid(safeInputValue, DesktopUploadSectionText.BusinessObjectKeyEmptyValidationMessage);
         }
 
+        if (ContainsBlockedFragment(safeInputValue))
+        {
+            return Invalid(
+                string.Empty,
+                DesktopUploadSectionText.BusinessObjectKeySecretValidationMessage);
+        }
+
         if (ContainsControlCharacter(value))
         {
             return Invalid(
@@ -51,13 +58,6 @@ public static class DesktopUploadBusinessObjectKeyValidator
             return Invalid(
                 safeInputValue[..DesktopUploadBusinessObjectKey.MaxLength],
                 DesktopUploadSectionText.BusinessObjectKeyLengthValidationMessage);
-        }
-
-        if (ContainsBlockedFragment(safeInputValue))
-        {
-            return Invalid(
-                string.Empty,
-                DesktopUploadSectionText.BusinessObjectKeySecretValidationMessage);
         }
 
         var businessObjectKey = new DesktopUploadBusinessObjectKey(safeInputValue);

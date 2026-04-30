@@ -219,7 +219,7 @@ public sealed class DesktopUploadSectionTests
     }
 
     [Fact]
-    public void MultilineOrControlCharacterBusinessObjectKeyIsRejectedAndInputIsMadeSingleLine()
+    public void MultilineOrControlCharacterBusinessObjectKeyWithoutBlockedFragmentIsRejectedAndInputIsMadeSingleLine()
     {
         var viewModel = CreateViewModel(new FakeDesktopVideoFilePicker());
         viewModel.BusinessObjectKeyInput = "safe-key\r\nhidden";
@@ -235,6 +235,42 @@ public sealed class DesktopUploadSectionTests
         Assert.Equal(
             DesktopUploadSectionText.BusinessObjectKeyControlCharacterValidationMessage,
             viewModel.BusinessObjectKeyStatusMessage);
+    }
+
+    [Theory]
+    [InlineData("tok\nen", "token")]
+    [InlineData("ac\ncessToken", "accessToken")]
+    [InlineData("refresh\rToken", "refreshToken")]
+    [InlineData("authori\tzation", "authorization")]
+    [InlineData("pass\nword", "password")]
+    public void ControlCharacterBusinessObjectKeyWithBlockedFragmentIsRejectedAndCleared(
+        string input,
+        string blockedFragment)
+    {
+        var viewModel = CreateViewModel(new FakeDesktopVideoFilePicker());
+        viewModel.BusinessObjectKeyInput = input;
+
+        DesktopUploadBusinessObjectKeyValidation validation = viewModel.ApplyBusinessObjectKey();
+
+        Assert.False(validation.IsValid);
+        Assert.Null(validation.BusinessObjectKey);
+        Assert.Null(viewModel.BusinessObjectKey);
+        Assert.Null(viewModel.BusinessObjectKeyPreview);
+        Assert.False(viewModel.HasBusinessObjectKey);
+        Assert.Equal(string.Empty, validation.SafeInputValue);
+        Assert.Equal(string.Empty, viewModel.BusinessObjectKeyInput);
+        Assert.Equal(
+            DesktopUploadSectionText.BusinessObjectKeySecretValidationMessage,
+            viewModel.BusinessObjectKeyStatusMessage);
+
+        string visibleState = validation.SafeInputValue
+            + " "
+            + viewModel.BusinessObjectKeyInput
+            + " "
+            + (viewModel.BusinessObjectKeyPreview ?? string.Empty)
+            + " "
+            + viewModel.BusinessObjectKeyStatusMessage;
+        Assert.DoesNotContain(blockedFragment, visibleState, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
