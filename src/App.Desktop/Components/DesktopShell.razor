@@ -111,6 +111,69 @@
                                 </dl>
                             }
                         </div>
+
+                        <div class="desktop-upload__step">
+                            <h3>@DesktopUploadSectionText.StepThreeTitle</h3>
+                            <p
+                                id="desktop-upload-business-object-key-status"
+                                class="desktop-upload__message"
+                                role="status"
+                                aria-live="polite">
+                                @UploadSectionViewModel.BusinessObjectKeyStatusMessage
+                            </p>
+
+                            <label class="desktop-upload__field" for="desktop-upload-business-object-key">
+                                <span>@DesktopUploadSectionText.BusinessObjectKeyLabel</span>
+                                <input
+                                    id="desktop-upload-business-object-key"
+                                    name="businessObjectKey"
+                                    autocomplete="off"
+                                    spellcheck="false"
+                                    maxlength="@DesktopUploadBusinessObjectKey.MaxLength"
+                                    aria-describedby="desktop-upload-business-object-key-status desktop-upload-business-object-key-hint"
+                                    @bind-value="UploadSectionViewModel.BusinessObjectKeyInput"
+                                    @bind-value:event="oninput" />
+                            </label>
+
+                            <p id="desktop-upload-business-object-key-hint" class="desktop-upload__hint">
+                                @DesktopUploadSectionText.BusinessObjectKeyHint
+                            </p>
+
+                            <div class="desktop-upload__actions">
+                                <button
+                                    class="desktop-upload__key"
+                                    type="button"
+                                    disabled="@SignInViewModel.IsBusy"
+                                    @onclick="ApplyBusinessObjectKey">
+                                    @DesktopUploadSectionText.BusinessObjectKeyApplyButton
+                                </button>
+
+                                @if (UploadSectionViewModel.IsDevFakeBusinessObjectKeyEnabled)
+                                {
+                                    <button
+                                        class="desktop-upload__key desktop-upload__key--secondary"
+                                        type="button"
+                                        disabled="@SignInViewModel.IsBusy"
+                                        @onclick="UseDevFakeBusinessObjectKey">
+                                        @DesktopUploadSectionText.BusinessObjectKeyUseFakeButton
+                                    </button>
+                                }
+                            </div>
+
+                            @if (UploadSectionViewModel.HasBusinessObjectKey)
+                            {
+                                <dl class="desktop-upload__business-object-key">
+                                    <div>
+                                        <dt>@DesktopUploadSectionText.BusinessObjectKeyPreviewLabel</dt>
+                                        <dd>@UploadSectionViewModel.BusinessObjectKeyPreview</dd>
+                                    </div>
+                                </dl>
+                            }
+
+                            <p class="desktop-upload__deferred">
+                                @DesktopUploadSectionText.NextStepDeferredMessage
+                            </p>
+                        </div>
                     </section>
                 }
                 else
@@ -257,6 +320,16 @@
         await hashAttempt;
 
         StateHasChanged();
+    }
+
+    private void ApplyBusinessObjectKey()
+    {
+        UploadSectionViewModel.ApplyBusinessObjectKey();
+    }
+
+    private void UseDevFakeBusinessObjectKey()
+    {
+        UploadSectionViewModel.UseDevFakeBusinessObjectKey();
     }
 
     private string GetHeaderStatusText()

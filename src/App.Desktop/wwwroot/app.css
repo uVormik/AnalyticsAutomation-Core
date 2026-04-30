@@ -280,7 +280,8 @@ body {
 
 .desktop-upload__back,
 .desktop-upload__select,
-.desktop-upload__hash {
+.desktop-upload__hash,
+.desktop-upload__key {
     min-height: 38px;
     padding: 0 16px;
     border-radius: 6px;
@@ -297,7 +298,8 @@ body {
 }
 
 .desktop-upload__select,
-.desktop-upload__hash {
+.desktop-upload__hash,
+.desktop-upload__key {
     width: fit-content;
     border: 1px solid #18406b;
     background: #18406b;
@@ -306,10 +308,17 @@ body {
 
 .desktop-upload__back:disabled,
 .desktop-upload__select:disabled,
-.desktop-upload__hash:disabled {
+.desktop-upload__hash:disabled,
+.desktop-upload__key:disabled {
     color: #687789;
     border-color: #b9c3cf;
     background: #eef1f5;
+}
+
+.desktop-upload__key--secondary {
+    border-color: #54708b;
+    background: #ffffff;
+    color: #253241;
 }
 
 .desktop-upload__step {
@@ -336,8 +345,43 @@ body {
     line-height: 1.4;
 }
 
+.desktop-upload__field {
+    display: grid;
+    gap: 6px;
+    color: #2b3644;
+    font-size: 0.85rem;
+    font-weight: 650;
+}
+
+.desktop-upload__field input {
+    min-width: 0;
+    height: 38px;
+    box-sizing: border-box;
+    padding: 7px 9px;
+    border: 1px solid #bac4d0;
+    border-radius: 6px;
+    color: #18212f;
+    font: inherit;
+    font-weight: 400;
+}
+
+.desktop-upload__hint,
+.desktop-upload__deferred {
+    margin: 0;
+    color: #52616f;
+    font-size: 0.84rem;
+    line-height: 1.4;
+}
+
+.desktop-upload__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
 .desktop-upload__selection,
-.desktop-upload__hash-result {
+.desktop-upload__hash-result,
+.desktop-upload__business-object-key {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 12px;
@@ -348,8 +392,13 @@ body {
     grid-template-columns: minmax(0, 1fr);
 }
 
+.desktop-upload__business-object-key {
+    grid-template-columns: minmax(0, 1fr);
+}
+
 .desktop-upload__selection div,
-.desktop-upload__hash-result div {
+.desktop-upload__hash-result div,
+.desktop-upload__business-object-key div {
     min-width: 0;
     padding: 12px;
     border: 1px solid #d7dde5;
@@ -358,7 +407,8 @@ body {
 }
 
 .desktop-upload__selection dt,
-.desktop-upload__hash-result dt {
+.desktop-upload__hash-result dt,
+.desktop-upload__business-object-key dt {
     margin: 0 0 4px;
     color: #52616f;
     font-size: 0.78rem;
@@ -366,7 +416,8 @@ body {
 }
 
 .desktop-upload__selection dd,
-.desktop-upload__hash-result dd {
+.desktop-upload__hash-result dd,
+.desktop-upload__business-object-key dd {
     margin: 0;
     color: #18212f;
     font-size: 0.9rem;
@@ -396,12 +447,18 @@ body {
 
     .desktop-upload__back,
     .desktop-upload__select,
-    .desktop-upload__hash {
+    .desktop-upload__hash,
+    .desktop-upload__key {
         width: 100%;
     }
 
     .desktop-upload__selection,
-    .desktop-upload__hash-result {
+    .desktop-upload__hash-result,
+    .desktop-upload__business-object-key {
         grid-template-columns: 1fr;
+    }
+
+    .desktop-upload__actions {
+        flex-direction: column;
     }
 }

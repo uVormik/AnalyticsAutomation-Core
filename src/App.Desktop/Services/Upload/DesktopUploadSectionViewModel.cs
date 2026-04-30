@@ -4,12 +4,22 @@ namespace App.Desktop.Services.Upload;
 
 public sealed class DesktopUploadSectionViewModel(
     IDesktopVideoFilePicker videoFilePicker,
-    IDesktopVideoHashService videoHashService)
+    IDesktopVideoHashService videoHashService,
+    DesktopUploadSectionOptions uploadSectionOptions)
 {
+    public DesktopUploadSectionViewModel(
+        IDesktopVideoFilePicker videoFilePicker,
+        IDesktopVideoHashService videoHashService)
+        : this(videoFilePicker, videoHashService, DesktopUploadSectionOptions.Disabled)
+    {
+    }
+
     private readonly IDesktopVideoFilePicker _videoFilePicker =
         videoFilePicker ?? throw new ArgumentNullException(nameof(videoFilePicker));
     private readonly IDesktopVideoHashService _videoHashService =
         videoHashService ?? throw new ArgumentNullException(nameof(videoHashService));
+    private readonly DesktopUploadSectionOptions _uploadSectionOptions =
+        uploadSectionOptions ?? throw new ArgumentNullException(nameof(uploadSectionOptions));
 
     private DesktopVideoHashRequest? _selectedFileHashRequest;
 
@@ -34,6 +44,20 @@ public sealed class DesktopUploadSectionViewModel(
     public string? Sha256Hex { get; private set; }
 
     public bool HasSha256Hash => Sha256Hex is not null;
+
+    public bool IsDevFakeBusinessObjectKeyEnabled =>
+        _uploadSectionOptions.IsDevFakeBusinessObjectKeyEnabled;
+
+    public string BusinessObjectKeyInput { get; set; } = string.Empty;
+
+    public DesktopUploadBusinessObjectKey? BusinessObjectKey { get; private set; }
+
+    public bool HasBusinessObjectKey => BusinessObjectKey is not null;
+
+    public string? BusinessObjectKeyPreview => BusinessObjectKey?.Value;
+
+    public string BusinessObjectKeyStatusMessage { get; private set; } =
+        DesktopUploadSectionText.BusinessObjectKeyEmptyValidationMessage;
 
     public void OpenUploadSection()
     {
@@ -62,6 +86,7 @@ public sealed class DesktopUploadSectionViewModel(
         IsSelectingFile = true;
         SelectionStatusMessage = DesktopUploadSectionText.SelectingFileMessage;
         ResetSelectedFileHashState();
+        ResetBusinessObjectKeyState();
 
         try
         {
@@ -140,11 +165,35 @@ public sealed class DesktopUploadSectionViewModel(
         }
     }
 
+    public DesktopUploadBusinessObjectKeyValidation ApplyBusinessObjectKey()
+    {
+        DesktopUploadBusinessObjectKeyValidation validation =
+            DesktopUploadBusinessObjectKeyValidator.ValidateManualInput(BusinessObjectKeyInput);
+
+        BusinessObjectKeyInput = validation.SafeInputValue;
+        BusinessObjectKey = validation.BusinessObjectKey;
+        BusinessObjectKeyStatusMessage = validation.Message;
+
+        return validation;
+    }
+
+    public DesktopUploadBusinessObjectKeyValidation? UseDevFakeBusinessObjectKey()
+    {
+        if (!IsDevFakeBusinessObjectKeyEnabled)
+        {
+            return null;
+        }
+
+        BusinessObjectKeyInput = DesktopUploadBusinessObjectKey.VisualSmokeValue;
+        return ApplyBusinessObjectKey();
+    }
+
     private void ResetSelection()
     {
         SelectedFile = null;
         SelectionStatusMessage = DesktopUploadSectionText.PlaceholderResult;
         ResetSelectedFileHashState();
+        ResetBusinessObjectKeyState();
     }
 
     private void ResetSelectedFileHashState()
@@ -153,5 +202,12 @@ public sealed class DesktopUploadSectionViewModel(
         IsHashing = false;
         Sha256Hex = null;
         HashStatusMessage = DesktopUploadSectionText.HashNotReadyMessage;
+    }
+
+    private void ResetBusinessObjectKeyState()
+    {
+        BusinessObjectKeyInput = string.Empty;
+        BusinessObjectKey = null;
+        BusinessObjectKeyStatusMessage = DesktopUploadSectionText.BusinessObjectKeyEmptyValidationMessage;
     }
 }

@@ -213,7 +213,8 @@ public sealed class DesktopSignInServiceTests
 
         Assert.Contains("@bind-value=\"SignInViewModel.Login\"", markup, StringComparison.Ordinal);
         Assert.Contains("@bind-value=\"SignInViewModel.Password\"", markup, StringComparison.Ordinal);
-        Assert.Equal(2, CountOccurrences(markup, "@bind-value:event=\"oninput\""));
+        Assert.Contains("@bind-value=\"UploadSectionViewModel.BusinessObjectKeyInput\"", markup, StringComparison.Ordinal);
+        Assert.Equal(3, CountOccurrences(markup, "@bind-value:event=\"oninput\""));
         Assert.DoesNotContain("@oninput=\"UpdateLogin\"", markup, StringComparison.Ordinal);
         Assert.DoesNotContain("@oninput=\"UpdatePassword\"", markup, StringComparison.Ordinal);
     }
@@ -263,11 +264,15 @@ public sealed class DesktopSignInServiceTests
         Assert.Contains("UploadSectionViewModel.CalculateSha256Async(CancellationToken.None)", markup, StringComparison.Ordinal);
         Assert.Contains("UploadSectionViewModel.CanCalculateHash", markup, StringComparison.Ordinal);
         Assert.Contains("UploadSectionViewModel.Sha256Hex", markup, StringComparison.Ordinal);
+        Assert.Contains("DesktopUploadSectionText.StepThreeTitle", markup, StringComparison.Ordinal);
+        Assert.Contains("UploadSectionViewModel.BusinessObjectKeyInput", markup, StringComparison.Ordinal);
+        Assert.Contains("UploadSectionViewModel.ApplyBusinessObjectKey()", markup, StringComparison.Ordinal);
+        Assert.Contains("UploadSectionViewModel.UseDevFakeBusinessObjectKey()", markup, StringComparison.Ordinal);
         Assert.DoesNotContain("<UploadPlaceholder", markup, StringComparison.Ordinal);
         Assert.DoesNotContain("IDesktopUploadOrchestrator", markup, StringComparison.Ordinal);
         Assert.DoesNotContain("IControlPlaneApiClient", markup, StringComparison.Ordinal);
         Assert.DoesNotContain("IDesktopFilePicker", markup, StringComparison.Ordinal);
-        Assert.DoesNotContain("PreUploadCheck", markup, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("RequestPreUploadCheckAsync", markup, StringComparison.Ordinal);
     }
 
     [Fact]

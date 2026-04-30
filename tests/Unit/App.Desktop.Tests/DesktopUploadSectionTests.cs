@@ -61,6 +61,30 @@ public sealed class DesktopUploadSectionTests
         Assert.Equal("Не удалось рассчитать SHA-256 для выбранного файла.", DesktopUploadSectionText.HashUnavailableMessage);
         Assert.Equal("Расчёт SHA-256 отменён.", DesktopUploadSectionText.HashCanceledMessage);
         Assert.Equal("SHA-256", DesktopUploadSectionText.Sha256ResultLabel);
+        Assert.Equal("Шаг 3. Бизнес-объект", DesktopUploadSectionText.StepThreeTitle);
+        Assert.Equal("Ключ бизнес-объекта", DesktopUploadSectionText.BusinessObjectKeyLabel);
+        Assert.Equal(
+            "Временный ручной ввод для desktop prototype. Production-источник будет утверждён отдельным slice.",
+            DesktopUploadSectionText.BusinessObjectKeyHint);
+        Assert.Equal("Проверить ключ", DesktopUploadSectionText.BusinessObjectKeyApplyButton);
+        Assert.Equal("Подставить dev-ключ", DesktopUploadSectionText.BusinessObjectKeyUseFakeButton);
+        Assert.Equal("Введите ключ бизнес-объекта.", DesktopUploadSectionText.BusinessObjectKeyEmptyValidationMessage);
+        Assert.Equal(
+            "Ключ бизнес-объекта не должен содержать переносы строк или управляющие символы.",
+            DesktopUploadSectionText.BusinessObjectKeyControlCharacterValidationMessage);
+        Assert.Equal(
+            "Ключ бизнес-объекта должен быть от 1 до 128 символов.",
+            DesktopUploadSectionText.BusinessObjectKeyLengthValidationMessage);
+        Assert.Equal(
+            "Ключ бизнес-объекта не должен содержать секретные значения.",
+            DesktopUploadSectionText.BusinessObjectKeySecretValidationMessage);
+        Assert.Equal(
+            "Ключ бизнес-объекта принят для безопасного preview.",
+            DesktopUploadSectionText.BusinessObjectKeyAcceptedMessage);
+        Assert.Equal("businessObjectKey", DesktopUploadSectionText.BusinessObjectKeyPreviewLabel);
+        Assert.Equal(
+            "Следующий шаг отложен: PreUploadCheck будет добавлен отдельным approved desktop slice.",
+            DesktopUploadSectionText.NextStepDeferredMessage);
     }
 
     [Fact]
@@ -74,6 +98,7 @@ public sealed class DesktopUploadSectionTests
             Path.Combine(FindRepositoryRoot(), "src", "App.Desktop", "Services", "Upload", "FakeDesktopVideoFilePicker.cs"),
             Path.Combine(FindRepositoryRoot(), "src", "App.Desktop", "Services", "Upload", "FakeDesktopVideoHashService.cs"),
             Path.Combine(FindRepositoryRoot(), "src", "App.Desktop", "Services", "Upload", "DesktopVideoHashService.cs"),
+            Path.Combine(FindRepositoryRoot(), "src", "App.Desktop", "Services", "Upload", "DesktopUploadBusinessObjectKey.cs"),
             Path.Combine(FindRepositoryRoot(), "src", "App.Desktop", "Services", "Upload", "WpfDesktopVideoFilePicker.cs"),
             Path.Combine(FindRepositoryRoot(), "src", "App.Desktop", "Boundaries", "DesktopVideoFilePickerBoundary.cs"),
             Path.Combine(FindRepositoryRoot(), "src", "App.Desktop", "Boundaries", "DesktopVideoHashBoundary.cs")
@@ -86,8 +111,10 @@ public sealed class DesktopUploadSectionTests
             Assert.DoesNotContain("App.Api", source, StringComparison.OrdinalIgnoreCase);
             Assert.DoesNotContain("IControlPlaneApiClient", source, StringComparison.Ordinal);
             Assert.DoesNotContain("IDesktopUploadOrchestrator", source, StringComparison.Ordinal);
-            Assert.DoesNotContain("businessObjectKey", source, StringComparison.OrdinalIgnoreCase);
-            Assert.DoesNotContain("PreUploadCheck", source, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("RequestPreUploadCheckAsync", source, StringComparison.Ordinal);
+            Assert.DoesNotContain("ControlPlanePreUploadCheckRequest", source, StringComparison.Ordinal);
+            Assert.DoesNotContain("RecordUploadReceiptAsync", source, StringComparison.Ordinal);
+            Assert.DoesNotContain("ControlPlaneUploadReceiptDraft", source, StringComparison.Ordinal);
             Assert.DoesNotContain("DirectSiteUpload", source, StringComparison.OrdinalIgnoreCase);
             Assert.DoesNotContain("UploadReceipt", source, StringComparison.OrdinalIgnoreCase);
             Assert.DoesNotContain("ReadAllBytes", source, StringComparison.OrdinalIgnoreCase);
@@ -95,24 +122,156 @@ public sealed class DesktopUploadSectionTests
     }
 
     [Fact]
-    public void FakeUploadFileSelectionAndHashAreDevOnlyAndDisabledByDefault()
+    public void FakeUploadFileSelectionHashAndBusinessObjectKeyAreDevOnlyAndDisabledByDefault()
     {
         Assert.False(DesktopUploadSectionOptions.Disabled.IsDevFakeUploadFileEnabled);
         Assert.False(DesktopUploadSectionOptions.Disabled.IsDevFakeUploadHashEnabled);
+        Assert.False(DesktopUploadSectionOptions.Disabled.IsDevFakeBusinessObjectKeyEnabled);
         Assert.False(DesktopUploadSectionOptions.FromEnvironmentValue(null).IsDevFakeUploadFileEnabled);
         Assert.False(DesktopUploadSectionOptions.FromEnvironmentValue(null).IsDevFakeUploadHashEnabled);
+        Assert.False(DesktopUploadSectionOptions.FromEnvironmentValue(null).IsDevFakeBusinessObjectKeyEnabled);
         Assert.False(DesktopUploadSectionOptions.FromEnvironmentValue("false").IsDevFakeUploadFileEnabled);
         Assert.False(DesktopUploadSectionOptions.FromEnvironmentValue("false", "false").IsDevFakeUploadHashEnabled);
+        Assert.False(DesktopUploadSectionOptions.FromEnvironmentValue("false", "false", "false").IsDevFakeBusinessObjectKeyEnabled);
 
 #if DEBUG
         Assert.True(DesktopUploadSectionOptions.FromEnvironmentValue("true").IsDevFakeUploadFileEnabled);
         Assert.True(DesktopUploadSectionOptions.FromEnvironmentValue("false", "true").IsDevFakeUploadHashEnabled);
         Assert.True(DesktopUploadSectionOptions.FromEnvironmentValue("true", "true").IsDevFakeUploadHashEnabled);
+        Assert.True(DesktopUploadSectionOptions.FromEnvironmentValue("false", "false", "true").IsDevFakeBusinessObjectKeyEnabled);
+        Assert.True(DesktopUploadSectionOptions.FromEnvironmentValue("true", "true", "true").IsDevFakeBusinessObjectKeyEnabled);
 #else
         Assert.False(DesktopUploadSectionOptions.FromEnvironmentValue("true").IsDevFakeUploadFileEnabled);
         Assert.False(DesktopUploadSectionOptions.FromEnvironmentValue("false", "true").IsDevFakeUploadHashEnabled);
         Assert.False(DesktopUploadSectionOptions.FromEnvironmentValue("true", "true").IsDevFakeUploadHashEnabled);
+        Assert.False(DesktopUploadSectionOptions.FromEnvironmentValue("false", "false", "true").IsDevFakeBusinessObjectKeyEnabled);
+        Assert.False(DesktopUploadSectionOptions.FromEnvironmentValue("true", "true", "true").IsDevFakeBusinessObjectKeyEnabled);
 #endif
+    }
+
+    [Fact]
+    public void FakeBusinessObjectKeyIsDisabledByDefault()
+    {
+        var viewModel = CreateViewModel(new FakeDesktopVideoFilePicker());
+
+        DesktopUploadBusinessObjectKeyValidation? validation = viewModel.UseDevFakeBusinessObjectKey();
+
+        Assert.False(viewModel.IsDevFakeBusinessObjectKeyEnabled);
+        Assert.Null(validation);
+        Assert.Null(viewModel.BusinessObjectKey);
+        Assert.Null(viewModel.BusinessObjectKeyPreview);
+        Assert.False(viewModel.HasBusinessObjectKey);
+        Assert.Equal(string.Empty, viewModel.BusinessObjectKeyInput);
+    }
+
+    [Fact]
+    public void FakeBusinessObjectKeyUsesVisualSmokeValueWhenExplicitlyEnabled()
+    {
+        var viewModel = CreateViewModel(
+            new FakeDesktopVideoFilePicker(),
+            new FakeDesktopVideoHashService(),
+            DesktopUploadSectionOptions.FromEnvironmentValue("false", "false", "true"));
+
+        DesktopUploadBusinessObjectKeyValidation? validation = viewModel.UseDevFakeBusinessObjectKey();
+
+#if DEBUG
+        Assert.NotNull(validation);
+        Assert.True(validation.IsValid);
+        Assert.True(viewModel.IsDevFakeBusinessObjectKeyEnabled);
+        Assert.Equal(DesktopUploadBusinessObjectKey.VisualSmokeValue, viewModel.BusinessObjectKeyInput);
+        Assert.Equal("visual-smoke-business-object-001", viewModel.BusinessObjectKeyPreview);
+        Assert.Equal(DesktopUploadSectionText.BusinessObjectKeyAcceptedMessage, viewModel.BusinessObjectKeyStatusMessage);
+#else
+        Assert.Null(validation);
+        Assert.False(viewModel.IsDevFakeBusinessObjectKeyEnabled);
+        Assert.Null(viewModel.BusinessObjectKeyPreview);
+#endif
+    }
+
+    [Fact]
+    public void ManualBusinessObjectKeyTrimsWhitespaceAndShowsSafePreview()
+    {
+        var viewModel = CreateViewModel(new FakeDesktopVideoFilePicker());
+        viewModel.BusinessObjectKeyInput = "  report-draft-001  ";
+
+        DesktopUploadBusinessObjectKeyValidation validation = viewModel.ApplyBusinessObjectKey();
+
+        Assert.True(validation.IsValid);
+        Assert.Equal("report-draft-001", viewModel.BusinessObjectKeyInput);
+        Assert.Equal("report-draft-001", viewModel.BusinessObjectKeyPreview);
+        Assert.True(viewModel.HasBusinessObjectKey);
+        Assert.Equal(DesktopUploadSectionText.BusinessObjectKeyAcceptedMessage, viewModel.BusinessObjectKeyStatusMessage);
+    }
+
+    [Fact]
+    public void EmptyBusinessObjectKeyShowsSafeRussianValidationMessage()
+    {
+        var viewModel = CreateViewModel(new FakeDesktopVideoFilePicker());
+        viewModel.BusinessObjectKeyInput = "   ";
+
+        DesktopUploadBusinessObjectKeyValidation validation = viewModel.ApplyBusinessObjectKey();
+
+        Assert.False(validation.IsValid);
+        Assert.Null(viewModel.BusinessObjectKey);
+        Assert.Null(viewModel.BusinessObjectKeyPreview);
+        Assert.Equal(string.Empty, viewModel.BusinessObjectKeyInput);
+        Assert.Equal(DesktopUploadSectionText.BusinessObjectKeyEmptyValidationMessage, viewModel.BusinessObjectKeyStatusMessage);
+    }
+
+    [Fact]
+    public void MultilineOrControlCharacterBusinessObjectKeyIsRejectedAndInputIsMadeSingleLine()
+    {
+        var viewModel = CreateViewModel(new FakeDesktopVideoFilePicker());
+        viewModel.BusinessObjectKeyInput = "safe-key\r\nhidden";
+
+        DesktopUploadBusinessObjectKeyValidation validation = viewModel.ApplyBusinessObjectKey();
+
+        Assert.False(validation.IsValid);
+        Assert.Null(viewModel.BusinessObjectKey);
+        Assert.Null(viewModel.BusinessObjectKeyPreview);
+        Assert.DoesNotContain("\r", viewModel.BusinessObjectKeyInput, StringComparison.Ordinal);
+        Assert.DoesNotContain("\n", viewModel.BusinessObjectKeyInput, StringComparison.Ordinal);
+        Assert.Equal("safe-keyhidden", viewModel.BusinessObjectKeyInput);
+        Assert.Equal(
+            DesktopUploadSectionText.BusinessObjectKeyControlCharacterValidationMessage,
+            viewModel.BusinessObjectKeyStatusMessage);
+    }
+
+    [Fact]
+    public void BusinessObjectKeyLengthLimitIsEnforced()
+    {
+        var viewModel = CreateViewModel(new FakeDesktopVideoFilePicker());
+        viewModel.BusinessObjectKeyInput = new string('a', DesktopUploadBusinessObjectKey.MaxLength + 1);
+
+        DesktopUploadBusinessObjectKeyValidation validation = viewModel.ApplyBusinessObjectKey();
+
+        Assert.False(validation.IsValid);
+        Assert.Null(viewModel.BusinessObjectKey);
+        Assert.Null(viewModel.BusinessObjectKeyPreview);
+        Assert.Equal(DesktopUploadBusinessObjectKey.MaxLength, viewModel.BusinessObjectKeyInput.Length);
+        Assert.Equal(DesktopUploadSectionText.BusinessObjectKeyLengthValidationMessage, viewModel.BusinessObjectKeyStatusMessage);
+    }
+
+    [Fact]
+    public void BusinessObjectKeyPreviewDoesNotContainTokensPasswordOrAuthorization()
+    {
+        var viewModel = CreateViewModel(new FakeDesktopVideoFilePicker());
+        viewModel.BusinessObjectKeyInput = "Authorization-password-token";
+
+        DesktopUploadBusinessObjectKeyValidation validation = viewModel.ApplyBusinessObjectKey();
+
+        Assert.False(validation.IsValid);
+        Assert.Null(viewModel.BusinessObjectKeyPreview);
+        Assert.Equal(string.Empty, viewModel.BusinessObjectKeyInput);
+
+        string visibleState = viewModel.BusinessObjectKeyStatusMessage
+            + " "
+            + (viewModel.BusinessObjectKeyPreview ?? string.Empty);
+        Assert.DoesNotContain("password", visibleState, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("Authorization", visibleState, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("accessToken", visibleState, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("refreshToken", visibleState, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("token", visibleState, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -298,6 +457,8 @@ public sealed class DesktopUploadSectionTests
         viewModel.OpenUploadSection();
         _ = await viewModel.SelectVideoFileAsync(CancellationToken.None);
         _ = await viewModel.CalculateSha256Async(CancellationToken.None);
+        viewModel.BusinessObjectKeyInput = "report-draft-001";
+        _ = viewModel.ApplyBusinessObjectKey();
 
         viewModel.ResetForSignedOutState();
 
@@ -308,6 +469,10 @@ public sealed class DesktopUploadSectionTests
         Assert.Equal(DesktopUploadSectionText.HashNotReadyMessage, viewModel.HashStatusMessage);
         Assert.Null(viewModel.Sha256Hex);
         Assert.False(viewModel.CanCalculateHash);
+        Assert.Null(viewModel.BusinessObjectKey);
+        Assert.Null(viewModel.BusinessObjectKeyPreview);
+        Assert.Equal(string.Empty, viewModel.BusinessObjectKeyInput);
+        Assert.Equal(DesktopUploadSectionText.BusinessObjectKeyEmptyValidationMessage, viewModel.BusinessObjectKeyStatusMessage);
     }
 
     [Fact]
@@ -318,6 +483,8 @@ public sealed class DesktopUploadSectionTests
         viewModel.OpenUploadSection();
         _ = await viewModel.SelectVideoFileAsync(CancellationToken.None);
         _ = await viewModel.CalculateSha256Async(CancellationToken.None);
+        viewModel.BusinessObjectKeyInput = "report-draft-001";
+        _ = viewModel.ApplyBusinessObjectKey();
 
         viewModel.BackToWorkspace();
 
@@ -328,6 +495,10 @@ public sealed class DesktopUploadSectionTests
         Assert.Equal(DesktopUploadSectionText.HashNotReadyMessage, viewModel.HashStatusMessage);
         Assert.Null(viewModel.Sha256Hex);
         Assert.False(viewModel.CanCalculateHash);
+        Assert.Null(viewModel.BusinessObjectKey);
+        Assert.Null(viewModel.BusinessObjectKeyPreview);
+        Assert.Equal(string.Empty, viewModel.BusinessObjectKeyInput);
+        Assert.Equal(DesktopUploadSectionText.BusinessObjectKeyEmptyValidationMessage, viewModel.BusinessObjectKeyStatusMessage);
     }
 
     [Fact]
@@ -360,9 +531,22 @@ public sealed class DesktopUploadSectionTests
             DesktopUploadSectionText.HashUnavailableMessage,
             DesktopUploadSectionText.HashCanceledMessage,
             DesktopUploadSectionText.Sha256ResultLabel,
+            DesktopUploadSectionText.StepThreeTitle,
+            DesktopUploadSectionText.BusinessObjectKeyLabel,
+            DesktopUploadSectionText.BusinessObjectKeyHint,
+            DesktopUploadSectionText.BusinessObjectKeyApplyButton,
+            DesktopUploadSectionText.BusinessObjectKeyUseFakeButton,
+            DesktopUploadSectionText.BusinessObjectKeyEmptyValidationMessage,
+            DesktopUploadSectionText.BusinessObjectKeyControlCharacterValidationMessage,
+            DesktopUploadSectionText.BusinessObjectKeyLengthValidationMessage,
+            DesktopUploadSectionText.BusinessObjectKeySecretValidationMessage,
+            DesktopUploadSectionText.BusinessObjectKeyAcceptedMessage,
+            DesktopUploadSectionText.BusinessObjectKeyPreviewLabel,
+            DesktopUploadSectionText.NextStepDeferredMessage,
             DesktopUploadSelectedFile.VisualSmokeFileName,
             DesktopUploadSelectedFile.VisualSmokeContentType,
-            FakeDesktopVideoHashService.VisualSmokeSha256Hex
+            FakeDesktopVideoHashService.VisualSmokeSha256Hex,
+            DesktopUploadBusinessObjectKey.VisualSmokeValue
         ];
 
         foreach (string visibleString in visibleStrings)
@@ -385,7 +569,15 @@ public sealed class DesktopUploadSectionTests
         IDesktopVideoFilePicker videoFilePicker,
         IDesktopVideoHashService videoHashService)
     {
-        return new DesktopUploadSectionViewModel(videoFilePicker, videoHashService);
+        return CreateViewModel(videoFilePicker, videoHashService, DesktopUploadSectionOptions.Disabled);
+    }
+
+    private static DesktopUploadSectionViewModel CreateViewModel(
+        IDesktopVideoFilePicker videoFilePicker,
+        IDesktopVideoHashService videoHashService,
+        DesktopUploadSectionOptions uploadSectionOptions)
+    {
+        return new DesktopUploadSectionViewModel(videoFilePicker, videoHashService, uploadSectionOptions);
     }
 
     private sealed class CancelingDesktopVideoFilePicker : IDesktopVideoFilePicker
