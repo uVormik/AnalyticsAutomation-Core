@@ -1,0 +1,131 @@
+Title:
+S2-61 Desktop Upload Real File Picker Boundary / Safe Metadata Preview
+
+Module:
+App.Desktop / upload file picker boundary
+
+Owner:
+Coder 1 acting as Coder 2 / Desktop Client
+
+Client form:
+desktop standalone
+
+Type:
+narrow runtime desktop UI slice after S2-60 upload section placeholder
+
+Status:
+Runtime task card created with implementation.
+
+Goal:
+Replace the S2-60 fake file-selection placeholder with an App.Desktop-local video file picker boundary that previews safe file metadata only.
+
+Context:
+S2-58 added debug-only fake auth visual smoke guarded by AA_DESKTOP_DEV_FAKE_AUTH_ENABLED=true.
+S2-59 added the Russian signed-in shell.
+S2-60 added the active "Загрузка видео" entry, upload section placeholder, and optional fake selected metadata for visual smoke.
+
+Scope:
+- Keep the current Russian SignIn UI before authentication.
+- After fake-auth SignIn, show the signed-in shell.
+- Open the upload section from "Загрузка видео".
+- Let "Выбрать видеофайл" call an App.Desktop-local video file picker boundary.
+- Show "Выбор файла отменён." when the operator cancels selection.
+- When a file is selected, show only safe metadata:
+  - file name without the local path;
+  - size in bytes;
+  - content type only when determined safely.
+- Keep "Назад к рабочей области" and "Выйти" working, with upload selection state cleared on reset/sign-out.
+
+Allowed changed areas:
+- docs/task-cards/S2-61_desktop-upload-file-picker-boundary-task-card.txt
+- src/App.Desktop/**
+- tests/Unit/App.Desktop.Tests/**
+
+Forbidden changed areas:
+- src/App.Api/**
+- src/App.Worker/**
+- src/App.Web/**
+- src/App.Mobile.Android/**
+- src/App.UI.Shared/**
+- src/BuildingBlocks.Contracts/**
+- src/Modules/**
+- DB migrations
+- .github/workflows/**
+- deploy scripts
+- docs/ops/**
+- committed screenshots or runtime artifacts
+
+Contracts:
+none
+
+Migrations:
+none
+
+Feature flags/env guard:
+- Uses the existing S2-58 fake auth visual-smoke guard:
+  AA_DESKTOP_DEV_FAKE_AUTH_ENABLED=true
+- Uses AA_DESKTOP_DEV_FAKE_UPLOAD_FILE_ENABLED=true for visual smoke fake picker only.
+- Fake picker is disabled by default and does not replace the native picker unless explicitly enabled in the debug/dev-test flow.
+
+Fake file picker visual-smoke data:
+- file name: visual-smoke-video.mp4
+- file size: 12345678
+- content type: video/mp4
+
+Events:
+none
+
+Offline behavior:
+none
+
+Security guardrails:
+- Do not read file contents.
+- Do not compute SHA-256.
+- Do not introduce businessObjectKey, PreUploadCheck, direct site upload, UploadReceipt, offline queue, GroupTree runtime, or App.Api calls from the upload section.
+- Do not display the full local path.
+- Do not display or log password, accessToken, refreshToken, Authorization, raw session id, raw response body, or token-like values.
+- Fake auth uses only non-secret visual-smoke data:
+  - login: visual-smoke-user
+  - password: visual-smoke-password
+- Screenshots and runtime artifacts stay under C:\CODEX\Temp and are not committed.
+
+Explicitly out of scope:
+- Reading file contents.
+- SHA-256.
+- businessObjectKey.
+- PreUploadCheck.
+- Direct site upload.
+- UploadReceipt.
+- Offline queue.
+- GroupTree runtime.
+- App.Api changes.
+- Shared contract changes.
+- DB migrations.
+- Deploy/workflow changes.
+- App.Web changes.
+- App.Mobile.Android changes.
+- App.UI.Shared changes.
+
+Rollback:
+revert S2-61 PR
+
+Validation:
+- git diff --check
+- dotnet restore AnalyticsAutomation-Core.sln -nologo
+- dotnet format whitespace AnalyticsAutomation-Core.sln --verify-no-changes --no-restore
+- dotnet build src/App.Desktop/App.Desktop.csproj -nologo -v minimal
+- dotnet build AnalyticsAutomation-Core.sln -nologo -v minimal
+- dotnet test tests/Unit/App.Desktop.Tests/App.Desktop.Tests.csproj -nologo -v minimal
+- hidden/control Unicode scan over changed text files
+- App.Desktop fake-auth/fake-picker visual smoke with screenshots
+
+Definition of done:
+- App.Desktop has an IDesktopVideoFilePicker boundary.
+- The default picker is a native WPF desktop picker behind the boundary.
+- The debug/dev-test fake picker is enabled only by AA_DESKTOP_DEV_FAKE_UPLOAD_FILE_ENABLED=true.
+- Fake picker returns visual-smoke-video.mp4 / 12345678 / video/mp4 without disk reads or App.Api calls.
+- Upload section preview shows only safe metadata and never the full local path.
+- Cancel selection shows "Выбор файла отменён.".
+- Back/sign-out reset the selected file state.
+- Automated App.Desktop unit tests cover default fake-disabled behavior, env guard behavior, fake metadata, path hiding, cancel messaging, reset behavior, forbidden upload-chain calls, and visible-string safety.
+- Required visual-smoke screenshots are saved under C:\CODEX\Temp and kept out of git.

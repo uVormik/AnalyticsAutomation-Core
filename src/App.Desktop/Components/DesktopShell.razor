@@ -61,8 +61,8 @@
                             <button
                                 class="desktop-upload__select"
                                 type="button"
-                                disabled="@SignInViewModel.IsBusy"
-                                @onclick="SelectVideoFilePlaceholder">
+                                disabled="@(SignInViewModel.IsBusy || UploadSectionViewModel.IsSelectingFile)"
+                                @onclick="SelectVideoFileAsync">
                                 @DesktopUploadSectionText.SelectVideoFileButton
                             </button>
 
@@ -216,9 +216,9 @@
         UploadSectionViewModel.BackToWorkspace();
     }
 
-    private void SelectVideoFilePlaceholder()
+    private async Task SelectVideoFileAsync()
     {
-        UploadSectionViewModel.SelectVideoFilePlaceholder();
+        await UploadSectionViewModel.SelectVideoFileAsync(CancellationToken.None);
     }
 
     private string GetHeaderStatusText()

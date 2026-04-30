@@ -258,7 +258,7 @@ public sealed class DesktopSignInServiceTests
         Assert.Contains("DesktopUploadSectionText.Title", markup, StringComparison.Ordinal);
         Assert.Contains("DesktopUploadSectionText.SelectVideoFileButton", markup, StringComparison.Ordinal);
         Assert.Contains("DesktopUploadSectionText.BackToWorkspaceButton", markup, StringComparison.Ordinal);
-        Assert.Contains("UploadSectionViewModel.SelectVideoFilePlaceholder()", markup, StringComparison.Ordinal);
+        Assert.Contains("UploadSectionViewModel.SelectVideoFileAsync(CancellationToken.None)", markup, StringComparison.Ordinal);
         Assert.DoesNotContain("<UploadPlaceholder", markup, StringComparison.Ordinal);
         Assert.DoesNotContain("IDesktopUploadOrchestrator", markup, StringComparison.Ordinal);
         Assert.DoesNotContain("IControlPlaneApiClient", markup, StringComparison.Ordinal);

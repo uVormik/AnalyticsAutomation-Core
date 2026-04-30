@@ -21,6 +21,7 @@ public sealed class DesktopCompositionRootTests
         Assert.IsType<DesktopSignInService>(services.GetRequiredService<IDesktopSignInService>());
         Assert.IsType<DesktopUploadSectionViewModel>(services.GetRequiredService<DesktopUploadSectionViewModel>());
         Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeUploadFileEnabled);
+        Assert.IsType<WpfDesktopVideoFilePicker>(services.GetRequiredService<IDesktopVideoFilePicker>());
     }
 
     [Fact]
@@ -36,6 +37,7 @@ public sealed class DesktopCompositionRootTests
         Assert.False(services.GetRequiredService<DesktopAuthOptions>().IsDevFakeAuthEnabled);
         Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeUploadFileEnabled);
         Assert.IsType<UnavailableDesktopAuthClient>(services.GetRequiredService<IDesktopAuthClient>());
+        Assert.IsType<WpfDesktopVideoFilePicker>(services.GetRequiredService<IDesktopVideoFilePicker>());
     }
 
     [Fact]
@@ -50,8 +52,10 @@ public sealed class DesktopCompositionRootTests
 
 #if DEBUG
         Assert.True(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeUploadFileEnabled);
+        Assert.IsType<FakeDesktopVideoFilePicker>(services.GetRequiredService<IDesktopVideoFilePicker>());
 #else
         Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeUploadFileEnabled);
+        Assert.IsType<WpfDesktopVideoFilePicker>(services.GetRequiredService<IDesktopVideoFilePicker>());
 #endif
     }
 

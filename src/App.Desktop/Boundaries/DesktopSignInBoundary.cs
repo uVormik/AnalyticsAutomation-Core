@@ -1,3 +1,5 @@
+using System.IO;
+
 namespace App.Desktop.Boundaries;
 
 public interface IDesktopSignInService
@@ -133,15 +135,20 @@ public static class DesktopUploadSectionText
 {
     public const string Title = "Загрузка видео";
     public const string Description =
-        "Этот раздел подготовлен. Реальная загрузка будет включена в следующем approved desktop slice.";
+        "Этот раздел показывает безопасные сведения о выбранном видеофайле. Реальная загрузка будет включена в следующем approved desktop slice.";
     public const string NavigationCardMessage = "Открыть заготовку выбора видеофайла.";
     public const string StepOneTitle = "Шаг 1. Выбор видеофайла";
     public const string SelectVideoFileButton = "Выбрать видеофайл";
-    public const string PlaceholderResult = "Выбор файла пока работает в режиме заготовки.";
+    public const string PlaceholderResult = "Выберите видеофайл для безопасного предпросмотра.";
+    public const string SelectingFileMessage = "Открывается выбор видеофайла.";
+    public const string SelectionCanceledMessage = "Выбор файла отменён.";
+    public const string SelectedFilePreviewMessage = "Файл выбран. Показаны только безопасные сведения.";
+    public const string SelectionUnavailableMessage = "Не удалось получить безопасные сведения о файле.";
     public const string BackToWorkspaceButton = "Назад к рабочей области";
     public const string SelectedFileNameLabel = "Файл";
     public const string SelectedFileSizeLabel = "Размер";
     public const string SelectedFileContentTypeLabel = "Тип содержимого";
+    public const string UnknownContentTypeValue = "Не определён";
 }
 
 public sealed record DesktopUploadSelectedFile(
@@ -157,6 +164,99 @@ public sealed record DesktopUploadSelectedFile(
         VisualSmokeFileName,
         VisualSmokeFileSizeBytes,
         VisualSmokeContentType);
+
+    public static DesktopUploadSelectedFile FromSafeMetadata(
+        string fileNameOrPath,
+        long sizeBytes,
+        string? contentType)
+    {
+        return new DesktopUploadSelectedFile(
+            CreateSafeFileName(fileNameOrPath),
+            Math.Max(0, sizeBytes),
+            CreateSafeContentType(contentType));
+    }
+
+    private static string CreateSafeFileName(string? fileNameOrPath)
+    {
+        string? fileName = Path.GetFileName(fileNameOrPath?.Trim());
+        if (string.IsNullOrWhiteSpace(fileName))
+        {
+            return "selected-video-file";
+        }
+
+        var safeCharacters = new char[fileName.Length];
+        var safeLength = 0;
+
+        foreach (char character in fileName)
+        {
+            if (safeLength >= 160)
+            {
+                break;
+            }
+
+            if (char.IsControl(character)
+                || character == Path.DirectorySeparatorChar
+                || character == Path.AltDirectorySeparatorChar
+                || character == Path.PathSeparator
+                || character == Path.VolumeSeparatorChar)
+            {
+                continue;
+            }
+
+            safeCharacters[safeLength] = character;
+            safeLength++;
+        }
+
+        string safeFileName = new string(safeCharacters, 0, safeLength).Trim();
+        return string.IsNullOrWhiteSpace(safeFileName)
+            ? "selected-video-file"
+            : safeFileName;
+    }
+
+    private static string CreateSafeContentType(string? contentType)
+    {
+        if (string.IsNullOrWhiteSpace(contentType))
+        {
+            return DesktopUploadSectionText.UnknownContentTypeValue;
+        }
+
+        string trimmed = contentType.Trim().ToLowerInvariant();
+        if (trimmed.Length > 80 || trimmed.Count(value => value == '/') != 1)
+        {
+            return DesktopUploadSectionText.UnknownContentTypeValue;
+        }
+
+        string[] blockedFragments =
+        [
+            "authorization",
+            "bearer",
+            "password",
+            "token",
+            "sessionid",
+            "session_id",
+            "access_token",
+            "refreshtoken",
+            "refresh_token"
+        ];
+
+        foreach (string blockedFragment in blockedFragments)
+        {
+            if (trimmed.Contains(blockedFragment, StringComparison.Ordinal))
+            {
+                return DesktopUploadSectionText.UnknownContentTypeValue;
+            }
+        }
+
+        foreach (char character in trimmed)
+        {
+            if (!char.IsAsciiLetterOrDigit(character) && character is not '/' and not '+' and not '-' and not '.')
+            {
+                return DesktopUploadSectionText.UnknownContentTypeValue;
+            }
+        }
+
+        return trimmed;
+    }
 }
 
 public sealed class DesktopSignInResult

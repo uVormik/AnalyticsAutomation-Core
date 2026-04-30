@@ -72,6 +72,15 @@ public static class DesktopCompositionRoot
         services.AddTransient<DesktopSignInViewModel>();
         services.AddTransient<DesktopUploadSectionViewModel>();
         services.AddSingleton<ISecureSessionStorage, PlaceholderSecureSessionStorage>();
+        if (uploadSectionOptions.IsDevFakeUploadFileEnabled)
+        {
+            services.AddSingleton<IDesktopVideoFilePicker, FakeDesktopVideoFilePicker>();
+        }
+        else
+        {
+            services.AddSingleton<IDesktopVideoFilePicker, WpfDesktopVideoFilePicker>();
+        }
+
         services.AddSingleton<IDesktopFilePicker, PlaceholderDesktopFilePicker>();
         services.AddSingleton<ILocalFileMetadataService, PlaceholderLocalFileMetadataService>();
         services.AddSingleton<IControlPlaneApiClient, PlaceholderControlPlaneApiClient>();
