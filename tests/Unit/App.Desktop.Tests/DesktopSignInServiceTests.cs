@@ -252,8 +252,13 @@ public sealed class DesktopSignInServiceTests
         Assert.Contains("@DesktopSignedInShellText.SignOutButton", markup, StringComparison.Ordinal);
         Assert.Contains("@onclick=\"SignOutAsync\"", markup, StringComparison.Ordinal);
         Assert.Contains("DesktopSignedInShellText.NavigationCards", markup, StringComparison.Ordinal);
-        Assert.Contains("disabled=\"disabled\"", markup, StringComparison.Ordinal);
-        Assert.Contains("aria-disabled=\"true\"", markup, StringComparison.Ordinal);
+        Assert.Contains("@onclick=\"() => OpenNavigationCard(card)\"", markup, StringComparison.Ordinal);
+        Assert.Contains("UploadSectionViewModel.OpenUploadSection()", markup, StringComparison.Ordinal);
+        Assert.Contains("UploadSectionViewModel.ResetForSignedOutState()", markup, StringComparison.Ordinal);
+        Assert.Contains("DesktopUploadSectionText.Title", markup, StringComparison.Ordinal);
+        Assert.Contains("DesktopUploadSectionText.SelectVideoFileButton", markup, StringComparison.Ordinal);
+        Assert.Contains("DesktopUploadSectionText.BackToWorkspaceButton", markup, StringComparison.Ordinal);
+        Assert.Contains("UploadSectionViewModel.SelectVideoFilePlaceholder()", markup, StringComparison.Ordinal);
         Assert.DoesNotContain("<UploadPlaceholder", markup, StringComparison.Ordinal);
         Assert.DoesNotContain("IDesktopUploadOrchestrator", markup, StringComparison.Ordinal);
         Assert.DoesNotContain("IControlPlaneApiClient", markup, StringComparison.Ordinal);
@@ -273,7 +278,7 @@ public sealed class DesktopSignInServiceTests
         Assert.Collection(
             DesktopSignedInShellText.NavigationCards,
             card => AssertPlaceholderCard(card, "Группы"),
-            card => AssertPlaceholderCard(card, "Загрузка видео"),
+            card => AssertUploadNavigationCard(card),
             card => AssertPlaceholderCard(card, "Проверка перед загрузкой"),
             card => AssertPlaceholderCard(card, "Квитанции загрузки"));
     }
@@ -683,6 +688,14 @@ public sealed class DesktopSignInServiceTests
     {
         Assert.Equal(expectedTitle, card.Title);
         Assert.Equal(DesktopSignedInShellText.DeferredPlaceholderMessage, card.Message);
+        Assert.Equal(DesktopNavigationCardTarget.Deferred, card.Target);
+    }
+
+    private static void AssertUploadNavigationCard(DesktopNavigationPlaceholderCard card)
+    {
+        Assert.Equal("Загрузка видео", card.Title);
+        Assert.Equal(DesktopUploadSectionText.NavigationCardMessage, card.Message);
+        Assert.Equal(DesktopNavigationCardTarget.UploadSection, card.Target);
     }
 
     private sealed class RecordingAuthClient(DesktopAuthResult result) : IDesktopAuthClient

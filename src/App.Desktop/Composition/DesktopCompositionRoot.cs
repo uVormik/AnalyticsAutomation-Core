@@ -3,6 +3,7 @@ using System.Net.Http;
 using App.Desktop.Boundaries;
 using App.Desktop.Services.Auth;
 using App.Desktop.Services.Placeholders;
+using App.Desktop.Services.Upload;
 
 using Microsoft.Extensions.DependencyInjection;
 
@@ -17,12 +18,22 @@ public static class DesktopCompositionRoot
 
     public static ServiceProvider BuildServicesFromEnvironment()
     {
-        return BuildServices(DesktopAuthOptions.FromEnvironment());
+        return BuildServices(
+            DesktopAuthOptions.FromEnvironment(),
+            DesktopUploadSectionOptions.FromEnvironment());
     }
 
     public static ServiceProvider BuildServices(DesktopAuthOptions authOptions)
     {
+        return BuildServices(authOptions, DesktopUploadSectionOptions.Disabled);
+    }
+
+    public static ServiceProvider BuildServices(
+        DesktopAuthOptions authOptions,
+        DesktopUploadSectionOptions uploadSectionOptions)
+    {
         ArgumentNullException.ThrowIfNull(authOptions);
+        ArgumentNullException.ThrowIfNull(uploadSectionOptions);
 
         var services = new ServiceCollection();
 
@@ -32,6 +43,7 @@ public static class DesktopCompositionRoot
 #endif
 
         services.AddSingleton(authOptions);
+        services.AddSingleton(uploadSectionOptions);
         services.AddSingleton<IDesktopShellLifecycle, PlaceholderDesktopShellLifecycle>();
         services.AddSingleton<IDesktopSessionStore, DisabledDesktopSessionStore>();
         services.AddSingleton<DesktopSessionState>();
@@ -58,6 +70,7 @@ public static class DesktopCompositionRoot
 
         services.AddSingleton<IDesktopSignInService, DesktopSignInService>();
         services.AddTransient<DesktopSignInViewModel>();
+        services.AddTransient<DesktopUploadSectionViewModel>();
         services.AddSingleton<ISecureSessionStorage, PlaceholderSecureSessionStorage>();
         services.AddSingleton<IDesktopFilePicker, PlaceholderDesktopFilePicker>();
         services.AddSingleton<ILocalFileMetadataService, PlaceholderLocalFileMetadataService>();

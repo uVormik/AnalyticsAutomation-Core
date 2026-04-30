@@ -1,6 +1,7 @@
 using App.Desktop.Boundaries;
 using App.Desktop.Composition;
 using App.Desktop.Services.Auth;
+using App.Desktop.Services.Upload;
 
 using Microsoft.Extensions.DependencyInjection;
 
@@ -18,6 +19,8 @@ public sealed class DesktopCompositionRootTests
         Assert.IsType<DisabledDesktopSessionStore>(services.GetRequiredService<IDesktopSessionStore>());
         Assert.IsType<UnavailableDesktopAuthClient>(services.GetRequiredService<IDesktopAuthClient>());
         Assert.IsType<DesktopSignInService>(services.GetRequiredService<IDesktopSignInService>());
+        Assert.IsType<DesktopUploadSectionViewModel>(services.GetRequiredService<DesktopUploadSectionViewModel>());
+        Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeUploadFileEnabled);
     }
 
     [Fact]
@@ -25,12 +28,31 @@ public sealed class DesktopCompositionRootTests
     {
         using var environment = new EnvironmentVariableScope()
             .Set(DesktopAuthOptions.ControlPlaneBaseAddressEnvironmentVariable, null)
-            .Set(DesktopAuthOptions.DevFakeAuthEnabledEnvironmentVariable, null);
+            .Set(DesktopAuthOptions.DevFakeAuthEnabledEnvironmentVariable, null)
+            .Set(DesktopUploadSectionOptions.DevFakeUploadFileEnabledEnvironmentVariable, null);
 
         using var services = DesktopCompositionRoot.BuildServicesFromEnvironment();
 
         Assert.False(services.GetRequiredService<DesktopAuthOptions>().IsDevFakeAuthEnabled);
+        Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeUploadFileEnabled);
         Assert.IsType<UnavailableDesktopAuthClient>(services.GetRequiredService<IDesktopAuthClient>());
+    }
+
+    [Fact]
+    public void EnvironmentOptionsEnableFakeUploadFileOnlyWhenExplicitlyRequested()
+    {
+        using var environment = new EnvironmentVariableScope()
+            .Set(DesktopAuthOptions.ControlPlaneBaseAddressEnvironmentVariable, null)
+            .Set(DesktopAuthOptions.DevFakeAuthEnabledEnvironmentVariable, null)
+            .Set(DesktopUploadSectionOptions.DevFakeUploadFileEnabledEnvironmentVariable, "true");
+
+        using var services = DesktopCompositionRoot.BuildServicesFromEnvironment();
+
+#if DEBUG
+        Assert.True(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeUploadFileEnabled);
+#else
+        Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeUploadFileEnabled);
+#endif
     }
 
     [Fact]
@@ -98,6 +120,10 @@ public sealed class DesktopCompositionRootTests
         Assert.Equal(DesktopSignInStatus.Succeeded, result.Status);
         Assert.True(viewModel.IsSignedIn);
         Assert.Equal("Вход выполнен: Visual Smoke User.", viewModel.SignedInUserContextMessage);
+        Assert.Contains(
+            DesktopSignedInShellText.NavigationCards,
+            card => card.Target == DesktopNavigationCardTarget.UploadSection
+                && string.Equals(card.Title, DesktopUploadSectionText.Title, StringComparison.Ordinal));
         Assert.DoesNotContain(FakeDesktopAuthClient.VisualSmokePassword, result.ToString(), StringComparison.Ordinal);
         Assert.DoesNotContain("dev-fake-auth-access", result.ToString(), StringComparison.Ordinal);
 #else

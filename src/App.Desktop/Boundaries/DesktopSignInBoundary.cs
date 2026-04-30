@@ -99,7 +99,7 @@ public static class DesktopSignedInShellText
     public static IReadOnlyList<DesktopNavigationPlaceholderCard> NavigationCards { get; } =
     [
         new("Группы", DeferredPlaceholderMessage),
-        new("Загрузка видео", DeferredPlaceholderMessage),
+        new("Загрузка видео", DesktopUploadSectionText.NavigationCardMessage, DesktopNavigationCardTarget.UploadSection),
         new("Проверка перед загрузкой", DeferredPlaceholderMessage),
         new("Квитанции загрузки", DeferredPlaceholderMessage)
     ];
@@ -114,7 +114,50 @@ public static class DesktopSignedInShellText
 
 public sealed record DesktopNavigationPlaceholderCard(
     string Title,
-    string Message);
+    string Message,
+    DesktopNavigationCardTarget Target = DesktopNavigationCardTarget.Deferred);
+
+public enum DesktopNavigationCardTarget
+{
+    Deferred,
+    UploadSection
+}
+
+public enum DesktopWorkspaceSection
+{
+    Workspace,
+    Upload
+}
+
+public static class DesktopUploadSectionText
+{
+    public const string Title = "Загрузка видео";
+    public const string Description =
+        "Этот раздел подготовлен. Реальная загрузка будет включена в следующем approved desktop slice.";
+    public const string NavigationCardMessage = "Открыть заготовку выбора видеофайла.";
+    public const string StepOneTitle = "Шаг 1. Выбор видеофайла";
+    public const string SelectVideoFileButton = "Выбрать видеофайл";
+    public const string PlaceholderResult = "Выбор файла пока работает в режиме заготовки.";
+    public const string BackToWorkspaceButton = "Назад к рабочей области";
+    public const string SelectedFileNameLabel = "Файл";
+    public const string SelectedFileSizeLabel = "Размер";
+    public const string SelectedFileContentTypeLabel = "Тип содержимого";
+}
+
+public sealed record DesktopUploadSelectedFile(
+    string FileName,
+    long SizeBytes,
+    string ContentType)
+{
+    public const string VisualSmokeFileName = "visual-smoke-video.mp4";
+    public const long VisualSmokeFileSizeBytes = 12345678;
+    public const string VisualSmokeContentType = "video/mp4";
+
+    public static DesktopUploadSelectedFile VisualSmokeFile { get; } = new(
+        VisualSmokeFileName,
+        VisualSmokeFileSizeBytes,
+        VisualSmokeContentType);
+}
 
 public sealed class DesktopSignInResult
 {
