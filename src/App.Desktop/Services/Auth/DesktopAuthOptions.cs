@@ -5,21 +5,51 @@ public sealed class DesktopAuthOptions
     public const string ControlPlaneBaseAddressEnvironmentVariable =
         "AA_DESKTOP_CONTROL_PLANE_BASE_ADDRESS";
 
-    private DesktopAuthOptions(Uri? controlPlaneBaseAddress)
+    public const string DevFakeAuthEnabledEnvironmentVariable =
+        "AA_DESKTOP_DEV_FAKE_AUTH_ENABLED";
+
+    private DesktopAuthOptions(
+        Uri? controlPlaneBaseAddress,
+        bool isDevFakeAuthEnabled)
     {
         ControlPlaneBaseAddress = controlPlaneBaseAddress;
+        IsDevFakeAuthEnabled = isDevFakeAuthEnabled;
     }
 
-    public static DesktopAuthOptions Disabled { get; } = new(controlPlaneBaseAddress: null);
+    public static DesktopAuthOptions Disabled { get; } = new(
+        controlPlaneBaseAddress: null,
+        isDevFakeAuthEnabled: false);
 
     public Uri? ControlPlaneBaseAddress { get; }
 
     public bool IsControlPlaneSignInConfigured => ControlPlaneBaseAddress is not null;
 
+    public bool IsDevFakeAuthEnabled { get; }
+
     public static DesktopAuthOptions FromEnvironment()
     {
-        return FromControlPlaneBaseAddress(
-            Environment.GetEnvironmentVariable(ControlPlaneBaseAddressEnvironmentVariable));
+        return FromEnvironmentValues(
+            Environment.GetEnvironmentVariable(ControlPlaneBaseAddressEnvironmentVariable),
+            Environment.GetEnvironmentVariable(DevFakeAuthEnabledEnvironmentVariable));
+    }
+
+    public static DesktopAuthOptions FromEnvironmentValues(
+        string? baseAddress,
+        string? devFakeAuthEnabled)
+    {
+        DesktopAuthOptions liveOptions = FromControlPlaneBaseAddress(baseAddress);
+
+#if DEBUG
+        if (!liveOptions.IsControlPlaneSignInConfigured
+            && IsDevFakeAuthEnabledValue(devFakeAuthEnabled))
+        {
+            return new DesktopAuthOptions(
+                controlPlaneBaseAddress: null,
+                isDevFakeAuthEnabled: true);
+        }
+#endif
+
+        return liveOptions;
     }
 
     public static DesktopAuthOptions FromControlPlaneBaseAddress(string? baseAddress)
@@ -41,13 +71,21 @@ public sealed class DesktopAuthOptions
             return Disabled;
         }
 
-        return new DesktopAuthOptions(baseAddress);
+        return new DesktopAuthOptions(
+            baseAddress,
+            isDevFakeAuthEnabled: false);
     }
 
     public override string ToString()
     {
         return $"{nameof(DesktopAuthOptions)} {{ IsControlPlaneSignInConfigured = {IsControlPlaneSignInConfigured}, "
+            + $"IsDevFakeAuthEnabled = {IsDevFakeAuthEnabled}, "
             + $"Scheme = {ControlPlaneBaseAddress?.Scheme ?? "<none>"}, Host = {ControlPlaneBaseAddress?.Host ?? "<none>"} }}";
+    }
+
+    private static bool IsDevFakeAuthEnabledValue(string? value)
+    {
+        return string.Equals(value?.Trim(), "true", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool IsSafeControlPlaneBaseAddress(Uri baseAddress)

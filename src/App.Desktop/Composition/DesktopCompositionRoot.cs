@@ -39,7 +39,11 @@ public static class DesktopCompositionRoot
             serviceProvider => serviceProvider.GetRequiredService<DesktopSessionState>());
         services.AddSingleton<IDesktopAuthSessionBoundary>(
             serviceProvider => serviceProvider.GetRequiredService<DesktopSessionState>());
-        if (authOptions.IsControlPlaneSignInConfigured)
+        if (authOptions.IsDevFakeAuthEnabled)
+        {
+            services.AddSingleton<IDesktopAuthClient, FakeDesktopAuthClient>();
+        }
+        else if (authOptions.IsControlPlaneSignInConfigured)
         {
             services.AddSingleton(_ => new HttpClient
             {

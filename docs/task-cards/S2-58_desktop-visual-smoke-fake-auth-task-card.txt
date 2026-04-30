@@ -1,0 +1,85 @@
+Title:
+S2-58 Desktop Visual Smoke Fake Auth Harness
+
+Owner:
+Codex / Desktop Client
+
+Module:
+App.Desktop / visual-smoke auth harness
+
+Client form:
+desktop standalone
+
+Type:
+runtime desktop-only dev/test harness
+
+Status:
+Implemented in this branch.
+
+Goal:
+Add a safe, repeatable App.Desktop visual-smoke authentication harness that lets Codex capture baseline, rejected, and successful SignIn screenshots without real Korobochka credentials.
+
+Context:
+S2-51 enabled the desktop SignIn runtime through the existing auth boundary and live HttpDesktopAuthClient.
+S2-54 through S2-57 made the SignIn UI visibly safe, Russian, clickable, and screenshot-worthy.
+S2-57 proved the value of desktop visual-smoke evidence but still lacked safe credentials for the successful sign-in state.
+
+Guard:
+Fake auth is enabled only by the explicit local dev/test variable:
+AA_DESKTOP_DEV_FAKE_AUTH_ENABLED=true
+
+The composition root registers the fake auth client only in Debug builds and only when no live control-plane base address is configured. If AA_DESKTOP_CONTROL_PLANE_BASE_ADDRESS is configured, the live HttpDesktopAuthClient path remains selected.
+
+Fake credentials:
+login: visual-smoke-user
+password: visual-smoke-password
+
+These are fixed non-secret test data for local visual smoke only.
+
+Security guardrails:
+- Fake auth never calls App.Api.
+- Fake auth does not create users or write persistence.
+- Fake auth does not work as a replacement for configured live/Korobochka auth.
+- Production/live sign-in continues to require operator-entered real credentials through HttpDesktopAuthClient.
+- Do not display or log password, accessToken, refreshToken, Authorization, raw token-like values, raw response bodies, or secret-bearing errors.
+- Screenshots and runtime artifacts stay under C:\CODEX\Temp and are not committed.
+
+Scope:
+Allowed:
+- docs/task-cards/S2-58_desktop-visual-smoke-fake-auth-task-card.txt
+- src/App.Desktop/**
+- tests/Unit/App.Desktop.Tests/**
+
+Forbidden:
+- src/App.Api/**
+- src/App.Worker/**
+- src/App.Web/**
+- src/App.Mobile.Android/**
+- src/App.UI.Shared/**
+- src/BuildingBlocks.Contracts/**
+- src/Modules/**
+- DB migrations
+- .github/workflows/**
+- deploy scripts
+- docs/ops/**
+- committed screenshots or runtime artifacts
+
+Validation:
+- git diff --check
+- dotnet restore AnalyticsAutomation-Core.sln -nologo
+- dotnet format whitespace AnalyticsAutomation-Core.sln --verify-no-changes --no-restore
+- dotnet build src/App.Desktop/App.Desktop.csproj -nologo -v minimal
+- dotnet build AnalyticsAutomation-Core.sln -nologo -v minimal
+- dotnet test tests/Unit/App.Desktop.Tests/App.Desktop.Tests.csproj -nologo -v minimal
+- hidden/control Unicode scan over changed text files
+- App.Desktop launch visual smoke with fake auth enabled
+
+Definition of done:
+- Fake auth is disabled by default.
+- Fake auth requires AA_DESKTOP_DEV_FAKE_AUTH_ENABLED=true and Debug build behavior.
+- Fake auth does not replace configured live auth.
+- Fake auth succeeds only for the fixed visual-smoke test credentials.
+- Wrong fake credentials produce a safe rejected state.
+- Fake-auth diagnostics and visible strings do not expose credentials or token values.
+- Required screenshots are saved under C:\CODEX\Temp and kept out of git.
+- App.Api/contracts/migrations/deploy/App.Web/App.Mobile.Android are unchanged.
