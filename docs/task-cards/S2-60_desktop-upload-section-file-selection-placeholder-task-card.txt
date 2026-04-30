@@ -1,0 +1,146 @@
+Title:
+S2-60 Desktop Upload Section Entry / File Selection Placeholder
+
+Module:
+App.Desktop / upload section entry placeholder
+
+Owner:
+Coder 1 acting as Coder 2 / Desktop Client
+
+Client form:
+desktop standalone
+
+Type:
+narrow runtime desktop UI slice after signed-in shell placeholder
+
+Status:
+Runtime task card created with implementation.
+
+Goal:
+Make the signed-in "Загрузка видео" card an active desktop-only navigation entry, show a safe upload section placeholder, and support repeatable fake-auth visual-smoke screenshots with an optional fake file-selection state.
+
+Context:
+S2-58 added the debug-only fake-auth visual-smoke harness guarded by AA_DESKTOP_DEV_FAKE_AUTH_ENABLED=true and disabled whenever AA_DESKTOP_CONTROL_PLANE_BASE_ADDRESS is configured.
+S2-59 added the Russian signed-in shell, safe user context, "Выйти", and deferred placeholder cards for groups, upload, pre-upload check, and upload receipts.
+
+Scope:
+- Keep the current Russian SignIn UI before authentication.
+- After fake-auth SignIn, show the S2-59 signed-in shell.
+- Make the "Загрузка видео" card open the upload section.
+- Show the upload section title, approved-slice placeholder copy, step 1 file-selection block, "Выбрать видеофайл", and the safe placeholder result.
+- Add "Назад к рабочей области".
+- Keep "Выйти" working from the signed-in shell and upload section.
+- Do not implement the real upload flow.
+
+Allowed changed areas:
+- docs/task-cards/S2-60_desktop-upload-section-file-selection-placeholder-task-card.txt
+- src/App.Desktop/**
+- tests/Unit/App.Desktop.Tests/**
+
+Forbidden changed areas:
+- src/App.Api/**
+- src/App.Worker/**
+- src/App.Web/**
+- src/App.Mobile.Android/**
+- src/App.UI.Shared/**
+- src/BuildingBlocks.Contracts/**
+- src/Modules/**
+- DB migrations
+- .github/workflows/**
+- deploy scripts
+- docs/ops/**
+- committed screenshots or runtime artifacts
+
+Contracts:
+none
+
+Migrations:
+none
+
+Feature flags/env guard:
+- Uses the S2-58 fake auth visual-smoke guard:
+  AA_DESKTOP_DEV_FAKE_AUTH_ENABLED=true
+- Adds optional debug/dev-test fake file-selection guard for visual smoke only:
+  AA_DESKTOP_DEV_FAKE_UPLOAD_FILE_ENABLED=true
+- Fake auth still does not replace configured live auth. If AA_DESKTOP_CONTROL_PLANE_BASE_ADDRESS is configured, live HttpDesktopAuthClient remains selected.
+- Fake file selection is disabled by default and does not read disk.
+
+Fake file-selection visual-smoke data:
+- file name: visual-smoke-video.mp4
+- file size: 12345678
+- content type: video/mp4
+
+Events:
+none
+
+Offline behavior:
+none
+
+Security guardrails:
+- Do not display or log password.
+- Do not display or log accessToken, refreshToken, Authorization, raw session id, raw response body, or token-like values.
+- Do not persist tokens, passwords, selected files, file paths, or upload drafts.
+- Fake file selection does not read disk and does not call App.Api.
+- Use only non-secret fake-auth visual-smoke test data:
+  - login: visual-smoke-user
+  - password: visual-smoke-password
+- Screenshots and runtime artifacts stay under C:\CODEX\Temp and are not committed.
+
+Explicitly out of scope:
+- Real file picker.
+- Reading files from disk.
+- SHA-256.
+- businessObjectKey.
+- PreUploadCheck.
+- Direct site upload.
+- UploadReceipt.
+- Offline queue.
+- GroupTree runtime.
+- App.Api changes.
+- Shared contract changes.
+- DB migrations.
+- Deploy/workflow changes.
+- App.Web changes.
+- App.Mobile.Android changes.
+- App.UI.Shared changes.
+
+Rollback:
+revert S2-60 PR
+
+Validation:
+- git diff --check
+- dotnet restore AnalyticsAutomation-Core.sln -nologo
+- dotnet format whitespace AnalyticsAutomation-Core.sln --verify-no-changes --no-restore
+- dotnet build src/App.Desktop/App.Desktop.csproj -nologo -v minimal
+- dotnet build AnalyticsAutomation-Core.sln -nologo -v minimal
+- dotnet test tests/Unit/App.Desktop.Tests/App.Desktop.Tests.csproj -nologo -v minimal
+- hidden/control Unicode scan over changed text files
+- App.Desktop fake-auth visual smoke with fake upload file enabled
+
+Definition of done:
+- "Загрузка видео" is active after successful SignIn.
+- Upload section opens from the signed-in shell.
+- Upload section shows the required Russian title/copy, step 1 file-selection block, placeholder button, safe result message, and back button.
+- Optional fake selected file state appears only with AA_DESKTOP_DEV_FAKE_UPLOAD_FILE_ENABLED=true in debug/dev-test flow.
+- Fake selected file state contains no real path, no disk read, no SHA-256, no PreUploadCheck, no direct site upload, no UploadReceipt, and no App.Api call.
+- SignOut returns to SignIn and clears upload section state.
+- Visible strings do not expose password, accessToken, refreshToken, Authorization, raw session id, raw response body, or token-like values.
+- Required screenshots are saved under C:\CODEX\Temp and kept out of git.
+- App.Api/contracts/migrations/deploy/App.Web/App.Mobile.Android are unchanged.
+
+Visual-smoke definition of done:
+- Run App.Desktop with AA_DESKTOP_DEV_FAKE_AUTH_ENABLED=true and AA_DESKTOP_DEV_FAKE_UPLOAD_FILE_ENABLED=true.
+- Do not set AA_DESKTOP_CONTROL_PLANE_BASE_ADDRESS.
+- Use non-secret test data visual-smoke-user / visual-smoke-password.
+- Capture screenshots under C:\CODEX\Temp\S2-60_DESKTOP_UPLOAD_SECTION_VISUAL_SMOKE_<timestamp>\.
+- Required screenshots:
+  - 01_baseline_signin.png
+  - 02_signed_in_shell.png
+  - 03_upload_section_placeholder.png
+  - 04_fake_file_selection_placeholder.png
+  - 05_back_to_workspace.png
+  - 06_after_sign_out.png
+- Confirm signed-in shell shows the upload entry and safe display name.
+- Confirm upload section fake file state shows only visual-smoke-video.mp4, 12345678, and video/mp4.
+- Confirm no password, accessToken, refreshToken, Authorization, raw session id, raw response body, raw path, or real secret is visible.
+- Confirm screenshots and runtime artifacts are not committed.

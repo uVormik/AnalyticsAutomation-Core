@@ -1,5 +1,7 @@
 @inject IBlazorWebViewHostBoundary BlazorHostBoundary
 @inject DesktopSignInViewModel SignInViewModel
+@inject DesktopUploadSectionViewModel UploadSectionViewModel
+@using App.Desktop.Services.Upload
 @using Microsoft.AspNetCore.Components.Web
 
 <div class="desktop-shell">
@@ -32,19 +34,75 @@
                     </button>
                 </div>
 
-                <nav class="desktop-navigation" aria-label="Разделы рабочего места">
-                    @foreach (DesktopNavigationPlaceholderCard card in DesktopSignedInShellText.NavigationCards)
-                    {
-                        <button
-                            class="desktop-navigation-card"
-                            type="button"
-                            disabled="disabled"
-                            aria-disabled="true">
-                            <span class="desktop-navigation-card__title">@card.Title</span>
-                            <span class="desktop-navigation-card__message">@card.Message</span>
-                        </button>
-                    }
-                </nav>
+                @if (UploadSectionViewModel.IsUploadSectionOpen)
+                {
+                    <section class="desktop-upload" aria-labelledby="desktop-upload-title">
+                        <div class="desktop-upload__heading">
+                            <div>
+                                <h2 id="desktop-upload-title">@DesktopUploadSectionText.Title</h2>
+                                <p>@DesktopUploadSectionText.Description</p>
+                            </div>
+
+                            <button
+                                class="desktop-upload__back"
+                                type="button"
+                                disabled="@SignInViewModel.IsBusy"
+                                @onclick="BackToWorkspace">
+                                @DesktopUploadSectionText.BackToWorkspaceButton
+                            </button>
+                        </div>
+
+                        <div class="desktop-upload__step">
+                            <h3>@DesktopUploadSectionText.StepOneTitle</h3>
+                            <p class="desktop-upload__message" role="status" aria-live="polite">
+                                @UploadSectionViewModel.SelectionStatusMessage
+                            </p>
+
+                            <button
+                                class="desktop-upload__select"
+                                type="button"
+                                disabled="@SignInViewModel.IsBusy"
+                                @onclick="SelectVideoFilePlaceholder">
+                                @DesktopUploadSectionText.SelectVideoFileButton
+                            </button>
+
+                            @if (UploadSectionViewModel.SelectedFile is not null)
+                            {
+                                <dl class="desktop-upload__selection">
+                                    <div>
+                                        <dt>@DesktopUploadSectionText.SelectedFileNameLabel</dt>
+                                        <dd>@UploadSectionViewModel.SelectedFile.FileName</dd>
+                                    </div>
+                                    <div>
+                                        <dt>@DesktopUploadSectionText.SelectedFileSizeLabel</dt>
+                                        <dd>@UploadSectionViewModel.SelectedFile.SizeBytes</dd>
+                                    </div>
+                                    <div>
+                                        <dt>@DesktopUploadSectionText.SelectedFileContentTypeLabel</dt>
+                                        <dd>@UploadSectionViewModel.SelectedFile.ContentType</dd>
+                                    </div>
+                                </dl>
+                            }
+                        </div>
+                    </section>
+                }
+                else
+                {
+                    <nav class="desktop-navigation" aria-label="Разделы рабочего места">
+                        @foreach (DesktopNavigationPlaceholderCard card in DesktopSignedInShellText.NavigationCards)
+                        {
+                            <button
+                                class="@GetNavigationCardClass(card)"
+                                type="button"
+                                disabled="@IsNavigationCardDisabled(card)"
+                                aria-disabled="@IsNavigationCardDisabled(card)"
+                                @onclick="() => OpenNavigationCard(card)">
+                                <span class="desktop-navigation-card__title">@card.Title</span>
+                                <span class="desktop-navigation-card__message">@card.Message</span>
+                            </button>
+                        }
+                    </nav>
+                }
             </section>
         }
         else
@@ -138,8 +196,29 @@
         }
 
         await SignInViewModel.SignOutAsync(CancellationToken.None);
+        UploadSectionViewModel.ResetForSignedOutState();
 
         StateHasChanged();
+    }
+
+    private void OpenNavigationCard(DesktopNavigationPlaceholderCard card)
+    {
+        if (IsNavigationCardDisabled(card))
+        {
+            return;
+        }
+
+        UploadSectionViewModel.OpenUploadSection();
+    }
+
+    private void BackToWorkspace()
+    {
+        UploadSectionViewModel.BackToWorkspace();
+    }
+
+    private void SelectVideoFilePlaceholder()
+    {
+        UploadSectionViewModel.SelectVideoFilePlaceholder();
     }
 
     private string GetHeaderStatusText()
@@ -168,4 +247,15 @@
         };
     }
 
+    private static bool IsNavigationCardDisabled(DesktopNavigationPlaceholderCard card)
+    {
+        return card.Target != DesktopNavigationCardTarget.UploadSection;
+    }
+
+    private static string GetNavigationCardClass(DesktopNavigationPlaceholderCard card)
+    {
+        return IsNavigationCardDisabled(card)
+            ? "desktop-navigation-card"
+            : "desktop-navigation-card desktop-navigation-card--active";
+    }
 }
