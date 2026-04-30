@@ -45,7 +45,8 @@ public sealed class WpfDesktopVideoFilePicker : IDesktopVideoFilePicker
             return DesktopVideoFilePickerResult.Selected(
                 fileInfo.Name,
                 fileInfo.Length,
-                ResolveContentType(fileInfo.Extension));
+                ResolveContentType(fileInfo.Extension),
+                DesktopVideoHashSource.FromLocalFilePath(fileInfo.FullName));
         }
         catch (Exception exception) when (IsSafeMetadataFailure(exception))
         {

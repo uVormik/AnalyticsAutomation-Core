@@ -81,6 +81,15 @@ public static class DesktopCompositionRoot
             services.AddSingleton<IDesktopVideoFilePicker, WpfDesktopVideoFilePicker>();
         }
 
+        if (uploadSectionOptions.IsDevFakeUploadHashEnabled)
+        {
+            services.AddSingleton<IDesktopVideoHashService, FakeDesktopVideoHashService>();
+        }
+        else
+        {
+            services.AddSingleton<IDesktopVideoHashService, DesktopVideoHashService>();
+        }
+
         services.AddSingleton<IDesktopFilePicker, PlaceholderDesktopFilePicker>();
         services.AddSingleton<ILocalFileMetadataService, PlaceholderLocalFileMetadataService>();
         services.AddSingleton<IControlPlaneApiClient, PlaceholderControlPlaneApiClient>();

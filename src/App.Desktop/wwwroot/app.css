@@ -279,7 +279,8 @@ body {
 }
 
 .desktop-upload__back,
-.desktop-upload__select {
+.desktop-upload__select,
+.desktop-upload__hash {
     min-height: 38px;
     padding: 0 16px;
     border-radius: 6px;
@@ -295,7 +296,8 @@ body {
     color: #253241;
 }
 
-.desktop-upload__select {
+.desktop-upload__select,
+.desktop-upload__hash {
     width: fit-content;
     border: 1px solid #18406b;
     background: #18406b;
@@ -303,7 +305,8 @@ body {
 }
 
 .desktop-upload__back:disabled,
-.desktop-upload__select:disabled {
+.desktop-upload__select:disabled,
+.desktop-upload__hash:disabled {
     color: #687789;
     border-color: #b9c3cf;
     background: #eef1f5;
@@ -333,14 +336,20 @@ body {
     line-height: 1.4;
 }
 
-.desktop-upload__selection {
+.desktop-upload__selection,
+.desktop-upload__hash-result {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 12px;
     margin: 4px 0 0;
 }
 
-.desktop-upload__selection div {
+.desktop-upload__hash-result {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.desktop-upload__selection div,
+.desktop-upload__hash-result div {
     min-width: 0;
     padding: 12px;
     border: 1px solid #d7dde5;
@@ -348,14 +357,16 @@ body {
     background: #ffffff;
 }
 
-.desktop-upload__selection dt {
+.desktop-upload__selection dt,
+.desktop-upload__hash-result dt {
     margin: 0 0 4px;
     color: #52616f;
     font-size: 0.78rem;
     font-weight: 700;
 }
 
-.desktop-upload__selection dd {
+.desktop-upload__selection dd,
+.desktop-upload__hash-result dd {
     margin: 0;
     color: #18212f;
     font-size: 0.9rem;
@@ -384,11 +395,13 @@ body {
     }
 
     .desktop-upload__back,
-    .desktop-upload__select {
+    .desktop-upload__select,
+    .desktop-upload__hash {
         width: 100%;
     }
 
-    .desktop-upload__selection {
+    .desktop-upload__selection,
+    .desktop-upload__hash-result {
         grid-template-columns: 1fr;
     }
 }
