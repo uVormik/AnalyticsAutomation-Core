@@ -25,6 +25,7 @@ public static class DesktopSignInText
     public const string RejectedMessage = "Логин или пароль не приняты.";
     public const string UnavailableMessage = "Сервис входа недоступен. Проверьте подключение или настройку.";
     public const string FailedMessage = "Не удалось выполнить вход. Попробуйте еще раз.";
+    public const string SignedOutMessage = "Вы вышли из системы. Введите логин и пароль для входа.";
 
     public static string CreateSuccessMessage(DesktopSessionSnapshot session)
     {
@@ -66,7 +67,10 @@ public static class DesktopSignInText
         [
             "authorization",
             "bearer",
+            "sessionid",
+            "session_id",
             "password",
+            "token",
             "accesstoken",
             "access_token",
             "refresh_token",
@@ -85,6 +89,32 @@ public static class DesktopSignInText
         return true;
     }
 }
+
+public static class DesktopSignedInShellText
+{
+    public const string Title = "Рабочая область";
+    public const string SignOutButton = "Выйти";
+    public const string DeferredPlaceholderMessage = "Будет доступно в следующем approved desktop slice.";
+
+    public static IReadOnlyList<DesktopNavigationPlaceholderCard> NavigationCards { get; } =
+    [
+        new("Группы", DeferredPlaceholderMessage),
+        new("Загрузка видео", DeferredPlaceholderMessage),
+        new("Проверка перед загрузкой", DeferredPlaceholderMessage),
+        new("Квитанции загрузки", DeferredPlaceholderMessage)
+    ];
+
+    public static string CreateUserContextMessage(DesktopSessionSnapshot session)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+
+        return DesktopSignInText.CreateSuccessMessage(session);
+    }
+}
+
+public sealed record DesktopNavigationPlaceholderCard(
+    string Title,
+    string Message);
 
 public sealed class DesktopSignInResult
 {
@@ -115,6 +145,12 @@ public sealed class DesktopSignInResult
         session: null,
         error: null,
         DesktopSignInText.NotStartedMessage);
+
+    public static DesktopSignInResult SignedOut { get; } = new(
+        DesktopSignInStatus.NotStarted,
+        session: null,
+        error: null,
+        DesktopSignInText.SignedOutMessage);
 
     public static DesktopSignInResult InProgress { get; } = new(
         DesktopSignInStatus.InProgress,

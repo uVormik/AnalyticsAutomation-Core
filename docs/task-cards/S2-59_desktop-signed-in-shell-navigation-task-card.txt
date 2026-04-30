@@ -1,0 +1,132 @@
+Title:
+S2-59 Desktop Signed-in Shell / Navigation Placeholder Task Card
+
+Module:
+App.Desktop / signed-in shell navigation placeholder
+
+Owner:
+Coder 1 acting as Coder 2 / Desktop Client
+
+Client form:
+desktop standalone
+
+Type:
+narrow runtime desktop UI slice after SignIn stabilization
+
+Status:
+Runtime task card created with implementation.
+
+Goal:
+After a successful desktop SignIn, show a safe Russian signed-in shell with user context, a SignOut action, and deferred navigation placeholder cards for future upload flow work.
+
+Context:
+S2-51 enabled the App.Desktop SignIn runtime boundary.
+S2-54 through S2-57 stabilized visible Russian SignIn feedback, live input binding, click submit, Enter submit, and password clearing.
+S2-58 added a debug-only fake-auth visual-smoke harness guarded by AA_DESKTOP_DEV_FAKE_AUTH_ENABLED=true and disabled whenever AA_DESKTOP_CONTROL_PLANE_BASE_ADDRESS is configured.
+
+Scope:
+- Keep the current Russian SignIn UI before authentication.
+- After successful SignIn, hide the SignIn form and show a signed-in workspace.
+- Show safe user context as "Вход выполнен: <DisplayName>." when the display name is safe.
+- Add "Выйти" to clear the in-memory desktop session state and return to SignIn.
+- Always clear password on SignIn attempts and SignOut.
+- Add deferred/no-op Russian navigation placeholder cards:
+  - "Группы"
+  - "Загрузка видео"
+  - "Проверка перед загрузкой"
+  - "Квитанции загрузки"
+- Each card must show "Будет доступно в следующем approved desktop slice."
+- Keep the cards disabled/no-op and free of App.Api calls.
+
+Allowed changed areas:
+- docs/task-cards/S2-59_desktop-signed-in-shell-navigation-task-card.txt
+- src/App.Desktop/**
+- tests/Unit/App.Desktop.Tests/**
+
+Forbidden changed areas:
+- src/App.Api/**
+- src/App.Worker/**
+- src/App.Web/**
+- src/App.Mobile.Android/**
+- src/App.UI.Shared/**
+- src/BuildingBlocks.Contracts/**
+- src/Modules/**
+- DB migrations
+- .github/workflows/**
+- deploy scripts
+- docs/ops/**
+- committed screenshots or runtime artifacts
+
+Contracts:
+none
+
+Migrations:
+none
+
+Feature flags/env guard:
+Uses the existing S2-58 fake auth env guard only for visual smoke:
+AA_DESKTOP_DEV_FAKE_AUTH_ENABLED=true.
+
+Fake auth remains debug/dev-test only and must not replace configured live auth. If AA_DESKTOP_CONTROL_PLANE_BASE_ADDRESS is configured, live HttpDesktopAuthClient remains selected.
+
+Events:
+none
+
+Offline behavior:
+no offline implementation
+
+Security guardrails:
+- Do not display or log password.
+- Do not display or log accessToken, refreshToken, Authorization, raw session id, raw response body, or token-like values.
+- Do not persist tokens or passwords.
+- Do not add secrets or real credentials to docs, tests, PR text, screenshots, logs, or reports.
+- Use only non-secret fake-auth visual-smoke test data:
+  - login: visual-smoke-user
+  - password: visual-smoke-password
+- Screenshots and runtime artifacts stay under C:\CODEX\Temp and are not committed.
+
+Explicitly out of scope:
+- GroupTree implementation.
+- File picker.
+- SHA-256.
+- PreUploadCheck.
+- Site upload.
+- UploadReceipt.
+- Full upload flow.
+- Offline queue.
+- App.Api changes.
+- Shared contract changes.
+- DB migrations.
+- Deploy/workflow changes.
+- App.Web changes.
+- App.Mobile.Android changes.
+- App.UI.Shared changes.
+- Live Korobochka path changes.
+
+Rollback:
+revert S2-59 PR
+
+Validation:
+- git diff --check
+- dotnet restore AnalyticsAutomation-Core.sln -nologo
+- dotnet format whitespace AnalyticsAutomation-Core.sln --verify-no-changes --no-restore
+- dotnet build src/App.Desktop/App.Desktop.csproj -nologo -v minimal
+- dotnet build AnalyticsAutomation-Core.sln -nologo -v minimal
+- dotnet test tests/Unit/App.Desktop.Tests/App.Desktop.Tests.csproj -nologo -v minimal
+- hidden/control Unicode scan over changed text files
+- App.Desktop visual smoke with fake auth enabled
+
+Visual-smoke definition of done:
+- Run App.Desktop with AA_DESKTOP_DEV_FAKE_AUTH_ENABLED=true.
+- Do not set AA_DESKTOP_CONTROL_PLANE_BASE_ADDRESS.
+- Use non-secret test data visual-smoke-user / visual-smoke-password.
+- Capture screenshots under C:\CODEX\Temp\S2-59_DESKTOP_SIGNED_IN_SHELL_VISUAL_SMOKE_<timestamp>\.
+- Required screenshots:
+  - 01_baseline_signin.png
+  - 02_filled_fake_credentials.png
+  - 03_signed_in_shell.png
+  - 04_after_sign_out.png
+- Confirm signed-in shell shows safe display name and placeholder cards.
+- Confirm SignOut returns to SignIn, clears password, and does not show signed-in user context.
+- Confirm no password, accessToken, refreshToken, Authorization, raw session id, raw response body, or real secret is visible.
+- Confirm screenshots and runtime artifacts are not committed.

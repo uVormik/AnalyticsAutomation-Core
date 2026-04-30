@@ -50,7 +50,7 @@ body {
 .desktop-shell__main {
     flex: 1;
     width: 100%;
-    max-width: 960px;
+    max-width: 1040px;
     display: flex;
     flex-direction: column;
     align-items: stretch;
@@ -147,9 +147,107 @@ body {
     background: #8da3b8;
 }
 
+.desktop-workspace {
+    display: grid;
+    gap: 24px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.desktop-workspace__summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 22px;
+    background: #ffffff;
+    border: 1px solid #d7dde5;
+    border-radius: 8px;
+}
+
+.desktop-workspace__summary h2 {
+    margin: 0;
+    font-size: 1.15rem;
+    font-weight: 650;
+}
+
+.desktop-workspace__message {
+    margin: 10px 0 0;
+    color: #17643c;
+    font-size: 0.95rem;
+    font-weight: 650;
+    line-height: 1.35;
+}
+
+.desktop-workspace__signout {
+    min-height: 38px;
+    padding: 0 16px;
+    border: 1px solid #394756;
+    border-radius: 6px;
+    background: #ffffff;
+    color: #253241;
+    font: inherit;
+    font-size: 0.9rem;
+    font-weight: 650;
+    white-space: nowrap;
+}
+
+.desktop-workspace__signout:disabled {
+    color: #687789;
+    border-color: #b9c3cf;
+}
+
+.desktop-navigation {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+}
+
+.desktop-navigation-card {
+    display: grid;
+    min-height: 128px;
+    align-content: start;
+    gap: 10px;
+    box-sizing: border-box;
+    padding: 18px;
+    border: 1px solid #d1d8e1;
+    border-radius: 8px;
+    background: #ffffff;
+    color: #253241;
+    font: inherit;
+    text-align: left;
+}
+
+.desktop-navigation-card:disabled {
+    color: #52616f;
+    cursor: default;
+}
+
+.desktop-navigation-card__title {
+    color: #18212f;
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.desktop-navigation-card__message {
+    color: #52616f;
+    font-size: 0.88rem;
+    font-weight: 500;
+    line-height: 1.4;
+}
+
 @media (max-width: 860px) {
     .desktop-signin,
     .desktop-signin__form {
         grid-template-columns: 1fr;
+    }
+
+    .desktop-workspace__summary {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .desktop-workspace__signout {
+        width: 100%;
     }
 }

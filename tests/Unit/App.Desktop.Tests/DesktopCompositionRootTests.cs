@@ -80,6 +80,32 @@ public sealed class DesktopCompositionRootTests
             services.GetRequiredService<HttpClient>().BaseAddress);
     }
 
+    [Fact]
+    public async Task FakeAuthVisualSmokeCredentialsRemainAvailableForSignedInShellState()
+    {
+        using var services = DesktopCompositionRoot.BuildServices(
+            DesktopAuthOptions.FromEnvironmentValues(
+                baseAddress: null,
+                devFakeAuthEnabled: "true"));
+        var viewModel = services.GetRequiredService<DesktopSignInViewModel>();
+
+        viewModel.Login = FakeDesktopAuthClient.VisualSmokeLogin;
+        viewModel.Password = FakeDesktopAuthClient.VisualSmokePassword;
+
+        DesktopSignInResult result = await viewModel.SignInAsync(CancellationToken.None);
+
+#if DEBUG
+        Assert.Equal(DesktopSignInStatus.Succeeded, result.Status);
+        Assert.True(viewModel.IsSignedIn);
+        Assert.Equal("Вход выполнен: Visual Smoke User.", viewModel.SignedInUserContextMessage);
+        Assert.DoesNotContain(FakeDesktopAuthClient.VisualSmokePassword, result.ToString(), StringComparison.Ordinal);
+        Assert.DoesNotContain("dev-fake-auth-access", result.ToString(), StringComparison.Ordinal);
+#else
+        Assert.Equal(DesktopSignInStatus.Unavailable, result.Status);
+        Assert.False(viewModel.IsSignedIn);
+#endif
+    }
+
     [Theory]
     [InlineData("https://control-plane.local")]
     [InlineData("https://control-plane.local/")]

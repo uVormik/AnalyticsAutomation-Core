@@ -52,6 +52,112 @@ public sealed class DesktopSignInServiceTests
     }
 
     [Fact]
+    public async Task ViewModelSuccessfulSignInTransitionsToSignedInShellState()
+    {
+        var session = CreateAuthenticatedSession(displayName: "Desktop Operator");
+        var sessionState = new DesktopSessionState(new DisabledDesktopSessionStore());
+        var viewModel = new DesktopSignInViewModel(
+            new DesktopSignInService(
+                new RecordingAuthClient(DesktopAuthResult.Succeeded(session)),
+                sessionState),
+            sessionState)
+        {
+            Login = "desktop-operator",
+            Password = CreateSensitiveValue("password")
+        };
+
+        var result = await viewModel.SignInAsync(CancellationToken.None);
+
+        Assert.Equal(DesktopSignInStatus.Succeeded, result.Status);
+        Assert.True(viewModel.IsSignedIn);
+        Assert.Equal(DesktopSessionStatus.SignedIn, viewModel.CurrentSession.Status);
+        Assert.Equal(session.UserId, viewModel.CurrentSession.UserId);
+        Assert.Equal("Вход выполнен: Desktop Operator.", viewModel.SignedInUserContextMessage);
+    }
+
+    [Fact]
+    public async Task ViewModelSignedInUserContextShowsSafeDisplayNameOnly()
+    {
+        var password = CreateSensitiveValue("password");
+        var accessToken = CreateSensitiveValue("access");
+        var refreshToken = CreateSensitiveValue("refresh");
+        var session = CreateAuthenticatedSession(
+            accessToken: accessToken,
+            refreshToken: refreshToken,
+            displayName: "Desktop Operator");
+        var viewModel = new DesktopSignInViewModel(new DesktopSignInService(
+            new RecordingAuthClient(DesktopAuthResult.Succeeded(session)),
+            new DesktopSessionState(new DisabledDesktopSessionStore())))
+        {
+            Login = "desktop-operator",
+            Password = password
+        };
+
+        _ = await viewModel.SignInAsync(CancellationToken.None);
+
+        Assert.Equal("Вход выполнен: Desktop Operator.", viewModel.SignedInUserContextMessage);
+        Assert.DoesNotContain(password, viewModel.SignedInUserContextMessage, StringComparison.Ordinal);
+        Assert.DoesNotContain(accessToken, viewModel.SignedInUserContextMessage, StringComparison.Ordinal);
+        Assert.DoesNotContain(refreshToken, viewModel.SignedInUserContextMessage, StringComparison.Ordinal);
+        Assert.DoesNotContain("Authorization", viewModel.SignedInUserContextMessage, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Theory]
+    [InlineData("Authorization: Bearer secret")]
+    [InlineData("accessToken")]
+    [InlineData("refresh_token")]
+    [InlineData("raw session_id")]
+    [InlineData("password")]
+    public async Task ViewModelSignedInUserContextHidesUnsafeDisplayName(string unsafeDisplayName)
+    {
+        var viewModel = new DesktopSignInViewModel(new DesktopSignInService(
+            new RecordingAuthClient(DesktopAuthResult.Succeeded(
+                CreateAuthenticatedSession(displayName: unsafeDisplayName))),
+            new DesktopSessionState(new DisabledDesktopSessionStore())))
+        {
+            Login = "desktop-operator",
+            Password = CreateSensitiveValue("password")
+        };
+
+        _ = await viewModel.SignInAsync(CancellationToken.None);
+
+        Assert.Equal("Вход выполнен.", viewModel.SignedInUserContextMessage);
+        Assert.DoesNotContain(unsafeDisplayName, viewModel.SignedInUserContextMessage, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ViewModelSignOutReturnsToSignInStateAndClearsSessionVisibleState()
+    {
+        var session = CreateAuthenticatedSession(displayName: "Desktop Operator");
+        var sessionState = new DesktopSessionState(new DisabledDesktopSessionStore());
+        var viewModel = new DesktopSignInViewModel(
+            new DesktopSignInService(
+                new RecordingAuthClient(DesktopAuthResult.Succeeded(session)),
+                sessionState),
+            sessionState)
+        {
+            Login = "desktop-operator",
+            Password = CreateSensitiveValue("password")
+        };
+
+        _ = await viewModel.SignInAsync(CancellationToken.None);
+        viewModel.Password = CreateSensitiveValue("password-after-signin");
+
+        DesktopSessionSnapshot signedOut = await viewModel.SignOutAsync(CancellationToken.None);
+
+        Assert.Equal(DesktopSessionStatus.SignedOut, signedOut.Status);
+        Assert.False(viewModel.IsSignedIn);
+        Assert.Equal(DesktopSessionStatus.SignedOut, viewModel.CurrentSession.Status);
+        Assert.Null(viewModel.CurrentSession.UserId);
+        Assert.Null(viewModel.CurrentSession.DisplayName);
+        Assert.False(viewModel.CurrentSession.HasAccessToken);
+        Assert.False(viewModel.CurrentSession.HasRefreshToken);
+        Assert.Equal(string.Empty, viewModel.Password);
+        Assert.Equal(DesktopSignInText.SignedOutMessage, viewModel.LastResult.Message);
+        Assert.DoesNotContain("Desktop Operator", viewModel.LastResult.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task ViewModelSubmitUsesCurrentBoundInputValues()
     {
         var password = CreateSensitiveValue("password");
@@ -128,6 +234,48 @@ public sealed class DesktopSignInServiceTests
         Assert.Equal(2, CountOccurrences(markup, "aria-required=\"true\""));
         Assert.Contains("if (SignInViewModel.IsBusy)", markup, StringComparison.Ordinal);
         Assert.DoesNotContain("if (!SignInViewModel.CanSubmit)", markup, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void DesktopShellSwitchesToSignedInWorkspaceWithDisabledNavigationPlaceholders()
+    {
+        string markup = File.ReadAllText(Path.Combine(
+            FindRepositoryRoot(),
+            "src",
+            "App.Desktop",
+            "Components",
+            "DesktopShell.razor"));
+
+        Assert.Contains("@if (SignInViewModel.IsSignedIn)", markup, StringComparison.Ordinal);
+        Assert.Contains("@DesktopSignedInShellText.Title", markup, StringComparison.Ordinal);
+        Assert.Contains("@SignInViewModel.SignedInUserContextMessage", markup, StringComparison.Ordinal);
+        Assert.Contains("@DesktopSignedInShellText.SignOutButton", markup, StringComparison.Ordinal);
+        Assert.Contains("@onclick=\"SignOutAsync\"", markup, StringComparison.Ordinal);
+        Assert.Contains("DesktopSignedInShellText.NavigationCards", markup, StringComparison.Ordinal);
+        Assert.Contains("disabled=\"disabled\"", markup, StringComparison.Ordinal);
+        Assert.Contains("aria-disabled=\"true\"", markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("<UploadPlaceholder", markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("IDesktopUploadOrchestrator", markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("IControlPlaneApiClient", markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("IDesktopFilePicker", markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("PreUploadCheck", markup, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void SignedInShellTextDefinesDeferredRussianNavigationCards()
+    {
+        Assert.Equal("Рабочая область", DesktopSignedInShellText.Title);
+        Assert.Equal("Выйти", DesktopSignedInShellText.SignOutButton);
+        Assert.Equal(
+            "Будет доступно в следующем approved desktop slice.",
+            DesktopSignedInShellText.DeferredPlaceholderMessage);
+
+        Assert.Collection(
+            DesktopSignedInShellText.NavigationCards,
+            card => AssertPlaceholderCard(card, "Группы"),
+            card => AssertPlaceholderCard(card, "Загрузка видео"),
+            card => AssertPlaceholderCard(card, "Проверка перед загрузкой"),
+            card => AssertPlaceholderCard(card, "Квитанции загрузки"));
     }
 
     [Fact]
@@ -437,6 +585,7 @@ public sealed class DesktopSignInServiceTests
         Assert.Equal("Введите пароль", DesktopSignInText.PasswordPlaceholder);
         Assert.Equal("Войти", DesktopSignInText.SubmitButton);
         Assert.Equal("Выполняется вход...", DesktopSignInText.SubmitButtonBusy);
+        Assert.Equal("Вы вышли из системы. Введите логин и пароль для входа.", DesktopSignInText.SignedOutMessage);
     }
 
     public static IEnumerable<object[]> FailedAuthResults()
@@ -526,6 +675,14 @@ public sealed class DesktopSignInServiceTests
         }
 
         return count;
+    }
+
+    private static void AssertPlaceholderCard(
+        DesktopNavigationPlaceholderCard card,
+        string expectedTitle)
+    {
+        Assert.Equal(expectedTitle, card.Title);
+        Assert.Equal(DesktopSignedInShellText.DeferredPlaceholderMessage, card.Message);
     }
 
     private sealed class RecordingAuthClient(DesktopAuthResult result) : IDesktopAuthClient

@@ -12,59 +12,95 @@
     </header>
 
     <main class="desktop-shell__main">
-        <section class="desktop-signin" aria-labelledby="desktop-signin-title">
-            <div class="desktop-signin__heading">
-                <h2 id="desktop-signin-title">@DesktopSignInText.Title</h2>
-                <p id="desktop-signin-result" class="@GetSignInStatusClass()" role="status" aria-live="polite">
-                    @SignInViewModel.LastResult.Message
-                </p>
-            </div>
+        @if (SignInViewModel.IsSignedIn)
+        {
+            <section class="desktop-workspace" aria-labelledby="desktop-workspace-title">
+                <div class="desktop-workspace__summary">
+                    <div>
+                        <h2 id="desktop-workspace-title">@DesktopSignedInShellText.Title</h2>
+                        <p id="desktop-session-status" class="desktop-workspace__message" role="status" aria-live="polite">
+                            @SignInViewModel.SignedInUserContextMessage
+                        </p>
+                    </div>
 
-            <div class="desktop-signin__form" role="group" aria-describedby="desktop-signin-result">
-                <label class="desktop-signin__field" for="desktop-signin-login">
-                    <span>@DesktopSignInText.LoginLabel</span>
-                    <input
-                        id="desktop-signin-login"
-                        name="login"
-                        autocomplete="username"
-                        placeholder="@DesktopSignInText.LoginPlaceholder"
-                        aria-describedby="desktop-signin-result"
-                        aria-required="true"
-                        spellcheck="false"
-                        autofocus
+                    <button
+                        class="desktop-workspace__signout"
+                        type="button"
                         disabled="@SignInViewModel.IsBusy"
-                        @bind-value="SignInViewModel.Login"
-                        @bind-value:event="oninput"
-                        @onkeyup="SubmitSignInOnEnterAsync" />
-                </label>
+                        @onclick="SignOutAsync">
+                        @DesktopSignedInShellText.SignOutButton
+                    </button>
+                </div>
 
-                <label class="desktop-signin__field" for="desktop-signin-password">
-                    <span>@DesktopSignInText.PasswordLabel</span>
-                    <input
-                        id="desktop-signin-password"
-                        name="password"
-                        type="password"
-                        autocomplete="current-password"
-                        placeholder="@DesktopSignInText.PasswordPlaceholder"
-                        aria-describedby="desktop-signin-result"
-                        aria-required="true"
+                <nav class="desktop-navigation" aria-label="Разделы рабочего места">
+                    @foreach (DesktopNavigationPlaceholderCard card in DesktopSignedInShellText.NavigationCards)
+                    {
+                        <button
+                            class="desktop-navigation-card"
+                            type="button"
+                            disabled="disabled"
+                            aria-disabled="true">
+                            <span class="desktop-navigation-card__title">@card.Title</span>
+                            <span class="desktop-navigation-card__message">@card.Message</span>
+                        </button>
+                    }
+                </nav>
+            </section>
+        }
+        else
+        {
+            <section class="desktop-signin" aria-labelledby="desktop-signin-title">
+                <div class="desktop-signin__heading">
+                    <h2 id="desktop-signin-title">@DesktopSignInText.Title</h2>
+                    <p id="desktop-signin-result" class="@GetSignInStatusClass()" role="status" aria-live="polite">
+                        @SignInViewModel.LastResult.Message
+                    </p>
+                </div>
+
+                <div class="desktop-signin__form" role="group" aria-describedby="desktop-signin-result">
+                    <label class="desktop-signin__field" for="desktop-signin-login">
+                        <span>@DesktopSignInText.LoginLabel</span>
+                        <input
+                            id="desktop-signin-login"
+                            name="login"
+                            autocomplete="username"
+                            placeholder="@DesktopSignInText.LoginPlaceholder"
+                            aria-describedby="desktop-signin-result"
+                            aria-required="true"
+                            spellcheck="false"
+                            autofocus
+                            disabled="@SignInViewModel.IsBusy"
+                            @bind-value="SignInViewModel.Login"
+                            @bind-value:event="oninput"
+                            @onkeyup="SubmitSignInOnEnterAsync" />
+                    </label>
+
+                    <label class="desktop-signin__field" for="desktop-signin-password">
+                        <span>@DesktopSignInText.PasswordLabel</span>
+                        <input
+                            id="desktop-signin-password"
+                            name="password"
+                            type="password"
+                            autocomplete="current-password"
+                            placeholder="@DesktopSignInText.PasswordPlaceholder"
+                            aria-describedby="desktop-signin-result"
+                            aria-required="true"
+                            disabled="@SignInViewModel.IsBusy"
+                            @bind-value="SignInViewModel.Password"
+                            @bind-value:event="oninput"
+                            @onkeyup="SubmitSignInOnEnterAsync" />
+                    </label>
+
+                    <button
+                        class="desktop-signin__submit"
+                        type="button"
                         disabled="@SignInViewModel.IsBusy"
-                        @bind-value="SignInViewModel.Password"
-                        @bind-value:event="oninput"
-                        @onkeyup="SubmitSignInOnEnterAsync" />
-                </label>
-
-                <button
-                    class="desktop-signin__submit"
-                    type="button"
-                    disabled="@SignInViewModel.IsBusy"
-                    @onclick="SubmitSignInAsync">
-                    @(SignInViewModel.IsBusy ? DesktopSignInText.SubmitButtonBusy : DesktopSignInText.SubmitButton)
-                </button>
-            </div>
-        </section>
-
-        <UploadPlaceholder />
+                        @onclick="SubmitSignInAsync">
+                        @(SignInViewModel.IsBusy ? DesktopSignInText.SubmitButtonBusy : DesktopSignInText.SubmitButton)
+                    </button>
+                </div>
+            </section>
+        }
     </main>
 </div>
 
@@ -94,11 +130,27 @@
         StateHasChanged();
     }
 
+    private async Task SignOutAsync()
+    {
+        if (SignInViewModel.IsBusy)
+        {
+            return;
+        }
+
+        await SignInViewModel.SignOutAsync(CancellationToken.None);
+
+        StateHasChanged();
+    }
+
     private string GetHeaderStatusText()
     {
+        if (SignInViewModel.IsSignedIn)
+        {
+            return DesktopSignInText.HeaderStatusSignedIn;
+        }
+
         return SignInViewModel.LastResult.Status switch
         {
-            DesktopSignInStatus.Succeeded => DesktopSignInText.HeaderStatusSignedIn,
             DesktopSignInStatus.InProgress => DesktopSignInText.HeaderStatusBusy,
             _ => DesktopSignInText.HeaderStatus
         };
