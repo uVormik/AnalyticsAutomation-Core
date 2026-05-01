@@ -201,8 +201,34 @@ public static class DesktopUploadSectionText
     public const string PreUploadCheckBusinessObjectKeyLabel = "businessObjectKey";
     public const string PreUploadCheckCapturedAtUtcLabel = "capturedAtUtc";
     public const string PreUploadCheckDecisionLabel = "Решение";
+    public const string StepFiveTitle = "Шаг 5. Загрузка на сайт";
+    public const string SiteUploadNotReadyMessage =
+        "Нужны выбранный файл, SHA-256, businessObjectKey и решение ALLOW или ALLOW_WITH_REVIEW.";
+    public const string SiteUploadReadyMessage =
+        "Preview загрузки на сайт готов. В этом slice доступен только desktop-local dev boundary.";
+    public const string SiteUploadBlockedByPreUploadCheckMessage =
+        "Загрузка на сайт недоступна для блокирующего решения предварительной проверки.";
+    public const string SiteUploadInProgressMessage =
+        "Выполняется загрузка на сайт в desktop-local dev boundary.";
+    public const string SiteUploadDeferredMessage =
+        "Загрузка на сайт пока доступна только в dev-smoke режиме. Реальный provider будет добавлен отдельным approved slice.";
+    public const string SiteUploadSuccessDevMessage =
+        "Загрузка на сайт выполнена в dev-smoke режиме.";
+    public const string SiteUploadCanceledMessage = "Загрузка на сайт отменена.";
+    public const string SiteUploadButton = "Загрузить на сайт";
+    public const string SiteUploadBusyButton = "Загружается...";
+    public const string SiteUploadFileNameLabel = "Имя файла";
+    public const string SiteUploadFileSizeLabel = "Размер";
+    public const string SiteUploadContentTypeLabel = "Тип содержимого";
+    public const string SiteUploadSha256Label = "SHA-256";
+    public const string SiteUploadBusinessObjectKeyLabel = "businessObjectKey";
+    public const string SiteUploadPreUploadCheckDecisionLabel = "Решение PreUploadCheck";
+    public const string SiteUploadCapturedAtUtcLabel = "capturedAtUtc";
+    public const string SiteUploadResultStatusLabel = "status";
+    public const string SiteUploadExternalVideoIdLabel = "externalVideoId";
+    public const string SiteUploadSiteStorageKeyLabel = "siteStorageKey";
     public const string NextStepDeferredMessage =
-        "Следующий шаг отложен: direct site upload boundary будет добавлен отдельным approved desktop slice.";
+        "Следующий шаг отложен: UploadReceipt будет добавлен отдельным approved desktop slice.";
 }
 
 public sealed record DesktopUploadSelectedFile(

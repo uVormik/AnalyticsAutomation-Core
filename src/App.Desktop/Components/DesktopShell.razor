@@ -230,6 +230,79 @@
                                     </div>
                                 </dl>
                             }
+                        </div>
+
+                        <div class="desktop-upload__step">
+                            <h3>@DesktopUploadSectionText.StepFiveTitle</h3>
+                            <p
+                                id="desktop-upload-site-upload-status"
+                                class="desktop-upload__message"
+                                role="status"
+                                aria-live="polite">
+                                @UploadSectionViewModel.SiteUploadStatusMessage
+                            </p>
+
+                            @if (UploadSectionViewModel.SiteUploadRequestPreview is { } siteUploadPreview)
+                            {
+                                <dl class="desktop-upload__site-upload-preview">
+                                    <div>
+                                        <dt>@DesktopUploadSectionText.SiteUploadFileNameLabel</dt>
+                                        <dd>@siteUploadPreview.FileName</dd>
+                                    </div>
+                                    <div>
+                                        <dt>@DesktopUploadSectionText.SiteUploadFileSizeLabel</dt>
+                                        <dd>@siteUploadPreview.SizeBytes</dd>
+                                    </div>
+                                    <div>
+                                        <dt>@DesktopUploadSectionText.SiteUploadContentTypeLabel</dt>
+                                        <dd>@siteUploadPreview.ContentType</dd>
+                                    </div>
+                                    <div>
+                                        <dt>@DesktopUploadSectionText.SiteUploadSha256Label</dt>
+                                        <dd>@siteUploadPreview.Sha256Hex</dd>
+                                    </div>
+                                    <div>
+                                        <dt>@DesktopUploadSectionText.SiteUploadBusinessObjectKeyLabel</dt>
+                                        <dd>@siteUploadPreview.BusinessObjectKeyPreview</dd>
+                                    </div>
+                                    <div>
+                                        <dt>@DesktopUploadSectionText.SiteUploadPreUploadCheckDecisionLabel</dt>
+                                        <dd>@siteUploadPreview.PreUploadCheckDecisionPreview</dd>
+                                    </div>
+                                    <div>
+                                        <dt>@DesktopUploadSectionText.SiteUploadCapturedAtUtcLabel</dt>
+                                        <dd>@siteUploadPreview.CapturedAtUtc</dd>
+                                    </div>
+                                </dl>
+                            }
+
+                            <button
+                                class="desktop-upload__site-upload"
+                                type="button"
+                                disabled="@(SignInViewModel.IsBusy || !UploadSectionViewModel.CanUploadToSite)"
+                                @onclick="UploadToSiteAsync">
+                                @(UploadSectionViewModel.IsUploadingToSite
+                                    ? DesktopUploadSectionText.SiteUploadBusyButton
+                                    : DesktopUploadSectionText.SiteUploadButton)
+                            </button>
+
+                            @if (UploadSectionViewModel.HasSiteUploadResult)
+                            {
+                                <dl class="desktop-upload__site-upload-result">
+                                    <div>
+                                        <dt>@DesktopUploadSectionText.SiteUploadResultStatusLabel</dt>
+                                        <dd>@UploadSectionViewModel.SiteUploadStatusPreview</dd>
+                                    </div>
+                                    <div>
+                                        <dt>@DesktopUploadSectionText.SiteUploadExternalVideoIdLabel</dt>
+                                        <dd>@UploadSectionViewModel.SiteUploadExternalVideoId</dd>
+                                    </div>
+                                    <div>
+                                        <dt>@DesktopUploadSectionText.SiteUploadSiteStorageKeyLabel</dt>
+                                        <dd>@UploadSectionViewModel.SiteUploadSiteStorageKey</dd>
+                                    </div>
+                                </dl>
+                            }
 
                             <p class="desktop-upload__deferred">
                                 @DesktopUploadSectionText.NextStepDeferredMessage
@@ -400,6 +473,17 @@
         StateHasChanged();
 
         await checkAttempt;
+
+        StateHasChanged();
+    }
+
+    private async Task UploadToSiteAsync()
+    {
+        ValueTask<DesktopSiteUploadResult?> uploadAttempt =
+            UploadSectionViewModel.UploadToSiteAsync(CancellationToken.None);
+        StateHasChanged();
+
+        await uploadAttempt;
 
         StateHasChanged();
     }
