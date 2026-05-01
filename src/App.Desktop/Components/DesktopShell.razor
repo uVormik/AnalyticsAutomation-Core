@@ -1,5 +1,6 @@
 @inject IBlazorWebViewHostBoundary BlazorHostBoundary
 @inject DesktopSignInViewModel SignInViewModel
+@inject DesktopGroupTreeViewModel GroupTreeViewModel
 @inject DesktopUploadSectionViewModel UploadSectionViewModel
 @using App.Desktop.Services.Upload
 @using Microsoft.AspNetCore.Components.Web
@@ -34,7 +35,71 @@
                     </button>
                 </div>
 
-                @if (UploadSectionViewModel.IsUploadSectionOpen)
+                @if (UploadSectionViewModel.IsGroupTreeSectionOpen)
+                {
+                    <section class="desktop-group-tree" aria-labelledby="desktop-group-tree-title">
+                        <div class="desktop-group-tree__heading">
+                            <div>
+                                <h2 id="desktop-group-tree-title">@DesktopGroupTreeText.Title</h2>
+                                <p>@DesktopGroupTreeText.Description</p>
+                            </div>
+
+                            <button
+                                class="desktop-group-tree__back"
+                                type="button"
+                                disabled="@SignInViewModel.IsBusy"
+                                @onclick="BackToWorkspace">
+                                @DesktopGroupTreeText.BackToWorkspaceButton
+                            </button>
+                        </div>
+
+                        <p class="desktop-group-tree__message" role="status" aria-live="polite">
+                            @GroupTreeViewModel.StatusMessage
+                        </p>
+
+                        @if (GroupTreeViewModel.HasSelectedGroup)
+                        {
+                            <p class="desktop-group-tree__selected-message">
+                                @GroupTreeViewModel.SelectedGroupMessage
+                            </p>
+
+                            <dl class="desktop-group-tree__selection">
+                                <div>
+                                    <dt>@DesktopGroupTreeText.GroupIdLabel</dt>
+                                    <dd>@GroupTreeViewModel.SelectedGroup?.Id</dd>
+                                </div>
+                            </dl>
+
+                            <button
+                                class="desktop-group-tree__continue"
+                                type="button"
+                                disabled="@SignInViewModel.IsBusy"
+                                @onclick="ContinueToUploadWithGroupContext">
+                                @DesktopGroupTreeText.ContinueToUploadButton
+                            </button>
+                        }
+
+                        @if (GroupTreeViewModel.HasNodes)
+                        {
+                            <ul class="desktop-group-tree__nodes" aria-label="@DesktopGroupTreeText.Title">
+                                @foreach (DesktopGroupTreeNode node in GroupTreeViewModel.Nodes)
+                                {
+                                    <li class="@GetGroupTreeNodeClass(node)">
+                                        <span class="desktop-group-tree__node-name">@node.Preview</span>
+                                        <button
+                                            class="desktop-group-tree__select"
+                                            type="button"
+                                            disabled="@(SignInViewModel.IsBusy || !node.CanSelect)"
+                                            @onclick="() => SelectGroup(node.Id)">
+                                            @DesktopGroupTreeText.SelectGroupButton
+                                        </button>
+                                    </li>
+                                }
+                            </ul>
+                        }
+                    </section>
+                }
+                else if (UploadSectionViewModel.IsUploadSectionOpen)
                 {
                     <section class="desktop-upload" aria-labelledby="desktop-upload-title">
                         <div class="desktop-upload__heading">
@@ -50,6 +115,30 @@
                                 @onclick="BackToWorkspace">
                                 @DesktopUploadSectionText.BackToWorkspaceButton
                             </button>
+                        </div>
+
+                        <div class="desktop-upload__group-context">
+                            <h3>@DesktopUploadSectionText.GroupContextTitle</h3>
+
+                            @if (UploadSectionViewModel.HasSelectedGroupContext)
+                            {
+                                <dl class="desktop-upload__group-context-preview">
+                                    <div>
+                                        <dt>@DesktopUploadSectionText.GroupContextNameLabel</dt>
+                                        <dd>@UploadSectionViewModel.SelectedGroupDisplayName</dd>
+                                    </div>
+                                    <div>
+                                        <dt>@DesktopUploadSectionText.GroupContextIdLabel</dt>
+                                        <dd>@UploadSectionViewModel.SelectedGroupId</dd>
+                                    </div>
+                                </dl>
+                            }
+                            else
+                            {
+                                <p class="desktop-upload__message" role="status" aria-live="polite">
+                                    @UploadSectionViewModel.GroupContextStatusMessage
+                                </p>
+                            }
                         </div>
 
                         <div class="desktop-upload__step">
@@ -406,7 +495,7 @@
                                 type="button"
                                 disabled="@IsNavigationCardDisabled(card)"
                                 aria-disabled="@IsNavigationCardDisabled(card)"
-                                @onclick="() => OpenNavigationCard(card)">
+                                @onclick="() => OpenNavigationCardAsync(card)">
                                 <span class="desktop-navigation-card__title">@card.Title</span>
                                 <span class="desktop-navigation-card__message">@card.Message</span>
                             </button>
@@ -506,15 +595,29 @@
         }
 
         await SignInViewModel.SignOutAsync(CancellationToken.None);
+        GroupTreeViewModel.ResetForBackOrSignOut();
         UploadSectionViewModel.ResetForSignedOutState();
 
         StateHasChanged();
     }
 
-    private void OpenNavigationCard(DesktopNavigationPlaceholderCard card)
+    private async Task OpenNavigationCardAsync(DesktopNavigationPlaceholderCard card)
     {
         if (IsNavigationCardDisabled(card))
         {
+            return;
+        }
+
+        if (card.Target == DesktopNavigationCardTarget.GroupTreeSection)
+        {
+            UploadSectionViewModel.OpenGroupTreeSection();
+            ValueTask<DesktopGroupTreeLoadResult> loadAttempt =
+                GroupTreeViewModel.LoadAsync(CancellationToken.None);
+            StateHasChanged();
+
+            await loadAttempt;
+
+            StateHasChanged();
             return;
         }
 
@@ -523,7 +626,21 @@
 
     private void BackToWorkspace()
     {
+        GroupTreeViewModel.ResetForBackOrSignOut();
         UploadSectionViewModel.BackToWorkspace();
+    }
+
+    private void SelectGroup(string groupId)
+    {
+        GroupTreeViewModel.SelectGroup(groupId);
+    }
+
+    private void ContinueToUploadWithGroupContext()
+    {
+        if (GroupTreeViewModel.HasSelectedGroup)
+        {
+            UploadSectionViewModel.OpenUploadSection();
+        }
     }
 
     private async Task SelectVideoFileAsync()
@@ -613,7 +730,7 @@
 
     private static bool IsNavigationCardDisabled(DesktopNavigationPlaceholderCard card)
     {
-        return card.Target != DesktopNavigationCardTarget.UploadSection;
+        return card.Target == DesktopNavigationCardTarget.Deferred;
     }
 
     private static string GetNavigationCardClass(DesktopNavigationPlaceholderCard card)
@@ -621,5 +738,12 @@
         return IsNavigationCardDisabled(card)
             ? "desktop-navigation-card"
             : "desktop-navigation-card desktop-navigation-card--active";
+    }
+
+    private static string GetGroupTreeNodeClass(DesktopGroupTreeNode node)
+    {
+        return node.CanSelect
+            ? "desktop-group-tree__node desktop-group-tree__node--selectable"
+            : "desktop-group-tree__node";
     }
 }

@@ -37,6 +37,12 @@ public sealed class DesktopUploadSectionTests
         Assert.Equal(
             "Этот раздел показывает безопасные сведения о выбранном видеофайле. Реальная загрузка будет включена в следующем approved desktop slice.",
             DesktopUploadSectionText.Description);
+        Assert.Equal("Контекст группы", DesktopUploadSectionText.GroupContextTitle);
+        Assert.Equal(
+            "Группа не выбрана. Для production-flow выбор группы будет обязательным в отдельном slice.",
+            DesktopUploadSectionText.GroupContextMissingMessage);
+        Assert.Equal("Группа", DesktopUploadSectionText.GroupContextNameLabel);
+        Assert.Equal("safe key/id preview", DesktopUploadSectionText.GroupContextIdLabel);
         Assert.Equal("Шаг 1. Метаданные файла", DesktopUploadSectionText.StepOneTitle);
         Assert.Equal("Выбрать видеофайл", DesktopUploadSectionText.SelectVideoFileButton);
         Assert.Equal(
@@ -1378,6 +1384,10 @@ public sealed class DesktopUploadSectionTests
             DesktopUploadSectionText.Title,
             DesktopUploadSectionText.Description,
             DesktopUploadSectionText.NavigationCardMessage,
+            DesktopUploadSectionText.GroupContextTitle,
+            DesktopUploadSectionText.GroupContextMissingMessage,
+            DesktopUploadSectionText.GroupContextNameLabel,
+            DesktopUploadSectionText.GroupContextIdLabel,
             DesktopUploadSectionText.StepOneTitle,
             DesktopUploadSectionText.SelectVideoFileButton,
             DesktopUploadSectionText.PlaceholderResult,

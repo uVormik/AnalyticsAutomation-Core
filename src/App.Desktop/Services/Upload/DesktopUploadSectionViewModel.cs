@@ -1,4 +1,5 @@
 using App.Desktop.Boundaries;
+using App.Desktop.Services.GroupTree;
 
 namespace App.Desktop.Services.Upload;
 
@@ -8,6 +9,7 @@ public sealed class DesktopUploadSectionViewModel(
     IDesktopPreUploadCheckClient preUploadCheckClient,
     IDesktopDirectSiteUploadClient directSiteUploadClient,
     IDesktopUploadReceiptClient uploadReceiptClient,
+    DesktopGroupSelectionState groupSelectionState,
     DesktopUploadSectionOptions uploadSectionOptions)
 {
     public DesktopUploadSectionViewModel(
@@ -19,6 +21,7 @@ public sealed class DesktopUploadSectionViewModel(
             new DisabledDesktopPreUploadCheckClient(),
             new DisabledDesktopDirectSiteUploadClient(),
             new DisabledDesktopUploadReceiptClient(),
+            new DesktopGroupSelectionState(),
             DesktopUploadSectionOptions.Disabled)
     {
     }
@@ -33,6 +36,7 @@ public sealed class DesktopUploadSectionViewModel(
             new DisabledDesktopPreUploadCheckClient(),
             new DisabledDesktopDirectSiteUploadClient(),
             new DisabledDesktopUploadReceiptClient(),
+            new DesktopGroupSelectionState(),
             uploadSectionOptions)
     {
     }
@@ -49,6 +53,25 @@ public sealed class DesktopUploadSectionViewModel(
             preUploadCheckClient,
             directSiteUploadClient,
             new DisabledDesktopUploadReceiptClient(),
+            new DesktopGroupSelectionState(),
+            uploadSectionOptions)
+    {
+    }
+
+    public DesktopUploadSectionViewModel(
+        IDesktopVideoFilePicker videoFilePicker,
+        IDesktopVideoHashService videoHashService,
+        IDesktopPreUploadCheckClient preUploadCheckClient,
+        IDesktopDirectSiteUploadClient directSiteUploadClient,
+        IDesktopUploadReceiptClient uploadReceiptClient,
+        DesktopUploadSectionOptions uploadSectionOptions)
+        : this(
+            videoFilePicker,
+            videoHashService,
+            preUploadCheckClient,
+            directSiteUploadClient,
+            uploadReceiptClient,
+            new DesktopGroupSelectionState(),
             uploadSectionOptions)
     {
     }
@@ -63,6 +86,8 @@ public sealed class DesktopUploadSectionViewModel(
         directSiteUploadClient ?? throw new ArgumentNullException(nameof(directSiteUploadClient));
     private readonly IDesktopUploadReceiptClient _uploadReceiptClient =
         uploadReceiptClient ?? throw new ArgumentNullException(nameof(uploadReceiptClient));
+    private readonly DesktopGroupSelectionState _groupSelectionState =
+        groupSelectionState ?? throw new ArgumentNullException(nameof(groupSelectionState));
     private readonly DesktopUploadSectionOptions _uploadSectionOptions =
         uploadSectionOptions ?? throw new ArgumentNullException(nameof(uploadSectionOptions));
 
@@ -71,6 +96,8 @@ public sealed class DesktopUploadSectionViewModel(
     public DesktopWorkspaceSection CurrentSection { get; private set; } = DesktopWorkspaceSection.Workspace;
 
     public bool IsUploadSectionOpen => CurrentSection == DesktopWorkspaceSection.Upload;
+
+    public bool IsGroupTreeSectionOpen => CurrentSection == DesktopWorkspaceSection.GroupTree;
 
     public bool IsSelectingFile { get; private set; }
 
@@ -83,6 +110,18 @@ public sealed class DesktopUploadSectionViewModel(
     public bool IsCreatingUploadReceipt { get; private set; }
 
     public bool CanCalculateHash => SelectedFile is not null && !IsSelectingFile && !IsHashing;
+
+    public DesktopSelectedGroupContext? SelectedGroupContext => _groupSelectionState.SelectedGroup;
+
+    public bool HasSelectedGroupContext => SelectedGroupContext is not null;
+
+    public string GroupContextStatusMessage => HasSelectedGroupContext
+        ? string.Empty
+        : DesktopUploadSectionText.GroupContextMissingMessage;
+
+    public string? SelectedGroupDisplayName => SelectedGroupContext?.DisplayName;
+
+    public string? SelectedGroupId => SelectedGroupContext?.Id;
 
     public DesktopUploadSelectedFile? SelectedFile { get; private set; }
 
@@ -192,16 +231,23 @@ public sealed class DesktopUploadSectionViewModel(
         CurrentSection = DesktopWorkspaceSection.Upload;
     }
 
+    public void OpenGroupTreeSection()
+    {
+        CurrentSection = DesktopWorkspaceSection.GroupTree;
+    }
+
     public void BackToWorkspace()
     {
         CurrentSection = DesktopWorkspaceSection.Workspace;
         ResetSelection();
+        _groupSelectionState.Clear();
     }
 
     public void ResetForSignedOutState()
     {
         CurrentSection = DesktopWorkspaceSection.Workspace;
         ResetSelection();
+        _groupSelectionState.Clear();
     }
 
     public async ValueTask<DesktopUploadSelectedFile?> SelectVideoFileAsync(CancellationToken cancellationToken)

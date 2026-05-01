@@ -100,7 +100,7 @@ public static class DesktopSignedInShellText
 
     public static IReadOnlyList<DesktopNavigationPlaceholderCard> NavigationCards { get; } =
     [
-        new("Группы", DeferredPlaceholderMessage),
+        new(DesktopGroupTreeText.Title, DesktopGroupTreeText.NavigationCardMessage, DesktopNavigationCardTarget.GroupTreeSection),
         new("Загрузка видео", DesktopUploadSectionText.NavigationCardMessage, DesktopNavigationCardTarget.UploadSection),
         new("Проверка перед загрузкой", DeferredPlaceholderMessage),
         new("Квитанции загрузки", DeferredPlaceholderMessage)
@@ -122,12 +122,14 @@ public sealed record DesktopNavigationPlaceholderCard(
 public enum DesktopNavigationCardTarget
 {
     Deferred,
+    GroupTreeSection,
     UploadSection
 }
 
 public enum DesktopWorkspaceSection
 {
     Workspace,
+    GroupTree,
     Upload
 }
 
@@ -137,6 +139,11 @@ public static class DesktopUploadSectionText
     public const string Description =
         "Этот раздел показывает безопасные сведения о выбранном видеофайле. Реальная загрузка будет включена в следующем approved desktop slice.";
     public const string NavigationCardMessage = "Открыть заготовку выбора видеофайла.";
+    public const string GroupContextTitle = "Контекст группы";
+    public const string GroupContextMissingMessage =
+        "Группа не выбрана. Для production-flow выбор группы будет обязательным в отдельном slice.";
+    public const string GroupContextNameLabel = "Группа";
+    public const string GroupContextIdLabel = "safe key/id preview";
     public const string StepOneTitle = "Шаг 1. Метаданные файла";
     public const string SelectVideoFileButton = "Выбрать видеофайл";
     public const string PlaceholderResult = "Выберите видеофайл для безопасного предпросмотра.";
