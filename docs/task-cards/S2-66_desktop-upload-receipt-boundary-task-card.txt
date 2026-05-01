@@ -1,0 +1,131 @@
+Title:
+S2-66 Desktop UploadReceipt Request Preview / Fake Control-Plane Receipt Boundary
+
+Module:
+App.Desktop / UploadReceipt request preview fake boundary
+
+Owner:
+Coder 1 acting as Coder 2 / Desktop Client
+
+Client form:
+desktop standalone
+
+Type:
+narrow runtime desktop UI slice after S2-65 direct site upload fake result
+
+Status:
+Runtime task card created with implementation.
+
+Goal:
+Add a safe App.Desktop-local UploadReceipt request preview and a dev/fake UploadReceipt boundary for visual smoke only.
+
+Scope:
+- Keep the Russian SignIn UI and signed-in shell from S2-58 through S2-65.
+- Keep upload Step 1 file metadata, Step 2 SHA-256, Step 3 businessObjectKey placeholder, Step 4 PreUploadCheck preview/fake decision, and Step 5 direct site upload preview/fake result.
+- Add Step 6 "Квитанция загрузки".
+- Show UploadReceipt request preview built only from safe fields:
+  - file name without full local path;
+  - size;
+  - content type;
+  - SHA-256;
+  - businessObjectKey preview;
+  - PreUploadCheck decision;
+  - externalVideoId;
+  - siteStorageKey;
+  - site upload status;
+  - capturedAtUtc preview when available.
+- Add "Сформировать квитанцию".
+- When AA_DESKTOP_DEV_FAKE_UPLOAD_RECEIPT_ENABLED is not true, show the safe deferred Russian message and do not call App.Api.
+- When AA_DESKTOP_DEV_FAKE_UPLOAD_RECEIPT_ENABLED=true, call only the App.Desktop-local fake boundary and show ACCEPTED with:
+  - receiptId: visual-smoke-upload-receipt-001
+  - serverCorrelationId: visual-smoke-correlation-001
+
+Allowed changed areas:
+- docs/task-cards/S2-66_desktop-upload-receipt-boundary-task-card.txt
+- src/App.Desktop/**
+- tests/Unit/App.Desktop.Tests/**
+
+Forbidden changed areas:
+- src/App.Api/**
+- src/App.Worker/**
+- src/App.Web/**
+- src/App.Mobile.Android/**
+- src/App.UI.Shared/**
+- src/BuildingBlocks.Contracts/**
+- src/Modules/**
+- DB migrations
+- .github/workflows/**
+- deploy scripts
+- docs/ops/**
+- committed screenshots or runtime artifacts
+
+Contracts:
+none
+
+Migrations:
+none
+
+Feature flags/env guard:
+- Existing fake auth visual-smoke guard:
+  AA_DESKTOP_DEV_FAKE_AUTH_ENABLED=true
+- Existing fake picker visual-smoke guard:
+  AA_DESKTOP_DEV_FAKE_UPLOAD_FILE_ENABLED=true
+- Existing fake hash visual-smoke guard:
+  AA_DESKTOP_DEV_FAKE_UPLOAD_HASH_ENABLED=true
+- Existing fake businessObjectKey visual-smoke guard:
+  AA_DESKTOP_DEV_FAKE_BUSINESS_OBJECT_KEY_ENABLED=true
+- Existing fake PreUploadCheck visual-smoke guard:
+  AA_DESKTOP_DEV_FAKE_PREUPLOAD_CHECK_ENABLED=true
+- Existing fake site upload visual-smoke guard:
+  AA_DESKTOP_DEV_FAKE_SITE_UPLOAD_ENABLED=true
+- New fake UploadReceipt visual-smoke guard:
+  AA_DESKTOP_DEV_FAKE_UPLOAD_RECEIPT_ENABLED=true
+
+Events:
+none
+
+Offline behavior:
+none
+
+Security guardrails:
+- App.Api remains control plane.
+- Do not send video bytes through App.Api.
+- Do not call App.Api for UploadReceipt in S2-66.
+- Do not create a server receipt in S2-66.
+- Do not read file contents for upload in S2-66.
+- Do not send video bytes anywhere in S2-66.
+- Do not add backend DTOs, shared contracts, API routes, migrations, deploy changes, App.Web changes, or App.Mobile.Android changes.
+- Do not display full local file paths, password, accessToken, refreshToken, Authorization, raw session id, raw response body, or token-like values.
+- Screenshots and runtime artifacts stay under C:\CODEX\Temp and are not committed.
+
+Deferred:
+Real App.Api UploadReceipt integration is not implemented in S2-66. The real control-plane UploadReceipt client remains a separate approved slice after request/DTO reuse and backend binding are agreed.
+
+Rollback:
+revert S2-66 PR
+
+Validation:
+- git diff --check
+- dotnet restore AnalyticsAutomation-Core.sln -nologo
+- dotnet format whitespace AnalyticsAutomation-Core.sln --verify-no-changes --no-restore
+- dotnet build src/App.Desktop/App.Desktop.csproj -nologo -v minimal
+- dotnet build AnalyticsAutomation-Core.sln -nologo -v minimal
+- dotnet test tests/Unit/App.Desktop.Tests/App.Desktop.Tests.csproj -nologo -v minimal
+- hidden/control Unicode scan over changed text files
+- App.Desktop fake-auth/fake-picker/fake-hash/fake-businessObjectKey/fake-PreUploadCheck/fake-site-upload/fake-UploadReceipt visual smoke with screenshots
+
+Definition of done:
+- Step 6 "Квитанция загрузки" is visible in the upload section.
+- UploadReceipt request preview appears only after selected file, SHA-256, businessObjectKey, ALLOW or ALLOW_WITH_REVIEW PreUploadCheck decision, and successful site upload result.
+- Preview shows only safe file name, size, content type, SHA-256, businessObjectKey, PreUploadCheck decision, externalVideoId, siteStorageKey, site upload status, and capturedAtUtc preview.
+- Preview never shows a full local path.
+- Fake UploadReceipt is disabled by default.
+- Fake UploadReceipt is enabled only by AA_DESKTOP_DEV_FAKE_UPLOAD_RECEIPT_ENABLED=true in debug/dev-test visual smoke.
+- Disabled fake UploadReceipt shows the safe deferred Russian message and does not call App.Api.
+- Enabled fake UploadReceipt shows ACCEPTED, receiptId visual-smoke-upload-receipt-001, and serverCorrelationId visual-smoke-correlation-001.
+- BLOCK_HARD_DUPLICATE and BLOCK_POSSIBLE_FALSIFICATION decisions do not allow the receipt action.
+- Missing or failed site upload does not allow the receipt action.
+- Back/sign-out clear UploadReceipt preview/result state.
+- No real App.Api UploadReceipt call, server receipt creation, backend contract, migration, deploy, App.Web, or App.Mobile.Android change is introduced.
+- Automated App.Desktop tests cover env guard behavior, safe preview, fake result, blocked decisions, reset behavior, forbidden call patterns, and visible-string safety.
+- Required visual-smoke screenshots are saved under C:\CODEX\Temp and kept out of git.

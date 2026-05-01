@@ -139,13 +139,45 @@ public sealed class DesktopUploadSectionTests
         Assert.Equal("status", DesktopUploadSectionText.SiteUploadResultStatusLabel);
         Assert.Equal("externalVideoId", DesktopUploadSectionText.SiteUploadExternalVideoIdLabel);
         Assert.Equal("siteStorageKey", DesktopUploadSectionText.SiteUploadSiteStorageKeyLabel);
+        Assert.Equal("Шаг 6. Квитанция загрузки", DesktopUploadSectionText.StepSixTitle);
         Assert.Equal(
-            "Следующий шаг отложен: UploadReceipt будет добавлен отдельным approved desktop slice.",
+            "Нужны выбранный файл, SHA-256, businessObjectKey, решение ALLOW или ALLOW_WITH_REVIEW и успешная загрузка на сайт.",
+            DesktopUploadSectionText.UploadReceiptNotReadyMessage);
+        Assert.Equal(
+            "Preview квитанции загрузки готов. В этом slice доступен только desktop-local dev boundary.",
+            DesktopUploadSectionText.UploadReceiptReadyMessage);
+        Assert.Equal(
+            "Формируется квитанция загрузки в desktop-local dev boundary.",
+            DesktopUploadSectionText.UploadReceiptInProgressMessage);
+        Assert.Equal(
+            "Квитанция загрузки пока доступна только в dev-smoke режиме. Реальный вызов App.Api будет добавлен отдельным approved slice.",
+            DesktopUploadSectionText.UploadReceiptDeferredMessage);
+        Assert.Equal(
+            "Квитанция загрузки сформирована в dev-smoke режиме.",
+            DesktopUploadSectionText.UploadReceiptAcceptedDevMessage);
+        Assert.Equal("Формирование квитанции загрузки отменено.", DesktopUploadSectionText.UploadReceiptCanceledMessage);
+        Assert.Equal("Сформировать квитанцию", DesktopUploadSectionText.UploadReceiptButton);
+        Assert.Equal("Формируется...", DesktopUploadSectionText.UploadReceiptBusyButton);
+        Assert.Equal("Имя файла", DesktopUploadSectionText.UploadReceiptFileNameLabel);
+        Assert.Equal("Размер", DesktopUploadSectionText.UploadReceiptFileSizeLabel);
+        Assert.Equal("Тип содержимого", DesktopUploadSectionText.UploadReceiptContentTypeLabel);
+        Assert.Equal("SHA-256", DesktopUploadSectionText.UploadReceiptSha256Label);
+        Assert.Equal("businessObjectKey", DesktopUploadSectionText.UploadReceiptBusinessObjectKeyLabel);
+        Assert.Equal("Решение PreUploadCheck", DesktopUploadSectionText.UploadReceiptPreUploadCheckDecisionLabel);
+        Assert.Equal("externalVideoId", DesktopUploadSectionText.UploadReceiptExternalVideoIdLabel);
+        Assert.Equal("siteStorageKey", DesktopUploadSectionText.UploadReceiptSiteStorageKeyLabel);
+        Assert.Equal("status загрузки на сайт", DesktopUploadSectionText.UploadReceiptSiteUploadStatusLabel);
+        Assert.Equal("capturedAtUtc", DesktopUploadSectionText.UploadReceiptCapturedAtUtcLabel);
+        Assert.Equal("status", DesktopUploadSectionText.UploadReceiptResultStatusLabel);
+        Assert.Equal("receiptId", DesktopUploadSectionText.UploadReceiptResultReceiptIdLabel);
+        Assert.Equal("serverCorrelationId", DesktopUploadSectionText.UploadReceiptResultServerCorrelationIdLabel);
+        Assert.Equal(
+            "Следующий шаг отложен: реальный control-plane UploadReceipt client будет добавлен отдельным approved desktop slice.",
             DesktopUploadSectionText.NextStepDeferredMessage);
     }
 
     [Fact]
-    public void UploadSectionDoesNotReferenceApiUploadReceiptOrByteSendingBoundaries()
+    public void UploadSectionDoesNotReferenceRealAppApiReceiptUploadOrByteSendingBoundaries()
     {
         string[] sourceFiles =
         [
@@ -162,11 +194,15 @@ public sealed class DesktopUploadSectionTests
             Path.Combine(FindRepositoryRoot(), "src", "App.Desktop", "Services", "Upload", "DesktopSiteUpload.cs"),
             Path.Combine(FindRepositoryRoot(), "src", "App.Desktop", "Services", "Upload", "DisabledDesktopDirectSiteUploadClient.cs"),
             Path.Combine(FindRepositoryRoot(), "src", "App.Desktop", "Services", "Upload", "FakeDesktopDirectSiteUploadClient.cs"),
+            Path.Combine(FindRepositoryRoot(), "src", "App.Desktop", "Services", "Upload", "DesktopUploadReceipt.cs"),
+            Path.Combine(FindRepositoryRoot(), "src", "App.Desktop", "Services", "Upload", "DisabledDesktopUploadReceiptClient.cs"),
+            Path.Combine(FindRepositoryRoot(), "src", "App.Desktop", "Services", "Upload", "FakeDesktopUploadReceiptClient.cs"),
             Path.Combine(FindRepositoryRoot(), "src", "App.Desktop", "Services", "Upload", "WpfDesktopVideoFilePicker.cs"),
             Path.Combine(FindRepositoryRoot(), "src", "App.Desktop", "Boundaries", "DesktopVideoFilePickerBoundary.cs"),
             Path.Combine(FindRepositoryRoot(), "src", "App.Desktop", "Boundaries", "DesktopVideoHashBoundary.cs"),
             Path.Combine(FindRepositoryRoot(), "src", "App.Desktop", "Boundaries", "DesktopPreUploadCheckBoundary.cs"),
-            Path.Combine(FindRepositoryRoot(), "src", "App.Desktop", "Boundaries", "DesktopDirectSiteUploadBoundary.cs")
+            Path.Combine(FindRepositoryRoot(), "src", "App.Desktop", "Boundaries", "DesktopDirectSiteUploadBoundary.cs"),
+            Path.Combine(FindRepositoryRoot(), "src", "App.Desktop", "Boundaries", "DesktopUploadReceiptBoundary.cs")
         ];
 
         foreach (string sourceFile in sourceFiles)
@@ -180,25 +216,29 @@ public sealed class DesktopUploadSectionTests
             Assert.DoesNotContain("ControlPlanePreUploadCheckRequest", source, StringComparison.Ordinal);
             Assert.DoesNotContain("RecordUploadReceiptAsync", source, StringComparison.Ordinal);
             Assert.DoesNotContain("ControlPlaneUploadReceiptDraft", source, StringComparison.Ordinal);
-            Assert.DoesNotContain("UploadReceipt", source, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("HttpDesktopUploadReceipt", source, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("PostAsync", source, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("SendAsync", source, StringComparison.OrdinalIgnoreCase);
             Assert.DoesNotContain("ReadAllBytes", source, StringComparison.OrdinalIgnoreCase);
             Assert.DoesNotContain("ReadAllBytesAsync", source, StringComparison.OrdinalIgnoreCase);
         }
     }
 
     [Fact]
-    public void FakeUploadFileSelectionHashBusinessObjectKeyPreUploadCheckAndSiteUploadAreDevOnlyAndDisabledByDefault()
+    public void FakeUploadFileSelectionHashBusinessObjectKeyPreUploadCheckSiteUploadAndUploadReceiptAreDevOnlyAndDisabledByDefault()
     {
         Assert.False(DesktopUploadSectionOptions.Disabled.IsDevFakeUploadFileEnabled);
         Assert.False(DesktopUploadSectionOptions.Disabled.IsDevFakeUploadHashEnabled);
         Assert.False(DesktopUploadSectionOptions.Disabled.IsDevFakeBusinessObjectKeyEnabled);
         Assert.False(DesktopUploadSectionOptions.Disabled.IsDevFakePreUploadCheckEnabled);
         Assert.False(DesktopUploadSectionOptions.Disabled.IsDevFakeSiteUploadEnabled);
+        Assert.False(DesktopUploadSectionOptions.Disabled.IsDevFakeUploadReceiptEnabled);
         Assert.False(DesktopUploadSectionOptions.FromEnvironmentValue(null).IsDevFakeUploadFileEnabled);
         Assert.False(DesktopUploadSectionOptions.FromEnvironmentValue(null).IsDevFakeUploadHashEnabled);
         Assert.False(DesktopUploadSectionOptions.FromEnvironmentValue(null).IsDevFakeBusinessObjectKeyEnabled);
         Assert.False(DesktopUploadSectionOptions.FromEnvironmentValue(null).IsDevFakePreUploadCheckEnabled);
         Assert.False(DesktopUploadSectionOptions.FromEnvironmentValue(null).IsDevFakeSiteUploadEnabled);
+        Assert.False(DesktopUploadSectionOptions.FromEnvironmentValue(null).IsDevFakeUploadReceiptEnabled);
         Assert.False(DesktopUploadSectionOptions.FromEnvironmentValue("false").IsDevFakeUploadFileEnabled);
         Assert.False(DesktopUploadSectionOptions.FromEnvironmentValue("false", "false").IsDevFakeUploadHashEnabled);
         Assert.False(DesktopUploadSectionOptions.FromEnvironmentValue("false", "false", "false").IsDevFakeBusinessObjectKeyEnabled);
@@ -206,6 +246,8 @@ public sealed class DesktopUploadSectionTests
             .IsDevFakePreUploadCheckEnabled);
         Assert.False(DesktopUploadSectionOptions.FromEnvironmentValue("false", "false", "false", "false", "false")
             .IsDevFakeSiteUploadEnabled);
+        Assert.False(DesktopUploadSectionOptions.FromEnvironmentValue("false", "false", "false", "false", "false", "false")
+            .IsDevFakeUploadReceiptEnabled);
 
 #if DEBUG
         Assert.True(DesktopUploadSectionOptions.FromEnvironmentValue("true").IsDevFakeUploadFileEnabled);
@@ -221,6 +263,10 @@ public sealed class DesktopUploadSectionTests
             .IsDevFakeSiteUploadEnabled);
         Assert.True(DesktopUploadSectionOptions.FromEnvironmentValue("true", "true", "true", "true", "true")
             .IsDevFakeSiteUploadEnabled);
+        Assert.True(DesktopUploadSectionOptions.FromEnvironmentValue("false", "false", "false", "false", "false", "true")
+            .IsDevFakeUploadReceiptEnabled);
+        Assert.True(DesktopUploadSectionOptions.FromEnvironmentValue("true", "true", "true", "true", "true", "true")
+            .IsDevFakeUploadReceiptEnabled);
 #else
         Assert.False(DesktopUploadSectionOptions.FromEnvironmentValue("true").IsDevFakeUploadFileEnabled);
         Assert.False(DesktopUploadSectionOptions.FromEnvironmentValue("false", "true").IsDevFakeUploadHashEnabled);
@@ -235,6 +281,10 @@ public sealed class DesktopUploadSectionTests
             .IsDevFakeSiteUploadEnabled);
         Assert.False(DesktopUploadSectionOptions.FromEnvironmentValue("true", "true", "true", "true", "true")
             .IsDevFakeSiteUploadEnabled);
+        Assert.False(DesktopUploadSectionOptions.FromEnvironmentValue("false", "false", "false", "false", "false", "true")
+            .IsDevFakeUploadReceiptEnabled);
+        Assert.False(DesktopUploadSectionOptions.FromEnvironmentValue("true", "true", "true", "true", "true", "true")
+            .IsDevFakeUploadReceiptEnabled);
 #endif
     }
 
@@ -816,7 +866,8 @@ public sealed class DesktopUploadSectionTests
             new FakeDesktopVideoHashService(),
             new FakeDesktopPreUploadCheckClient(),
             new FakeDesktopDirectSiteUploadClient(),
-            DesktopUploadSectionOptions.FromEnvironmentValue("false", "false", "false", "true", "true"));
+            new FakeDesktopUploadReceiptClient(),
+            DesktopUploadSectionOptions.FromEnvironmentValue("false", "false", "false", "true", "true", "true"));
 
         _ = await PreparePreUploadCheckPreviewAsync(viewModel, "report-draft-001");
         _ = await viewModel.CheckPreUploadAsync(CancellationToken.None);
@@ -837,6 +888,268 @@ public sealed class DesktopUploadSectionTests
 #else
         Assert.Null(result);
         Assert.False(viewModel.HasSiteUploadResult);
+#endif
+    }
+
+    [Fact]
+    public async Task UploadReceiptActionRequiresSelectedFileSha256BusinessObjectKeyAllowedPreUploadCheckAndSuccessfulSiteUpload()
+    {
+        var viewModel = CreateViewModel(
+            new FakeDesktopVideoFilePicker(),
+            new FakeDesktopVideoHashService(),
+            new FakeDesktopPreUploadCheckClient(),
+            new FakeDesktopDirectSiteUploadClient(),
+            new FakeDesktopUploadReceiptClient(),
+            DesktopUploadSectionOptions.FromEnvironmentValue("false", "false", "false", "true", "true", "false"));
+
+        Assert.Null(viewModel.UploadReceiptRequestPreview);
+        Assert.False(viewModel.HasUploadReceiptRequestPreview);
+        Assert.False(viewModel.CanCreateUploadReceipt);
+
+        _ = await viewModel.SelectVideoFileAsync(CancellationToken.None);
+        _ = await viewModel.CalculateSha256Async(CancellationToken.None);
+        viewModel.BusinessObjectKeyInput = "report-draft-001";
+        _ = viewModel.ApplyBusinessObjectKey();
+        _ = await viewModel.CheckPreUploadAsync(CancellationToken.None);
+
+#if DEBUG
+        Assert.NotNull(viewModel.SiteUploadRequestPreview);
+        Assert.Null(viewModel.UploadReceiptRequestPreview);
+        Assert.False(viewModel.CanCreateUploadReceipt);
+
+        _ = await viewModel.UploadToSiteAsync(CancellationToken.None);
+
+        Assert.NotNull(viewModel.UploadReceiptRequestPreview);
+        Assert.True(viewModel.HasUploadReceiptRequestPreview);
+        Assert.True(viewModel.CanCreateUploadReceipt);
+        Assert.Equal(DesktopUploadSectionText.UploadReceiptReadyMessage, viewModel.UploadReceiptStatusMessage);
+#else
+        Assert.Null(viewModel.UploadReceiptRequestPreview);
+        Assert.False(viewModel.CanCreateUploadReceipt);
+#endif
+    }
+
+    [Fact]
+    public async Task UploadReceiptRequestPreviewShowsOnlySafeFields()
+    {
+        var viewModel = CreateViewModel(new StaticDesktopVideoFilePicker(
+            DesktopVideoFilePickerResult.Selected(
+                Path.Combine("private-folder", "nested", "safe-preview.mp4"),
+                42,
+                "video/mp4",
+                DesktopVideoHashSource.VisualSmoke)),
+            new FakeDesktopVideoHashService(),
+            new FakeDesktopPreUploadCheckClient(),
+            new FakeDesktopDirectSiteUploadClient(),
+            new DisabledDesktopUploadReceiptClient(),
+            DesktopUploadSectionOptions.FromEnvironmentValue("false", "false", "false", "true", "true", "false"));
+
+        _ = await PrepareSuccessfulSiteUploadAsync(viewModel, " report-draft-001 ");
+
+#if DEBUG
+        DesktopUploadReceiptRequestPreview preview =
+            viewModel.UploadReceiptRequestPreview ?? throw new InvalidOperationException("UploadReceipt preview was not created.");
+
+        Assert.Equal("safe-preview.mp4", preview.FileName);
+        Assert.Equal(42, preview.SizeBytes);
+        Assert.Equal("video/mp4", preview.ContentType);
+        Assert.Equal(FakeDesktopVideoHashService.VisualSmokeSha256Hex, preview.Sha256Hex);
+        Assert.Equal("report-draft-001", preview.BusinessObjectKeyPreview);
+        Assert.Equal("ALLOW", preview.PreUploadCheckDecisionPreview);
+        Assert.Equal("visual-smoke-external-video-001", preview.ExternalVideoId);
+        Assert.Equal("visual-smoke/site/video-001", preview.SiteStorageKey);
+        Assert.Equal("SUCCESS", preview.SiteUploadStatusPreview);
+        Assert.Equal(DesktopPreUploadCheckRequestPreview.CapturedAtUtcPlaceholder, preview.CapturedAtUtc);
+#else
+        Assert.Null(viewModel.UploadReceiptRequestPreview);
+#endif
+    }
+
+    [Fact]
+    public async Task UploadReceiptRequestPreviewDoesNotShowFullLocalPath()
+    {
+        string privateFolder = "operator-private-upload-receipt-source";
+        string localPath = Path.Combine(Path.GetTempPath(), privateFolder, "safe-preview.mp4");
+        var viewModel = CreateViewModel(new StaticDesktopVideoFilePicker(
+            DesktopVideoFilePickerResult.Selected(
+                localPath,
+                42,
+                "video/mp4",
+                DesktopVideoHashSource.VisualSmoke)),
+            new FakeDesktopVideoHashService(),
+            new FakeDesktopPreUploadCheckClient(),
+            new FakeDesktopDirectSiteUploadClient(),
+            new DisabledDesktopUploadReceiptClient(),
+            DesktopUploadSectionOptions.FromEnvironmentValue("false", "false", "false", "true", "true", "false"));
+
+        _ = await PrepareSuccessfulSiteUploadAsync(viewModel, "report-draft-001");
+
+#if DEBUG
+        DesktopUploadReceiptRequestPreview preview =
+            viewModel.UploadReceiptRequestPreview ?? throw new InvalidOperationException("UploadReceipt preview was not created.");
+        string visibleState = preview.ToString()
+            + " "
+            + viewModel.UploadReceiptStatusMessage
+            + " "
+            + (viewModel.UploadReceiptStatusPreview ?? string.Empty);
+
+        Assert.Equal("safe-preview.mp4", preview.FileName);
+        Assert.DoesNotContain(Path.GetTempPath(), visibleState, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(privateFolder, visibleState, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(@"\", preview.FileName, StringComparison.Ordinal);
+        Assert.DoesNotContain("/", preview.FileName, StringComparison.Ordinal);
+#else
+        Assert.Null(viewModel.UploadReceiptRequestPreview);
+#endif
+    }
+
+    [Fact]
+    public async Task DisabledUploadReceiptShowsSafeDeferredMessageAndDoesNotCallBoundary()
+    {
+        var uploadReceiptClient = new ThrowingDesktopUploadReceiptClient();
+        var viewModel = CreateViewModel(
+            new FakeDesktopVideoFilePicker(),
+            new FakeDesktopVideoHashService(),
+            new FakeDesktopPreUploadCheckClient(),
+            new FakeDesktopDirectSiteUploadClient(),
+            uploadReceiptClient,
+            DesktopUploadSectionOptions.FromEnvironmentValue("false", "false", "false", "true", "true", "false"));
+
+        _ = await PrepareSuccessfulSiteUploadAsync(viewModel, "report-draft-001");
+
+        DesktopUploadReceiptResult? result = await viewModel.CreateUploadReceiptAsync(CancellationToken.None);
+
+#if DEBUG
+        Assert.NotNull(result);
+        Assert.Equal(DesktopUploadReceiptStatus.Deferred, result.Status);
+        Assert.Null(result.StatusPreview);
+        Assert.Null(result.ReceiptId);
+        Assert.Null(result.ServerCorrelationId);
+        Assert.Equal(DesktopUploadSectionText.UploadReceiptDeferredMessage, viewModel.UploadReceiptStatusMessage);
+        Assert.Equal(0, uploadReceiptClient.CallCount);
+#else
+        Assert.Null(result);
+        Assert.Equal(0, uploadReceiptClient.CallCount);
+#endif
+    }
+
+    [Fact]
+    public async Task EnabledUploadReceiptShowsFakeAcceptedResult()
+    {
+        var viewModel = CreateViewModel(
+            new FakeDesktopVideoFilePicker(),
+            new FakeDesktopVideoHashService(),
+            new FakeDesktopPreUploadCheckClient(),
+            new FakeDesktopDirectSiteUploadClient(),
+            new FakeDesktopUploadReceiptClient(),
+            DesktopUploadSectionOptions.FromEnvironmentValue("false", "false", "false", "true", "true", "true"));
+
+        _ = await PrepareSuccessfulSiteUploadAsync(viewModel, "report-draft-001");
+
+        DesktopUploadReceiptResult? result = await viewModel.CreateUploadReceiptAsync(CancellationToken.None);
+
+#if DEBUG
+        Assert.NotNull(result);
+        Assert.Equal(DesktopUploadReceiptStatus.Accepted, result.Status);
+        Assert.Equal("ACCEPTED", result.StatusPreview);
+        Assert.Equal("visual-smoke-upload-receipt-001", result.ReceiptId);
+        Assert.Equal("visual-smoke-correlation-001", result.ServerCorrelationId);
+        Assert.True(viewModel.HasUploadReceiptResult);
+        Assert.Equal("ACCEPTED", viewModel.UploadReceiptStatusPreview);
+        Assert.Equal("visual-smoke-upload-receipt-001", viewModel.UploadReceiptId);
+        Assert.Equal("visual-smoke-correlation-001", viewModel.UploadReceiptServerCorrelationId);
+        Assert.Equal(DesktopUploadSectionText.UploadReceiptAcceptedDevMessage, viewModel.UploadReceiptStatusMessage);
+#else
+        Assert.Null(result);
+        Assert.False(viewModel.HasUploadReceiptResult);
+#endif
+    }
+
+    [Theory]
+    [InlineData(DesktopPreUploadCheckDecision.Allow, true, "ALLOW")]
+    [InlineData(DesktopPreUploadCheckDecision.AllowWithReview, true, "ALLOW_WITH_REVIEW")]
+    [InlineData(DesktopPreUploadCheckDecision.BlockHardDuplicate, false, "BLOCK_HARD_DUPLICATE")]
+    [InlineData(DesktopPreUploadCheckDecision.BlockPossibleFalsification, false, "BLOCK_POSSIBLE_FALSIFICATION")]
+    public async Task UploadReceiptActionAllowsOnlyAllowedPreUploadCheckDecisionsAndSuccessfulSiteUpload(
+        DesktopPreUploadCheckDecision decision,
+        bool expectedCanCreateReceipt,
+        string expectedDecisionPreview)
+    {
+        var uploadReceiptClient = new ThrowingDesktopUploadReceiptClient();
+        var viewModel = CreateViewModel(
+            new FakeDesktopVideoFilePicker(),
+            new FakeDesktopVideoHashService(),
+            new FakeDesktopPreUploadCheckClient(decision),
+            new FakeDesktopDirectSiteUploadClient(),
+            uploadReceiptClient,
+            DesktopUploadSectionOptions.FromEnvironmentValue("false", "false", "false", "true", "true", "true"));
+
+        _ = await PreparePreUploadCheckPreviewAsync(viewModel, "report-draft-001");
+        _ = await viewModel.CheckPreUploadAsync(CancellationToken.None);
+
+#if DEBUG
+        Assert.Equal(expectedDecisionPreview, viewModel.PreUploadCheckDecisionPreview);
+
+        if (expectedCanCreateReceipt)
+        {
+            _ = await viewModel.UploadToSiteAsync(CancellationToken.None);
+            Assert.True(viewModel.HasSiteUploadResult);
+            Assert.NotNull(viewModel.UploadReceiptRequestPreview);
+            Assert.Equal(expectedDecisionPreview, viewModel.UploadReceiptRequestPreview.PreUploadCheckDecisionPreview);
+            Assert.True(viewModel.CanCreateUploadReceipt);
+            Assert.Equal(DesktopUploadSectionText.UploadReceiptReadyMessage, viewModel.UploadReceiptStatusMessage);
+        }
+        else
+        {
+            Assert.False(viewModel.CanUploadToSite);
+            Assert.Null(viewModel.SiteUploadRequestPreview);
+            Assert.Null(viewModel.UploadReceiptRequestPreview);
+            Assert.False(viewModel.CanCreateUploadReceipt);
+            DesktopUploadReceiptResult? result = await viewModel.CreateUploadReceiptAsync(CancellationToken.None);
+            Assert.Null(result);
+            Assert.Equal(0, uploadReceiptClient.CallCount);
+            Assert.Equal(DesktopUploadSectionText.UploadReceiptNotReadyMessage, viewModel.UploadReceiptStatusMessage);
+        }
+#else
+        Assert.Null(viewModel.UploadReceiptRequestPreview);
+        Assert.False(viewModel.CanCreateUploadReceipt);
+#endif
+    }
+
+    [Fact]
+    public async Task MissingOrFailedSiteUploadDoesNotAllowUploadReceiptAction()
+    {
+        var uploadReceiptClient = new ThrowingDesktopUploadReceiptClient();
+        var viewModel = CreateViewModel(
+            new FakeDesktopVideoFilePicker(),
+            new FakeDesktopVideoHashService(),
+            new FakeDesktopPreUploadCheckClient(),
+            new DisabledDesktopDirectSiteUploadClient(),
+            uploadReceiptClient,
+            DesktopUploadSectionOptions.FromEnvironmentValue("false", "false", "false", "true", "false", "true"));
+
+        _ = await PreparePreUploadCheckPreviewAsync(viewModel, "report-draft-001");
+        _ = await viewModel.CheckPreUploadAsync(CancellationToken.None);
+
+#if DEBUG
+        Assert.NotNull(viewModel.SiteUploadRequestPreview);
+        Assert.False(viewModel.HasSiteUploadResult);
+        Assert.Null(viewModel.UploadReceiptRequestPreview);
+        Assert.False(viewModel.CanCreateUploadReceipt);
+
+        _ = await viewModel.UploadToSiteAsync(CancellationToken.None);
+
+        Assert.False(viewModel.HasSiteUploadResult);
+        Assert.Null(viewModel.UploadReceiptRequestPreview);
+        Assert.False(viewModel.CanCreateUploadReceipt);
+
+        DesktopUploadReceiptResult? result = await viewModel.CreateUploadReceiptAsync(CancellationToken.None);
+        Assert.Null(result);
+        Assert.Equal(0, uploadReceiptClient.CallCount);
+        Assert.Equal(DesktopUploadSectionText.UploadReceiptNotReadyMessage, viewModel.UploadReceiptStatusMessage);
+#else
+        Assert.Null(viewModel.UploadReceiptRequestPreview);
+        Assert.False(viewModel.CanCreateUploadReceipt);
 #endif
     }
 
@@ -949,7 +1262,8 @@ public sealed class DesktopUploadSectionTests
             new FakeDesktopVideoHashService(),
             new FakeDesktopPreUploadCheckClient(),
             new FakeDesktopDirectSiteUploadClient(),
-            DesktopUploadSectionOptions.FromEnvironmentValue("false", "false", "false", "true", "true"));
+            new FakeDesktopUploadReceiptClient(),
+            DesktopUploadSectionOptions.FromEnvironmentValue("false", "false", "false", "true", "true", "true"));
 
         viewModel.OpenUploadSection();
         _ = await viewModel.SelectVideoFileAsync(CancellationToken.None);
@@ -958,10 +1272,13 @@ public sealed class DesktopUploadSectionTests
         _ = viewModel.ApplyBusinessObjectKey();
         _ = await viewModel.CheckPreUploadAsync(CancellationToken.None);
         _ = await viewModel.UploadToSiteAsync(CancellationToken.None);
+        _ = await viewModel.CreateUploadReceiptAsync(CancellationToken.None);
 
 #if DEBUG
         Assert.NotNull(viewModel.SiteUploadRequestPreview);
         Assert.True(viewModel.HasSiteUploadResult);
+        Assert.NotNull(viewModel.UploadReceiptRequestPreview);
+        Assert.True(viewModel.HasUploadReceiptResult);
 #endif
 
         viewModel.ResetForSignedOutState();
@@ -987,6 +1304,12 @@ public sealed class DesktopUploadSectionTests
         Assert.Null(viewModel.SiteUploadExternalVideoId);
         Assert.Null(viewModel.SiteUploadSiteStorageKey);
         Assert.Equal(DesktopUploadSectionText.SiteUploadNotReadyMessage, viewModel.SiteUploadStatusMessage);
+        Assert.Null(viewModel.UploadReceiptRequestPreview);
+        Assert.Null(viewModel.UploadReceiptResult);
+        Assert.Null(viewModel.UploadReceiptStatusPreview);
+        Assert.Null(viewModel.UploadReceiptId);
+        Assert.Null(viewModel.UploadReceiptServerCorrelationId);
+        Assert.Equal(DesktopUploadSectionText.UploadReceiptNotReadyMessage, viewModel.UploadReceiptStatusMessage);
     }
 
     [Fact]
@@ -997,7 +1320,8 @@ public sealed class DesktopUploadSectionTests
             new FakeDesktopVideoHashService(),
             new FakeDesktopPreUploadCheckClient(),
             new FakeDesktopDirectSiteUploadClient(),
-            DesktopUploadSectionOptions.FromEnvironmentValue("false", "false", "false", "true", "true"));
+            new FakeDesktopUploadReceiptClient(),
+            DesktopUploadSectionOptions.FromEnvironmentValue("false", "false", "false", "true", "true", "true"));
 
         viewModel.OpenUploadSection();
         _ = await viewModel.SelectVideoFileAsync(CancellationToken.None);
@@ -1006,10 +1330,13 @@ public sealed class DesktopUploadSectionTests
         _ = viewModel.ApplyBusinessObjectKey();
         _ = await viewModel.CheckPreUploadAsync(CancellationToken.None);
         _ = await viewModel.UploadToSiteAsync(CancellationToken.None);
+        _ = await viewModel.CreateUploadReceiptAsync(CancellationToken.None);
 
 #if DEBUG
         Assert.NotNull(viewModel.SiteUploadRequestPreview);
         Assert.True(viewModel.HasSiteUploadResult);
+        Assert.NotNull(viewModel.UploadReceiptRequestPreview);
+        Assert.True(viewModel.HasUploadReceiptResult);
 #endif
 
         viewModel.BackToWorkspace();
@@ -1035,6 +1362,12 @@ public sealed class DesktopUploadSectionTests
         Assert.Null(viewModel.SiteUploadExternalVideoId);
         Assert.Null(viewModel.SiteUploadSiteStorageKey);
         Assert.Equal(DesktopUploadSectionText.SiteUploadNotReadyMessage, viewModel.SiteUploadStatusMessage);
+        Assert.Null(viewModel.UploadReceiptRequestPreview);
+        Assert.Null(viewModel.UploadReceiptResult);
+        Assert.Null(viewModel.UploadReceiptStatusPreview);
+        Assert.Null(viewModel.UploadReceiptId);
+        Assert.Null(viewModel.UploadReceiptServerCorrelationId);
+        Assert.Equal(DesktopUploadSectionText.UploadReceiptNotReadyMessage, viewModel.UploadReceiptStatusMessage);
     }
 
     [Fact]
@@ -1117,6 +1450,28 @@ public sealed class DesktopUploadSectionTests
             DesktopUploadSectionText.SiteUploadResultStatusLabel,
             DesktopUploadSectionText.SiteUploadExternalVideoIdLabel,
             DesktopUploadSectionText.SiteUploadSiteStorageKeyLabel,
+            DesktopUploadSectionText.StepSixTitle,
+            DesktopUploadSectionText.UploadReceiptNotReadyMessage,
+            DesktopUploadSectionText.UploadReceiptReadyMessage,
+            DesktopUploadSectionText.UploadReceiptInProgressMessage,
+            DesktopUploadSectionText.UploadReceiptDeferredMessage,
+            DesktopUploadSectionText.UploadReceiptAcceptedDevMessage,
+            DesktopUploadSectionText.UploadReceiptCanceledMessage,
+            DesktopUploadSectionText.UploadReceiptButton,
+            DesktopUploadSectionText.UploadReceiptBusyButton,
+            DesktopUploadSectionText.UploadReceiptFileNameLabel,
+            DesktopUploadSectionText.UploadReceiptFileSizeLabel,
+            DesktopUploadSectionText.UploadReceiptContentTypeLabel,
+            DesktopUploadSectionText.UploadReceiptSha256Label,
+            DesktopUploadSectionText.UploadReceiptBusinessObjectKeyLabel,
+            DesktopUploadSectionText.UploadReceiptPreUploadCheckDecisionLabel,
+            DesktopUploadSectionText.UploadReceiptExternalVideoIdLabel,
+            DesktopUploadSectionText.UploadReceiptSiteStorageKeyLabel,
+            DesktopUploadSectionText.UploadReceiptSiteUploadStatusLabel,
+            DesktopUploadSectionText.UploadReceiptCapturedAtUtcLabel,
+            DesktopUploadSectionText.UploadReceiptResultStatusLabel,
+            DesktopUploadSectionText.UploadReceiptResultReceiptIdLabel,
+            DesktopUploadSectionText.UploadReceiptResultServerCorrelationIdLabel,
             DesktopUploadSectionText.NextStepDeferredMessage,
             DesktopUploadSelectedFile.VisualSmokeFileName,
             DesktopUploadSelectedFile.VisualSmokeContentType,
@@ -1129,7 +1484,10 @@ public sealed class DesktopUploadSectionTests
             DesktopPreUploadCheckResult.FromFakeDecision(DesktopPreUploadCheckDecision.BlockPossibleFalsification).DecisionPreview ?? string.Empty,
             DesktopSiteUploadResult.FakeSuccess.StatusPreview ?? string.Empty,
             DesktopSiteUploadResult.FakeSuccess.ExternalVideoId ?? string.Empty,
-            DesktopSiteUploadResult.FakeSuccess.SiteStorageKey ?? string.Empty
+            DesktopSiteUploadResult.FakeSuccess.SiteStorageKey ?? string.Empty,
+            DesktopUploadReceiptResult.FakeAccepted.StatusPreview ?? string.Empty,
+            DesktopUploadReceiptResult.FakeAccepted.ReceiptId ?? string.Empty,
+            DesktopUploadReceiptResult.FakeAccepted.ServerCorrelationId ?? string.Empty
         ];
 
         foreach (string visibleString in visibleStrings)
@@ -1188,11 +1546,29 @@ public sealed class DesktopUploadSectionTests
         IDesktopDirectSiteUploadClient directSiteUploadClient,
         DesktopUploadSectionOptions uploadSectionOptions)
     {
+        return CreateViewModel(
+            videoFilePicker,
+            videoHashService,
+            preUploadCheckClient,
+            directSiteUploadClient,
+            new DisabledDesktopUploadReceiptClient(),
+            uploadSectionOptions);
+    }
+
+    private static DesktopUploadSectionViewModel CreateViewModel(
+        IDesktopVideoFilePicker videoFilePicker,
+        IDesktopVideoHashService videoHashService,
+        IDesktopPreUploadCheckClient preUploadCheckClient,
+        IDesktopDirectSiteUploadClient directSiteUploadClient,
+        IDesktopUploadReceiptClient uploadReceiptClient,
+        DesktopUploadSectionOptions uploadSectionOptions)
+    {
         return new DesktopUploadSectionViewModel(
             videoFilePicker,
             videoHashService,
             preUploadCheckClient,
             directSiteUploadClient,
+            uploadReceiptClient,
             uploadSectionOptions);
     }
 
@@ -1207,6 +1583,15 @@ public sealed class DesktopUploadSectionTests
 
         return viewModel.PreUploadCheckRequestPreview
             ?? throw new InvalidOperationException("PreUploadCheck preview was not created.");
+    }
+
+    private static async Task<DesktopSiteUploadResult?> PrepareSuccessfulSiteUploadAsync(
+        DesktopUploadSectionViewModel viewModel,
+        string businessObjectKey)
+    {
+        _ = await PreparePreUploadCheckPreviewAsync(viewModel, businessObjectKey);
+        _ = await viewModel.CheckPreUploadAsync(CancellationToken.None);
+        return await viewModel.UploadToSiteAsync(CancellationToken.None);
     }
 
     private sealed class CancelingDesktopVideoFilePicker : IDesktopVideoFilePicker
@@ -1250,6 +1635,19 @@ public sealed class DesktopUploadSectionTests
         {
             CallCount++;
             throw new InvalidOperationException("Disabled fake site upload boundary should not be called.");
+        }
+    }
+
+    private sealed class ThrowingDesktopUploadReceiptClient : IDesktopUploadReceiptClient
+    {
+        public int CallCount { get; private set; }
+
+        public ValueTask<DesktopUploadReceiptResult> CreateAsync(
+            DesktopUploadReceiptRequestPreview requestPreview,
+            CancellationToken cancellationToken)
+        {
+            CallCount++;
+            throw new InvalidOperationException("Disabled fake UploadReceipt boundary should not be called.");
         }
     }
 
