@@ -1,0 +1,123 @@
+Title:
+S2-65 Desktop Direct Site Upload Boundary / Fake Site Upload Result
+
+Module:
+App.Desktop / direct site upload boundary fake result
+
+Owner:
+Coder 1 acting as Coder 2 / Desktop Client
+
+Client form:
+desktop standalone
+
+Type:
+narrow runtime desktop UI slice after S2-64 PreUploadCheck preview/fake decision
+
+Status:
+Runtime task card created with implementation.
+
+Goal:
+Add a safe App.Desktop-local direct site upload request preview and a dev/fake direct-site upload boundary for visual smoke only.
+
+Scope:
+- Keep the Russian SignIn UI and signed-in shell from S2-58 through S2-64.
+- Keep upload Step 1 file metadata, Step 2 SHA-256, Step 3 businessObjectKey placeholder, and Step 4 PreUploadCheck request preview/fake decision.
+- Add Step 5 direct site upload request preview built only from safe fields:
+  - file name without full local path;
+  - size;
+  - content type;
+  - SHA-256;
+  - businessObjectKey preview;
+  - PreUploadCheck decision;
+  - capturedAtUtc preview when available.
+- Add the "Загрузить на сайт" action in the Russian UI.
+- When AA_DESKTOP_DEV_FAKE_SITE_UPLOAD_ENABLED is not true, show the safe deferred Russian message and do not call App.Api, read file contents, or send bytes.
+- When AA_DESKTOP_DEV_FAKE_SITE_UPLOAD_ENABLED=true, call only the App.Desktop-local fake boundary and show SUCCESS with:
+  - externalVideoId: visual-smoke-external-video-001
+  - siteStorageKey: visual-smoke/site/video-001
+
+Allowed changed areas:
+- docs/task-cards/S2-65_desktop-direct-site-upload-boundary-task-card.txt
+- src/App.Desktop/**
+- tests/Unit/App.Desktop.Tests/**
+
+Forbidden changed areas:
+- src/App.Api/**
+- src/App.Worker/**
+- src/App.Web/**
+- src/App.Mobile.Android/**
+- src/App.UI.Shared/**
+- src/BuildingBlocks.Contracts/**
+- src/Modules/**
+- DB migrations
+- .github/workflows/**
+- deploy scripts
+- docs/ops/**
+- committed screenshots or runtime artifacts
+
+Contracts:
+none
+
+Migrations:
+none
+
+Feature flags/env guard:
+- Existing fake auth visual-smoke guard:
+  AA_DESKTOP_DEV_FAKE_AUTH_ENABLED=true
+- Existing fake picker visual-smoke guard:
+  AA_DESKTOP_DEV_FAKE_UPLOAD_FILE_ENABLED=true
+- Existing fake hash visual-smoke guard:
+  AA_DESKTOP_DEV_FAKE_UPLOAD_HASH_ENABLED=true
+- Existing fake businessObjectKey visual-smoke guard:
+  AA_DESKTOP_DEV_FAKE_BUSINESS_OBJECT_KEY_ENABLED=true
+- Existing fake PreUploadCheck visual-smoke guard:
+  AA_DESKTOP_DEV_FAKE_PREUPLOAD_CHECK_ENABLED=true
+- New fake site upload visual-smoke guard:
+  AA_DESKTOP_DEV_FAKE_SITE_UPLOAD_ENABLED=true
+
+Events:
+none
+
+Offline behavior:
+none
+
+Security guardrails:
+- App.Api remains control plane.
+- Do not send video bytes through App.Api.
+- Do not call App.Api for direct site upload in S2-65.
+- Do not read file contents for site upload in S2-65.
+- Do not send video bytes anywhere in S2-65.
+- Do not add backend DTOs, shared contracts, API routes, migrations, deploy changes, App.Web changes, or App.Mobile.Android changes.
+- Do not display full local file paths, password, accessToken, refreshToken, Authorization, raw session id, raw response body, or token-like values.
+- Screenshots and runtime artifacts stay under C:\CODEX\Temp and are not committed.
+
+Deferred:
+Real site provider and UploadReceipt are not implemented in S2-65. Production direct-site provider and UploadReceipt remain separate approved slices.
+
+Rollback:
+revert S2-65 PR
+
+Validation:
+- git diff --check
+- dotnet restore AnalyticsAutomation-Core.sln -nologo
+- dotnet format whitespace AnalyticsAutomation-Core.sln --verify-no-changes --no-restore
+- dotnet build src/App.Desktop/App.Desktop.csproj -nologo -v minimal
+- dotnet build AnalyticsAutomation-Core.sln -nologo -v minimal
+- dotnet test tests/Unit/App.Desktop.Tests/App.Desktop.Tests.csproj -nologo -v minimal
+- hidden/control Unicode scan over changed text files
+- App.Desktop fake-auth/fake-picker/fake-hash/fake-businessObjectKey/fake-PreUploadCheck/fake-site-upload visual smoke with screenshots
+
+Definition of done:
+- Step 5 "Загрузка на сайт" is visible in the upload section.
+- Direct-site upload request preview appears only after selected file, SHA-256, businessObjectKey, and ALLOW or ALLOW_WITH_REVIEW PreUploadCheck decision.
+- Preview shows only safe file name, size, content type, SHA-256, businessObjectKey, PreUploadCheck decision, and capturedAtUtc preview.
+- Preview never shows a full local path.
+- Fake site upload is disabled by default.
+- Fake site upload is enabled only by AA_DESKTOP_DEV_FAKE_SITE_UPLOAD_ENABLED=true in debug/dev-test visual smoke.
+- Disabled fake site upload shows the safe deferred Russian message and does not call App.Api, read files, or send bytes.
+- Enabled fake site upload shows SUCCESS, externalVideoId visual-smoke-external-video-001, and siteStorageKey visual-smoke/site/video-001.
+- BLOCK_HARD_DUPLICATE and BLOCK_POSSIBLE_FALSIFICATION decisions do not allow site upload action.
+- Back/sign-out clear direct-site upload preview/result state.
+- No real site upload, App.Api upload, UploadReceipt, backend contract, migration, deploy, App.Web, or App.Mobile.Android change is introduced.
+- Automated App.Desktop tests cover env guard behavior, safe preview, fake result, blocked decisions, reset behavior, forbidden call patterns, and visible-string safety.
+- Required visual-smoke screenshots are saved under C:\CODEX\Temp and kept out of git.
