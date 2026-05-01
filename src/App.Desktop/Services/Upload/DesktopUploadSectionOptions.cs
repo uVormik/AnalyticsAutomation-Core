@@ -17,18 +17,23 @@ public sealed class DesktopUploadSectionOptions
     public const string DevFakeSiteUploadEnabledEnvironmentVariable =
         "AA_DESKTOP_DEV_FAKE_SITE_UPLOAD_ENABLED";
 
+    public const string DevFakeUploadReceiptEnabledEnvironmentVariable =
+        "AA_DESKTOP_DEV_FAKE_UPLOAD_RECEIPT_ENABLED";
+
     private DesktopUploadSectionOptions(
         bool isDevFakeUploadFileEnabled,
         bool isDevFakeUploadHashEnabled,
         bool isDevFakeBusinessObjectKeyEnabled,
         bool isDevFakePreUploadCheckEnabled,
-        bool isDevFakeSiteUploadEnabled)
+        bool isDevFakeSiteUploadEnabled,
+        bool isDevFakeUploadReceiptEnabled)
     {
         IsDevFakeUploadFileEnabled = isDevFakeUploadFileEnabled;
         IsDevFakeUploadHashEnabled = isDevFakeUploadHashEnabled;
         IsDevFakeBusinessObjectKeyEnabled = isDevFakeBusinessObjectKeyEnabled;
         IsDevFakePreUploadCheckEnabled = isDevFakePreUploadCheckEnabled;
         IsDevFakeSiteUploadEnabled = isDevFakeSiteUploadEnabled;
+        IsDevFakeUploadReceiptEnabled = isDevFakeUploadReceiptEnabled;
     }
 
     public static DesktopUploadSectionOptions Disabled { get; } = new(
@@ -36,7 +41,8 @@ public sealed class DesktopUploadSectionOptions
         isDevFakeUploadHashEnabled: false,
         isDevFakeBusinessObjectKeyEnabled: false,
         isDevFakePreUploadCheckEnabled: false,
-        isDevFakeSiteUploadEnabled: false);
+        isDevFakeSiteUploadEnabled: false,
+        isDevFakeUploadReceiptEnabled: false);
 
 #if DEBUG
     public static DesktopUploadSectionOptions EnabledForDevFakeFileSelection { get; } = new(
@@ -44,35 +50,48 @@ public sealed class DesktopUploadSectionOptions
         isDevFakeUploadHashEnabled: false,
         isDevFakeBusinessObjectKeyEnabled: false,
         isDevFakePreUploadCheckEnabled: false,
-        isDevFakeSiteUploadEnabled: false);
+        isDevFakeSiteUploadEnabled: false,
+        isDevFakeUploadReceiptEnabled: false);
 
     public static DesktopUploadSectionOptions EnabledForDevFakeFileSelectionAndHash { get; } = new(
         isDevFakeUploadFileEnabled: true,
         isDevFakeUploadHashEnabled: true,
         isDevFakeBusinessObjectKeyEnabled: false,
         isDevFakePreUploadCheckEnabled: false,
-        isDevFakeSiteUploadEnabled: false);
+        isDevFakeSiteUploadEnabled: false,
+        isDevFakeUploadReceiptEnabled: false);
 
     public static DesktopUploadSectionOptions EnabledForDevFakeBusinessObjectKey { get; } = new(
         isDevFakeUploadFileEnabled: false,
         isDevFakeUploadHashEnabled: false,
         isDevFakeBusinessObjectKeyEnabled: true,
         isDevFakePreUploadCheckEnabled: false,
-        isDevFakeSiteUploadEnabled: false);
+        isDevFakeSiteUploadEnabled: false,
+        isDevFakeUploadReceiptEnabled: false);
 
     public static DesktopUploadSectionOptions EnabledForDevFakePreUploadCheck { get; } = new(
         isDevFakeUploadFileEnabled: false,
         isDevFakeUploadHashEnabled: false,
         isDevFakeBusinessObjectKeyEnabled: false,
         isDevFakePreUploadCheckEnabled: true,
-        isDevFakeSiteUploadEnabled: false);
+        isDevFakeSiteUploadEnabled: false,
+        isDevFakeUploadReceiptEnabled: false);
 
     public static DesktopUploadSectionOptions EnabledForDevFakeSiteUpload { get; } = new(
         isDevFakeUploadFileEnabled: false,
         isDevFakeUploadHashEnabled: false,
         isDevFakeBusinessObjectKeyEnabled: false,
         isDevFakePreUploadCheckEnabled: false,
-        isDevFakeSiteUploadEnabled: true);
+        isDevFakeSiteUploadEnabled: true,
+        isDevFakeUploadReceiptEnabled: false);
+
+    public static DesktopUploadSectionOptions EnabledForDevFakeUploadReceipt { get; } = new(
+        isDevFakeUploadFileEnabled: false,
+        isDevFakeUploadHashEnabled: false,
+        isDevFakeBusinessObjectKeyEnabled: false,
+        isDevFakePreUploadCheckEnabled: false,
+        isDevFakeSiteUploadEnabled: false,
+        isDevFakeUploadReceiptEnabled: true);
 #else
     public static DesktopUploadSectionOptions EnabledForDevFakeFileSelection => Disabled;
 
@@ -83,6 +102,8 @@ public sealed class DesktopUploadSectionOptions
     public static DesktopUploadSectionOptions EnabledForDevFakePreUploadCheck => Disabled;
 
     public static DesktopUploadSectionOptions EnabledForDevFakeSiteUpload => Disabled;
+
+    public static DesktopUploadSectionOptions EnabledForDevFakeUploadReceipt => Disabled;
 #endif
 
     public bool IsDevFakeUploadFileEnabled { get; }
@@ -95,6 +116,8 @@ public sealed class DesktopUploadSectionOptions
 
     public bool IsDevFakeSiteUploadEnabled { get; }
 
+    public bool IsDevFakeUploadReceiptEnabled { get; }
+
     public static DesktopUploadSectionOptions FromEnvironment()
     {
         return FromEnvironmentValue(
@@ -102,7 +125,8 @@ public sealed class DesktopUploadSectionOptions
             Environment.GetEnvironmentVariable(DevFakeUploadHashEnabledEnvironmentVariable),
             Environment.GetEnvironmentVariable(DevFakeBusinessObjectKeyEnabledEnvironmentVariable),
             Environment.GetEnvironmentVariable(DevFakePreUploadCheckEnabledEnvironmentVariable),
-            Environment.GetEnvironmentVariable(DevFakeSiteUploadEnabledEnvironmentVariable));
+            Environment.GetEnvironmentVariable(DevFakeSiteUploadEnabledEnvironmentVariable),
+            Environment.GetEnvironmentVariable(DevFakeUploadReceiptEnabledEnvironmentVariable));
     }
 
     public static DesktopUploadSectionOptions FromEnvironmentValue(string? devFakeUploadFileEnabled)
@@ -155,6 +179,23 @@ public sealed class DesktopUploadSectionOptions
         string? devFakePreUploadCheckEnabled,
         string? devFakeSiteUploadEnabled)
     {
+        return FromEnvironmentValue(
+            devFakeUploadFileEnabled,
+            devFakeUploadHashEnabled,
+            devFakeBusinessObjectKeyEnabled,
+            devFakePreUploadCheckEnabled,
+            devFakeSiteUploadEnabled,
+            devFakeUploadReceiptEnabled: null);
+    }
+
+    public static DesktopUploadSectionOptions FromEnvironmentValue(
+        string? devFakeUploadFileEnabled,
+        string? devFakeUploadHashEnabled,
+        string? devFakeBusinessObjectKeyEnabled,
+        string? devFakePreUploadCheckEnabled,
+        string? devFakeSiteUploadEnabled,
+        string? devFakeUploadReceiptEnabled)
+    {
 #if DEBUG
         bool isFakeFileEnabled = IsDevFakeUploadFileEnabledValue(devFakeUploadFileEnabled);
         bool isFakeHashEnabled = IsDevFakeUploadHashEnabledValue(devFakeUploadHashEnabled);
@@ -162,13 +203,15 @@ public sealed class DesktopUploadSectionOptions
             IsDevFakeBusinessObjectKeyEnabledValue(devFakeBusinessObjectKeyEnabled);
         bool isFakePreUploadCheckEnabled = IsDevFakePreUploadCheckEnabledValue(devFakePreUploadCheckEnabled);
         bool isFakeSiteUploadEnabled = IsDevFakeSiteUploadEnabledValue(devFakeSiteUploadEnabled);
+        bool isFakeUploadReceiptEnabled = IsDevFakeUploadReceiptEnabledValue(devFakeUploadReceiptEnabled);
 
         return new DesktopUploadSectionOptions(
             isFakeFileEnabled,
             isFakeHashEnabled,
             isFakeBusinessObjectKeyEnabled,
             isFakePreUploadCheckEnabled,
-            isFakeSiteUploadEnabled);
+            isFakeSiteUploadEnabled,
+            isFakeUploadReceiptEnabled);
 #else
         return Disabled;
 #endif
@@ -180,7 +223,8 @@ public sealed class DesktopUploadSectionOptions
             + $"IsDevFakeUploadHashEnabled = {IsDevFakeUploadHashEnabled}, "
             + $"IsDevFakeBusinessObjectKeyEnabled = {IsDevFakeBusinessObjectKeyEnabled}, "
             + $"IsDevFakePreUploadCheckEnabled = {IsDevFakePreUploadCheckEnabled}, "
-            + $"IsDevFakeSiteUploadEnabled = {IsDevFakeSiteUploadEnabled} }}";
+            + $"IsDevFakeSiteUploadEnabled = {IsDevFakeSiteUploadEnabled}, "
+            + $"IsDevFakeUploadReceiptEnabled = {IsDevFakeUploadReceiptEnabled} }}";
     }
 
     private static bool IsDevFakeUploadFileEnabledValue(string? value)
@@ -204,6 +248,11 @@ public sealed class DesktopUploadSectionOptions
     }
 
     private static bool IsDevFakeSiteUploadEnabledValue(string? value)
+    {
+        return string.Equals(value?.Trim(), "true", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsDevFakeUploadReceiptEnabledValue(string? value)
     {
         return string.Equals(value?.Trim(), "true", StringComparison.OrdinalIgnoreCase);
     }

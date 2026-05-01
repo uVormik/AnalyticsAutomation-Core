@@ -7,6 +7,7 @@ public sealed class DesktopUploadSectionViewModel(
     IDesktopVideoHashService videoHashService,
     IDesktopPreUploadCheckClient preUploadCheckClient,
     IDesktopDirectSiteUploadClient directSiteUploadClient,
+    IDesktopUploadReceiptClient uploadReceiptClient,
     DesktopUploadSectionOptions uploadSectionOptions)
 {
     public DesktopUploadSectionViewModel(
@@ -17,6 +18,7 @@ public sealed class DesktopUploadSectionViewModel(
             videoHashService,
             new DisabledDesktopPreUploadCheckClient(),
             new DisabledDesktopDirectSiteUploadClient(),
+            new DisabledDesktopUploadReceiptClient(),
             DesktopUploadSectionOptions.Disabled)
     {
     }
@@ -30,6 +32,23 @@ public sealed class DesktopUploadSectionViewModel(
             videoHashService,
             new DisabledDesktopPreUploadCheckClient(),
             new DisabledDesktopDirectSiteUploadClient(),
+            new DisabledDesktopUploadReceiptClient(),
+            uploadSectionOptions)
+    {
+    }
+
+    public DesktopUploadSectionViewModel(
+        IDesktopVideoFilePicker videoFilePicker,
+        IDesktopVideoHashService videoHashService,
+        IDesktopPreUploadCheckClient preUploadCheckClient,
+        IDesktopDirectSiteUploadClient directSiteUploadClient,
+        DesktopUploadSectionOptions uploadSectionOptions)
+        : this(
+            videoFilePicker,
+            videoHashService,
+            preUploadCheckClient,
+            directSiteUploadClient,
+            new DisabledDesktopUploadReceiptClient(),
             uploadSectionOptions)
     {
     }
@@ -42,6 +61,8 @@ public sealed class DesktopUploadSectionViewModel(
         preUploadCheckClient ?? throw new ArgumentNullException(nameof(preUploadCheckClient));
     private readonly IDesktopDirectSiteUploadClient _directSiteUploadClient =
         directSiteUploadClient ?? throw new ArgumentNullException(nameof(directSiteUploadClient));
+    private readonly IDesktopUploadReceiptClient _uploadReceiptClient =
+        uploadReceiptClient ?? throw new ArgumentNullException(nameof(uploadReceiptClient));
     private readonly DesktopUploadSectionOptions _uploadSectionOptions =
         uploadSectionOptions ?? throw new ArgumentNullException(nameof(uploadSectionOptions));
 
@@ -58,6 +79,8 @@ public sealed class DesktopUploadSectionViewModel(
     public bool IsCheckingPreUpload { get; private set; }
 
     public bool IsUploadingToSite { get; private set; }
+
+    public bool IsCreatingUploadReceipt { get; private set; }
 
     public bool CanCalculateHash => SelectedFile is not null && !IsSelectingFile && !IsHashing;
 
@@ -81,6 +104,9 @@ public sealed class DesktopUploadSectionViewModel(
 
     public bool IsDevFakeSiteUploadEnabled =>
         _uploadSectionOptions.IsDevFakeSiteUploadEnabled;
+
+    public bool IsDevFakeUploadReceiptEnabled =>
+        _uploadSectionOptions.IsDevFakeUploadReceiptEnabled;
 
     public string BusinessObjectKeyInput { get; set; } = string.Empty;
 
@@ -135,6 +161,32 @@ public sealed class DesktopUploadSectionViewModel(
     public string SiteUploadStatusMessage { get; private set; } =
         DesktopUploadSectionText.SiteUploadNotReadyMessage;
 
+    public DesktopUploadReceiptRequestPreview? UploadReceiptRequestPreview =>
+        DesktopUploadReceiptRequestPreview.TryCreate(SiteUploadRequestPreview, SiteUploadResult);
+
+    public bool HasUploadReceiptRequestPreview => UploadReceiptRequestPreview is not null;
+
+    public bool CanCreateUploadReceipt =>
+        HasUploadReceiptRequestPreview
+        && !IsSelectingFile
+        && !IsHashing
+        && !IsCheckingPreUpload
+        && !IsUploadingToSite
+        && !IsCreatingUploadReceipt;
+
+    public DesktopUploadReceiptResult? UploadReceiptResult { get; private set; }
+
+    public bool HasUploadReceiptResult => UploadReceiptResult?.Status == DesktopUploadReceiptStatus.Accepted;
+
+    public string? UploadReceiptStatusPreview => UploadReceiptResult?.StatusPreview;
+
+    public string? UploadReceiptId => UploadReceiptResult?.ReceiptId;
+
+    public string? UploadReceiptServerCorrelationId => UploadReceiptResult?.ServerCorrelationId;
+
+    public string UploadReceiptStatusMessage { get; private set; } =
+        DesktopUploadSectionText.UploadReceiptNotReadyMessage;
+
     public void OpenUploadSection()
     {
         CurrentSection = DesktopWorkspaceSection.Upload;
@@ -165,6 +217,7 @@ public sealed class DesktopUploadSectionViewModel(
         ResetBusinessObjectKeyState();
         ResetPreUploadCheckState();
         ResetSiteUploadState();
+        ResetUploadReceiptState();
 
         try
         {
@@ -207,6 +260,7 @@ public sealed class DesktopUploadSectionViewModel(
         HashStatusMessage = DesktopUploadSectionText.HashInProgressMessage;
         ResetPreUploadCheckState();
         ResetSiteUploadState();
+        ResetUploadReceiptState();
 
         try
         {
@@ -258,6 +312,7 @@ public sealed class DesktopUploadSectionViewModel(
         BusinessObjectKeyStatusMessage = validation.Message;
         ResetPreUploadCheckDecision();
         ResetSiteUploadState();
+        ResetUploadReceiptState();
         RefreshPreUploadCheckReadiness();
 
         return validation;
@@ -340,28 +395,75 @@ public sealed class DesktopUploadSectionViewModel(
         {
             SiteUploadResult = DesktopSiteUploadResult.Deferred;
             SiteUploadStatusMessage = DesktopUploadSectionText.SiteUploadDeferredMessage;
+            RefreshUploadReceiptReadiness();
             return SiteUploadResult;
         }
 
         IsUploadingToSite = true;
         SiteUploadResult = null;
         SiteUploadStatusMessage = DesktopUploadSectionText.SiteUploadInProgressMessage;
+        ResetUploadReceiptState();
 
         try
         {
             SiteUploadResult = await _directSiteUploadClient.UploadAsync(requestPreview, cancellationToken);
             SiteUploadStatusMessage = SiteUploadResult.Message;
+            RefreshUploadReceiptReadiness();
             return SiteUploadResult;
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             SiteUploadResult = DesktopSiteUploadResult.Canceled;
             SiteUploadStatusMessage = DesktopUploadSectionText.SiteUploadCanceledMessage;
+            RefreshUploadReceiptReadiness();
             return SiteUploadResult;
         }
         finally
         {
             IsUploadingToSite = false;
+        }
+    }
+
+    public async ValueTask<DesktopUploadReceiptResult?> CreateUploadReceiptAsync(CancellationToken cancellationToken)
+    {
+        if (IsCreatingUploadReceipt)
+        {
+            return UploadReceiptResult;
+        }
+
+        DesktopUploadReceiptRequestPreview? requestPreview = UploadReceiptRequestPreview;
+        if (requestPreview is null)
+        {
+            UploadReceiptStatusMessage = DesktopUploadSectionText.UploadReceiptNotReadyMessage;
+            return null;
+        }
+
+        if (!IsDevFakeUploadReceiptEnabled)
+        {
+            UploadReceiptResult = DesktopUploadReceiptResult.Deferred;
+            UploadReceiptStatusMessage = DesktopUploadSectionText.UploadReceiptDeferredMessage;
+            return UploadReceiptResult;
+        }
+
+        IsCreatingUploadReceipt = true;
+        UploadReceiptResult = null;
+        UploadReceiptStatusMessage = DesktopUploadSectionText.UploadReceiptInProgressMessage;
+
+        try
+        {
+            UploadReceiptResult = await _uploadReceiptClient.CreateAsync(requestPreview, cancellationToken);
+            UploadReceiptStatusMessage = UploadReceiptResult.Message;
+            return UploadReceiptResult;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            UploadReceiptResult = DesktopUploadReceiptResult.Canceled;
+            UploadReceiptStatusMessage = DesktopUploadSectionText.UploadReceiptCanceledMessage;
+            return UploadReceiptResult;
+        }
+        finally
+        {
+            IsCreatingUploadReceipt = false;
         }
     }
 
@@ -390,6 +492,7 @@ public sealed class DesktopUploadSectionViewModel(
         BusinessObjectKeyStatusMessage = DesktopUploadSectionText.BusinessObjectKeyEmptyValidationMessage;
         ResetPreUploadCheckState();
         ResetSiteUploadState();
+        ResetUploadReceiptState();
     }
 
     private void ResetPreUploadCheckState()
@@ -398,6 +501,7 @@ public sealed class DesktopUploadSectionViewModel(
         PreUploadCheckResult = null;
         PreUploadCheckStatusMessage = DesktopUploadSectionText.PreUploadCheckNotReadyMessage;
         ResetSiteUploadState();
+        ResetUploadReceiptState();
     }
 
     private void ResetPreUploadCheckDecision()
@@ -405,6 +509,7 @@ public sealed class DesktopUploadSectionViewModel(
         IsCheckingPreUpload = false;
         PreUploadCheckResult = null;
         ResetSiteUploadState();
+        ResetUploadReceiptState();
     }
 
     private void RefreshPreUploadCheckReadiness()
@@ -424,6 +529,7 @@ public sealed class DesktopUploadSectionViewModel(
         IsUploadingToSite = false;
         SiteUploadResult = null;
         SiteUploadStatusMessage = DesktopUploadSectionText.SiteUploadNotReadyMessage;
+        ResetUploadReceiptState();
     }
 
     private void RefreshSiteUploadReadiness()
@@ -436,6 +542,26 @@ public sealed class DesktopUploadSectionViewModel(
         SiteUploadStatusMessage = SiteUploadRequestPreview is not null
             ? DesktopUploadSectionText.SiteUploadReadyMessage
             : GetSiteUploadNotReadyMessage();
+        RefreshUploadReceiptReadiness();
+    }
+
+    private void ResetUploadReceiptState()
+    {
+        IsCreatingUploadReceipt = false;
+        UploadReceiptResult = null;
+        UploadReceiptStatusMessage = DesktopUploadSectionText.UploadReceiptNotReadyMessage;
+    }
+
+    private void RefreshUploadReceiptReadiness()
+    {
+        if (IsCreatingUploadReceipt)
+        {
+            return;
+        }
+
+        UploadReceiptStatusMessage = UploadReceiptRequestPreview is not null
+            ? DesktopUploadSectionText.UploadReceiptReadyMessage
+            : DesktopUploadSectionText.UploadReceiptNotReadyMessage;
     }
 
     private string GetSiteUploadNotReadyMessage()

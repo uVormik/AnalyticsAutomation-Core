@@ -304,6 +304,92 @@
                                 </dl>
                             }
 
+                        </div>
+
+                        <div class="desktop-upload__step">
+                            <h3>@DesktopUploadSectionText.StepSixTitle</h3>
+                            <p
+                                id="desktop-upload-receipt-status"
+                                class="desktop-upload__message"
+                                role="status"
+                                aria-live="polite">
+                                @UploadSectionViewModel.UploadReceiptStatusMessage
+                            </p>
+
+                            @if (UploadSectionViewModel.UploadReceiptRequestPreview is { } receiptPreview)
+                            {
+                                <dl class="desktop-upload__receipt-preview">
+                                    <div>
+                                        <dt>@DesktopUploadSectionText.UploadReceiptFileNameLabel</dt>
+                                        <dd>@receiptPreview.FileName</dd>
+                                    </div>
+                                    <div>
+                                        <dt>@DesktopUploadSectionText.UploadReceiptFileSizeLabel</dt>
+                                        <dd>@receiptPreview.SizeBytes</dd>
+                                    </div>
+                                    <div>
+                                        <dt>@DesktopUploadSectionText.UploadReceiptContentTypeLabel</dt>
+                                        <dd>@receiptPreview.ContentType</dd>
+                                    </div>
+                                    <div>
+                                        <dt>@DesktopUploadSectionText.UploadReceiptSha256Label</dt>
+                                        <dd>@receiptPreview.Sha256Hex</dd>
+                                    </div>
+                                    <div>
+                                        <dt>@DesktopUploadSectionText.UploadReceiptBusinessObjectKeyLabel</dt>
+                                        <dd>@receiptPreview.BusinessObjectKeyPreview</dd>
+                                    </div>
+                                    <div>
+                                        <dt>@DesktopUploadSectionText.UploadReceiptPreUploadCheckDecisionLabel</dt>
+                                        <dd>@receiptPreview.PreUploadCheckDecisionPreview</dd>
+                                    </div>
+                                    <div>
+                                        <dt>@DesktopUploadSectionText.UploadReceiptExternalVideoIdLabel</dt>
+                                        <dd>@receiptPreview.ExternalVideoId</dd>
+                                    </div>
+                                    <div>
+                                        <dt>@DesktopUploadSectionText.UploadReceiptSiteStorageKeyLabel</dt>
+                                        <dd>@receiptPreview.SiteStorageKey</dd>
+                                    </div>
+                                    <div>
+                                        <dt>@DesktopUploadSectionText.UploadReceiptSiteUploadStatusLabel</dt>
+                                        <dd>@receiptPreview.SiteUploadStatusPreview</dd>
+                                    </div>
+                                    <div>
+                                        <dt>@DesktopUploadSectionText.UploadReceiptCapturedAtUtcLabel</dt>
+                                        <dd>@receiptPreview.CapturedAtUtc</dd>
+                                    </div>
+                                </dl>
+                            }
+
+                            <button
+                                class="desktop-upload__receipt"
+                                type="button"
+                                disabled="@(SignInViewModel.IsBusy || !UploadSectionViewModel.CanCreateUploadReceipt)"
+                                @onclick="CreateUploadReceiptAsync">
+                                @(UploadSectionViewModel.IsCreatingUploadReceipt
+                                    ? DesktopUploadSectionText.UploadReceiptBusyButton
+                                    : DesktopUploadSectionText.UploadReceiptButton)
+                            </button>
+
+                            @if (UploadSectionViewModel.HasUploadReceiptResult)
+                            {
+                                <dl class="desktop-upload__receipt-result">
+                                    <div>
+                                        <dt>@DesktopUploadSectionText.UploadReceiptResultStatusLabel</dt>
+                                        <dd>@UploadSectionViewModel.UploadReceiptStatusPreview</dd>
+                                    </div>
+                                    <div>
+                                        <dt>@DesktopUploadSectionText.UploadReceiptResultReceiptIdLabel</dt>
+                                        <dd>@UploadSectionViewModel.UploadReceiptId</dd>
+                                    </div>
+                                    <div>
+                                        <dt>@DesktopUploadSectionText.UploadReceiptResultServerCorrelationIdLabel</dt>
+                                        <dd>@UploadSectionViewModel.UploadReceiptServerCorrelationId</dd>
+                                    </div>
+                                </dl>
+                            }
+
                             <p class="desktop-upload__deferred">
                                 @DesktopUploadSectionText.NextStepDeferredMessage
                             </p>
@@ -484,6 +570,17 @@
         StateHasChanged();
 
         await uploadAttempt;
+
+        StateHasChanged();
+    }
+
+    private async Task CreateUploadReceiptAsync()
+    {
+        ValueTask<DesktopUploadReceiptResult?> receiptAttempt =
+            UploadSectionViewModel.CreateUploadReceiptAsync(CancellationToken.None);
+        StateHasChanged();
+
+        await receiptAttempt;
 
         StateHasChanged();
     }

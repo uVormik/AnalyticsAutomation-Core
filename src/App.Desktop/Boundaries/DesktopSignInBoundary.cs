@@ -227,8 +227,35 @@ public static class DesktopUploadSectionText
     public const string SiteUploadResultStatusLabel = "status";
     public const string SiteUploadExternalVideoIdLabel = "externalVideoId";
     public const string SiteUploadSiteStorageKeyLabel = "siteStorageKey";
+    public const string StepSixTitle = "Шаг 6. Квитанция загрузки";
+    public const string UploadReceiptNotReadyMessage =
+        "Нужны выбранный файл, SHA-256, businessObjectKey, решение ALLOW или ALLOW_WITH_REVIEW и успешная загрузка на сайт.";
+    public const string UploadReceiptReadyMessage =
+        "Preview квитанции загрузки готов. В этом slice доступен только desktop-local dev boundary.";
+    public const string UploadReceiptInProgressMessage =
+        "Формируется квитанция загрузки в desktop-local dev boundary.";
+    public const string UploadReceiptDeferredMessage =
+        "Квитанция загрузки пока доступна только в dev-smoke режиме. Реальный вызов App.Api будет добавлен отдельным approved slice.";
+    public const string UploadReceiptAcceptedDevMessage =
+        "Квитанция загрузки сформирована в dev-smoke режиме.";
+    public const string UploadReceiptCanceledMessage = "Формирование квитанции загрузки отменено.";
+    public const string UploadReceiptButton = "Сформировать квитанцию";
+    public const string UploadReceiptBusyButton = "Формируется...";
+    public const string UploadReceiptFileNameLabel = "Имя файла";
+    public const string UploadReceiptFileSizeLabel = "Размер";
+    public const string UploadReceiptContentTypeLabel = "Тип содержимого";
+    public const string UploadReceiptSha256Label = "SHA-256";
+    public const string UploadReceiptBusinessObjectKeyLabel = "businessObjectKey";
+    public const string UploadReceiptPreUploadCheckDecisionLabel = "Решение PreUploadCheck";
+    public const string UploadReceiptExternalVideoIdLabel = "externalVideoId";
+    public const string UploadReceiptSiteStorageKeyLabel = "siteStorageKey";
+    public const string UploadReceiptSiteUploadStatusLabel = "status загрузки на сайт";
+    public const string UploadReceiptCapturedAtUtcLabel = "capturedAtUtc";
+    public const string UploadReceiptResultStatusLabel = "status";
+    public const string UploadReceiptResultReceiptIdLabel = "receiptId";
+    public const string UploadReceiptResultServerCorrelationIdLabel = "serverCorrelationId";
     public const string NextStepDeferredMessage =
-        "Следующий шаг отложен: UploadReceipt будет добавлен отдельным approved desktop slice.";
+        "Следующий шаг отложен: реальный control-plane UploadReceipt client будет добавлен отдельным approved desktop slice.";
 }
 
 public sealed record DesktopUploadSelectedFile(

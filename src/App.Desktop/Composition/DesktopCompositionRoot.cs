@@ -108,6 +108,15 @@ public static class DesktopCompositionRoot
             services.AddSingleton<IDesktopDirectSiteUploadClient, DisabledDesktopDirectSiteUploadClient>();
         }
 
+        if (uploadSectionOptions.IsDevFakeUploadReceiptEnabled)
+        {
+            services.AddSingleton<IDesktopUploadReceiptClient, FakeDesktopUploadReceiptClient>();
+        }
+        else
+        {
+            services.AddSingleton<IDesktopUploadReceiptClient, DisabledDesktopUploadReceiptClient>();
+        }
+
         services.AddSingleton<IDesktopFilePicker, PlaceholderDesktopFilePicker>();
         services.AddSingleton<ILocalFileMetadataService, PlaceholderLocalFileMetadataService>();
         services.AddSingleton<IControlPlaneApiClient, PlaceholderControlPlaneApiClient>();
