@@ -159,6 +159,23 @@ public static class DesktopUploadSectionText
     public const string HashUnavailableMessage = "Не удалось рассчитать SHA-256 для выбранного файла.";
     public const string HashCanceledMessage = "Расчёт SHA-256 отменён.";
     public const string Sha256ResultLabel = "SHA-256";
+    public const string StepThreeTitle = "Шаг 3. Бизнес-объект";
+    public const string BusinessObjectKeyLabel = "Ключ бизнес-объекта";
+    public const string BusinessObjectKeyHint = "Временный ручной ввод для desktop prototype. Production-источник будет утверждён отдельным slice.";
+    public const string BusinessObjectKeyApplyButton = "Проверить ключ";
+    public const string BusinessObjectKeyUseFakeButton = "Подставить dev-ключ";
+    public const string BusinessObjectKeyEmptyValidationMessage = "Введите ключ бизнес-объекта.";
+    public const string BusinessObjectKeyControlCharacterValidationMessage =
+        "Ключ бизнес-объекта не должен содержать переносы строк или управляющие символы.";
+    public const string BusinessObjectKeyLengthValidationMessage =
+        "Ключ бизнес-объекта должен быть от 1 до 128 символов.";
+    public const string BusinessObjectKeySecretValidationMessage =
+        "Ключ бизнес-объекта не должен содержать секретные значения.";
+    public const string BusinessObjectKeyAcceptedMessage =
+        "Ключ бизнес-объекта принят для безопасного preview.";
+    public const string BusinessObjectKeyPreviewLabel = "businessObjectKey";
+    public const string NextStepDeferredMessage =
+        "Следующий шаг отложен: PreUploadCheck будет добавлен отдельным approved desktop slice.";
 }
 
 public sealed record DesktopUploadSelectedFile(

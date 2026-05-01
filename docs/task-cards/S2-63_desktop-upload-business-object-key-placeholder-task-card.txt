@@ -1,0 +1,148 @@
+Title:
+S2-63 Desktop Upload Business Object Key Placeholder / Manual Entry Boundary
+
+Module:
+App.Desktop / upload businessObjectKey placeholder
+
+Owner:
+Coder 1 acting as Coder 2 / Desktop Client
+
+Client form:
+desktop standalone
+
+Type:
+narrow runtime desktop UI slice after S2-62 upload SHA-256 boundary
+
+Status:
+Runtime task card created with implementation.
+
+Goal:
+Add an App.Desktop-local manual businessObjectKey placeholder in the upload section, with safe validation/preview state and an optional fake/dev key for visual smoke only.
+
+Context:
+S2-58 added debug-only fake auth guarded by AA_DESKTOP_DEV_FAKE_AUTH_ENABLED=true.
+S2-59 added the Russian signed-in shell.
+S2-60 added the active "Загрузка видео" upload section placeholder.
+S2-61 added the App.Desktop-local video file picker boundary and safe metadata preview.
+S2-62 added the App.Desktop-local SHA-256 boundary and safe lowercase hash preview.
+
+Scope:
+- Keep the current Russian SignIn UI before authentication.
+- After fake-auth SignIn, show the signed-in shell.
+- Open the upload section from "Загрузка видео".
+- Keep Step 1 safe file metadata preview.
+- Keep Step 2 local SHA-256 preview.
+- Add Step 3 "Бизнес-объект" with a manual "Ключ бизнес-объекта" field.
+- Show the placeholder hint that manual entry is temporary for the desktop prototype and the production source will be approved in a later slice.
+- Validate manual input locally: trim whitespace, require 1..128 characters, reject newline/control characters, and keep preview limited to the sanitized key.
+- Add optional fake/dev key for visual smoke only:
+  - env guard: AA_DESKTOP_DEV_FAKE_BUSINESS_OBJECT_KEY_ENABLED=true
+  - fake value: visual-smoke-business-object-001
+- Clear upload state, including businessObjectKey state, on back and sign-out.
+
+Allowed changed areas:
+- docs/task-cards/S2-63_desktop-upload-business-object-key-placeholder-task-card.txt
+- src/App.Desktop/**
+- tests/Unit/App.Desktop.Tests/**
+
+Forbidden changed areas:
+- src/App.Api/**
+- src/App.Worker/**
+- src/App.Web/**
+- src/App.Mobile.Android/**
+- src/App.UI.Shared/**
+- src/BuildingBlocks.Contracts/**
+- src/Modules/**
+- DB migrations
+- .github/workflows/**
+- deploy scripts
+- docs/ops/**
+- committed screenshots or runtime artifacts
+
+Contracts:
+none
+
+Migrations:
+none
+
+Feature flags/env guard:
+- Existing fake auth visual-smoke guard:
+  AA_DESKTOP_DEV_FAKE_AUTH_ENABLED=true
+- Existing fake picker visual-smoke guard:
+  AA_DESKTOP_DEV_FAKE_UPLOAD_FILE_ENABLED=true
+- Existing fake hash visual-smoke guard:
+  AA_DESKTOP_DEV_FAKE_UPLOAD_HASH_ENABLED=true
+- Optional fake businessObjectKey visual-smoke guard:
+  AA_DESKTOP_DEV_FAKE_BUSINESS_OBJECT_KEY_ENABLED=true
+- Fake businessObjectKey is disabled by default and is visual-smoke/dev-test only.
+
+Events:
+none
+
+Offline behavior:
+none
+
+Security guardrails:
+- Do not send businessObjectKey to App.Api.
+- Do not add backend contracts, DTOs, migrations, or API routes.
+- Do not claim manual businessObjectKey is a production source of truth.
+- Do not display or log password, accessToken, refreshToken, Authorization, raw session id, raw response body, or token-like values.
+- Screenshots and runtime artifacts stay under C:\CODEX\Temp and are not committed.
+
+Explicitly out of scope:
+- PreUploadCheck.
+- Direct site upload.
+- UploadReceipt.
+- Backend-approved business object/report-draft binding flow.
+- GroupTree runtime.
+- Report draft runtime.
+- Offline queue.
+- App.Api changes or App.Api calls from upload section.
+- Shared contract changes.
+- DB migrations.
+- Deploy/workflow changes.
+- App.Web changes.
+- App.Mobile.Android changes.
+- App.UI.Shared changes.
+
+Deferred:
+Backend-approved business object/report-draft binding is not implemented in S2-63. Production direction remains a separate approved slice where businessObjectKey comes from a backend-approved business object or report-draft binding flow.
+
+Rollback:
+revert S2-63 PR
+
+Validation:
+- git diff --check
+- dotnet restore AnalyticsAutomation-Core.sln -nologo
+- dotnet format whitespace AnalyticsAutomation-Core.sln --verify-no-changes --no-restore
+- dotnet build src/App.Desktop/App.Desktop.csproj -nologo -v minimal
+- dotnet build AnalyticsAutomation-Core.sln -nologo -v minimal
+- dotnet test tests/Unit/App.Desktop.Tests/App.Desktop.Tests.csproj -nologo -v minimal
+- hidden/control Unicode scan over changed text files
+- App.Desktop fake-auth/fake-picker/fake-hash/fake-businessObjectKey visual smoke with screenshots
+
+Definition of done:
+- Upload section shows Step 1 file metadata, Step 2 SHA-256, Step 3 businessObjectKey placeholder, and a deferred PreUploadCheck note.
+- Manual businessObjectKey entry trims whitespace and previews only the sanitized accepted key.
+- Empty, multiline/control-character, over-length, and secret-like values show safe Russian validation messages without exposing tokens or credentials.
+- Fake businessObjectKey is disabled by default and enabled only by AA_DESKTOP_DEV_FAKE_BUSINESS_OBJECT_KEY_ENABLED=true in debug/dev-test visual smoke.
+- Fake businessObjectKey value is visual-smoke-business-object-001.
+- Back/sign-out clear selected file, hash, and businessObjectKey state.
+- No PreUploadCheck, direct site upload, UploadReceipt, App.Api call, contract, migration, deploy, App.Web, or App.Mobile.Android change is introduced.
+- Automated App.Desktop tests cover options, fake value, manual validation/sanitization, reset behavior, forbidden upload-chain calls, and visible-string safety.
+- Required visual-smoke screenshots are saved under C:\CODEX\Temp and kept out of git.
+
+Visual-smoke definition of done:
+- Run App.Desktop with AA_DESKTOP_DEV_FAKE_AUTH_ENABLED=true, AA_DESKTOP_DEV_FAKE_UPLOAD_FILE_ENABLED=true, AA_DESKTOP_DEV_FAKE_UPLOAD_HASH_ENABLED=true, and AA_DESKTOP_DEV_FAKE_BUSINESS_OBJECT_KEY_ENABLED=true.
+- Do not set AA_DESKTOP_CONTROL_PLANE_BASE_ADDRESS.
+- Use non-secret test data visual-smoke-user / visual-smoke-password.
+- Capture screenshots under C:\CODEX\Temp\S2-63_DESKTOP_BUSINESS_OBJECT_KEY_VISUAL_SMOKE_<timestamp>\.
+- Required screenshots:
+  - 01_baseline_signin.png
+  - 02_signed_in_shell.png
+  - 03_upload_section_after_fake_file_and_hash.png
+  - 04_business_object_key_empty_validation.png
+  - 05_after_fake_business_object_key.png
+  - 06_after_sign_out.png
+- Confirm no password, accessToken, refreshToken, Authorization, raw session id, raw response body, raw path, or real secret is visible.
+- Confirm screenshots and runtime artifacts are not committed.
