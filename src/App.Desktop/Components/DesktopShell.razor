@@ -169,6 +169,67 @@
                                     </div>
                                 </dl>
                             }
+                        </div>
+
+                        <div class="desktop-upload__step">
+                            <h3>@DesktopUploadSectionText.StepFourTitle</h3>
+                            <p
+                                id="desktop-upload-preuploadcheck-status"
+                                class="desktop-upload__message"
+                                role="status"
+                                aria-live="polite">
+                                @UploadSectionViewModel.PreUploadCheckStatusMessage
+                            </p>
+
+                            @if (UploadSectionViewModel.PreUploadCheckRequestPreview is { } preUploadCheckPreview)
+                            {
+                                <dl class="desktop-upload__preupload-preview">
+                                    <div>
+                                        <dt>@DesktopUploadSectionText.PreUploadCheckFileNameLabel</dt>
+                                        <dd>@preUploadCheckPreview.FileName</dd>
+                                    </div>
+                                    <div>
+                                        <dt>@DesktopUploadSectionText.PreUploadCheckFileSizeLabel</dt>
+                                        <dd>@preUploadCheckPreview.SizeBytes</dd>
+                                    </div>
+                                    <div>
+                                        <dt>@DesktopUploadSectionText.PreUploadCheckContentTypeLabel</dt>
+                                        <dd>@preUploadCheckPreview.ContentType</dd>
+                                    </div>
+                                    <div>
+                                        <dt>@DesktopUploadSectionText.PreUploadCheckSha256Label</dt>
+                                        <dd>@preUploadCheckPreview.Sha256Hex</dd>
+                                    </div>
+                                    <div>
+                                        <dt>@DesktopUploadSectionText.PreUploadCheckBusinessObjectKeyLabel</dt>
+                                        <dd>@preUploadCheckPreview.BusinessObjectKeyPreview</dd>
+                                    </div>
+                                    <div>
+                                        <dt>@DesktopUploadSectionText.PreUploadCheckCapturedAtUtcLabel</dt>
+                                        <dd>@preUploadCheckPreview.CapturedAtUtc</dd>
+                                    </div>
+                                </dl>
+                            }
+
+                            <button
+                                class="desktop-upload__preupload"
+                                type="button"
+                                disabled="@(SignInViewModel.IsBusy || !UploadSectionViewModel.CanRequestPreUploadCheck)"
+                                @onclick="CheckPreUploadAsync">
+                                @(UploadSectionViewModel.IsCheckingPreUpload
+                                    ? DesktopUploadSectionText.PreUploadCheckBusyButton
+                                    : DesktopUploadSectionText.PreUploadCheckButton)
+                            </button>
+
+                            @if (UploadSectionViewModel.HasPreUploadCheckDecision)
+                            {
+                                <dl class="desktop-upload__preupload-decision">
+                                    <div>
+                                        <dt>@DesktopUploadSectionText.PreUploadCheckDecisionLabel</dt>
+                                        <dd>@UploadSectionViewModel.PreUploadCheckDecisionPreview</dd>
+                                    </div>
+                                </dl>
+                            }
 
                             <p class="desktop-upload__deferred">
                                 @DesktopUploadSectionText.NextStepDeferredMessage
@@ -330,6 +391,17 @@
     private void UseDevFakeBusinessObjectKey()
     {
         UploadSectionViewModel.UseDevFakeBusinessObjectKey();
+    }
+
+    private async Task CheckPreUploadAsync()
+    {
+        ValueTask<DesktopPreUploadCheckResult?> checkAttempt =
+            UploadSectionViewModel.CheckPreUploadAsync(CancellationToken.None);
+        StateHasChanged();
+
+        await checkAttempt;
+
+        StateHasChanged();
     }
 
     private string GetHeaderStatusText()

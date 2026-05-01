@@ -1,0 +1,126 @@
+Title:
+S2-64 Desktop Upload PreUploadCheck Request Preview / Fake Decision Boundary
+
+Module:
+App.Desktop / upload PreUploadCheck request preview and fake decision boundary
+
+Owner:
+Coder 1 acting as Coder 2 / Desktop Client
+
+Client form:
+desktop standalone
+
+Type:
+narrow runtime desktop UI slice after S2-63 upload businessObjectKey placeholder
+
+Status:
+Runtime task card created with implementation.
+
+Goal:
+Add a safe App.Desktop-local PreUploadCheck request preview in the upload section and a dev/fake decision boundary for visual smoke only.
+
+Context:
+S2-58 added debug-only fake auth for visual smoke.
+S2-59 added the signed-in desktop shell.
+S2-60 added the active upload section entry.
+S2-61 added safe file metadata preview.
+S2-62 added the App.Desktop-local SHA-256 boundary and lowercase hash preview.
+S2-63 added the temporary manual businessObjectKey placeholder without App.Api calls.
+
+Scope:
+- Keep the current Russian SignIn UI before authentication.
+- After fake-auth SignIn, show the signed-in shell.
+- Keep upload Step 1 safe file metadata, Step 2 SHA-256, and Step 3 businessObjectKey placeholder.
+- Add Step 4 "Предварительная проверка".
+- Show a request preview built only from safe fields:
+  - file name without the local path;
+  - size;
+  - content type;
+  - SHA-256;
+  - businessObjectKey preview;
+  - capturedAtUtc local placeholder.
+- Add "Проверить перед загрузкой".
+- When AA_DESKTOP_DEV_FAKE_PREUPLOAD_CHECK_ENABLED is not true, show a safe deferred message and do not call App.Api.
+- When AA_DESKTOP_DEV_FAKE_PREUPLOAD_CHECK_ENABLED=true, call only the App.Desktop-local fake boundary and show ALLOW for visual smoke.
+
+Allowed changed areas:
+- docs/task-cards/S2-64_desktop-preuploadcheck-request-preview-task-card.txt
+- src/App.Desktop/**
+- tests/Unit/App.Desktop.Tests/**
+
+Forbidden changed areas:
+- src/App.Api/**
+- src/App.Worker/**
+- src/App.Web/**
+- src/App.Mobile.Android/**
+- src/App.UI.Shared/**
+- src/BuildingBlocks.Contracts/**
+- src/Modules/**
+- DB migrations
+- .github/workflows/**
+- deploy scripts
+- docs/ops/**
+- committed screenshots or runtime artifacts
+
+Contracts:
+none
+
+Migrations:
+none
+
+Feature flags/env guard:
+- Existing fake auth visual-smoke guard:
+  AA_DESKTOP_DEV_FAKE_AUTH_ENABLED=true
+- Existing fake picker visual-smoke guard:
+  AA_DESKTOP_DEV_FAKE_UPLOAD_FILE_ENABLED=true
+- Existing fake hash visual-smoke guard:
+  AA_DESKTOP_DEV_FAKE_UPLOAD_HASH_ENABLED=true
+- Existing fake businessObjectKey visual-smoke guard:
+  AA_DESKTOP_DEV_FAKE_BUSINESS_OBJECT_KEY_ENABLED=true
+- New fake PreUploadCheck visual-smoke guard:
+  AA_DESKTOP_DEV_FAKE_PREUPLOAD_CHECK_ENABLED=true
+
+Events:
+none
+
+Offline behavior:
+none
+
+Security guardrails:
+- Do not send the preview to App.Api.
+- Do not add backend DTOs, shared contracts, API routes, migrations, or deploy changes.
+- Do not claim manual businessObjectKey is a production source of truth.
+- Do not display a full local file path.
+- Do not display or log password, accessToken, refreshToken, Authorization, raw session id, raw response body, or token-like values.
+- Do not direct site upload.
+- Do not create UploadReceipt.
+- Screenshots and runtime artifacts stay under C:\CODEX\Temp and are not committed.
+
+Deferred:
+Real App.Api PreUploadCheck integration is not implemented in S2-64. The real control-plane client remains a separate approved slice after backend-approved business object/report-draft binding is agreed. App.Api remains the control plane; video bytes do not go through App.Api.
+
+Rollback:
+revert S2-64 PR
+
+Validation:
+- git diff --check
+- dotnet restore AnalyticsAutomation-Core.sln -nologo
+- dotnet format whitespace AnalyticsAutomation-Core.sln --verify-no-changes --no-restore
+- dotnet build src/App.Desktop/App.Desktop.csproj -nologo -v minimal
+- dotnet build AnalyticsAutomation-Core.sln -nologo -v minimal
+- dotnet test tests/Unit/App.Desktop.Tests/App.Desktop.Tests.csproj -nologo -v minimal
+- hidden/control Unicode scan over changed text files
+- App.Desktop fake-auth/fake-picker/fake-hash/fake-businessObjectKey/fake-PreUploadCheck visual smoke with screenshots
+
+Definition of done:
+- Step 4 shows a safe PreUploadCheck request preview only after selected file, SHA-256, and businessObjectKey are present.
+- Preview shows safe file name, size, content type, SHA-256, businessObjectKey, and capturedAtUtc placeholder.
+- Preview never shows the full local path.
+- Fake PreUploadCheck is disabled by default.
+- Fake PreUploadCheck is enabled only by AA_DESKTOP_DEV_FAKE_PREUPLOAD_CHECK_ENABLED=true in debug/dev-test visual smoke.
+- Disabled fake PreUploadCheck shows the safe deferred Russian message and makes no App.Api call.
+- Enabled fake PreUploadCheck shows ALLOW and the safe Russian dev-smoke allowed message.
+- Back/sign-out clear PreUploadCheck preview and decision state.
+- No direct site upload, UploadReceipt, offline queue, GroupTree runtime, report draft runtime, App.Api change, contract change, migration, deploy, App.Web, or App.Mobile.Android change is introduced.
+- Automated App.Desktop tests cover env guard behavior, safe preview requirements, fake ALLOW decision, reset behavior, forbidden upload-chain calls, and visible-string safety.
+- Visual-smoke screenshots are saved under C:\CODEX\Temp and kept out of git.
