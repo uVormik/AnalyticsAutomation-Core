@@ -1,4 +1,5 @@
 using App.Desktop.Boundaries;
+using App.Desktop.Services.GroupTree;
 
 namespace App.Desktop.Services.Upload;
 
@@ -12,7 +13,8 @@ public sealed class DesktopPreUploadCheckRequestPreview
         string contentType,
         string sha256Hex,
         string businessObjectKeyPreview,
-        string capturedAtUtc)
+        string capturedAtUtc,
+        Guid? groupNodeId)
     {
         FileName = fileName;
         SizeBytes = sizeBytes;
@@ -20,6 +22,7 @@ public sealed class DesktopPreUploadCheckRequestPreview
         Sha256Hex = sha256Hex;
         BusinessObjectKeyPreview = businessObjectKeyPreview;
         CapturedAtUtc = capturedAtUtc;
+        GroupNodeId = groupNodeId;
     }
 
     public string FileName { get; }
@@ -34,10 +37,13 @@ public sealed class DesktopPreUploadCheckRequestPreview
 
     public string CapturedAtUtc { get; }
 
+    public Guid? GroupNodeId { get; }
+
     public static DesktopPreUploadCheckRequestPreview? TryCreate(
         DesktopUploadSelectedFile? selectedFile,
         string? sha256Hex,
-        DesktopUploadBusinessObjectKey? businessObjectKey)
+        DesktopUploadBusinessObjectKey? businessObjectKey,
+        DesktopSelectedGroupContext? selectedGroupContext = null)
     {
         string safeSha256Hex = sha256Hex ?? string.Empty;
 
@@ -55,14 +61,16 @@ public sealed class DesktopPreUploadCheckRequestPreview
             selectedFile.ContentType,
             safeSha256Hex,
             businessObjectKey.Value,
-            CapturedAtUtcPlaceholder);
+            CapturedAtUtcPlaceholder,
+            TryParseGroupNodeId(selectedGroupContext));
     }
 
     public override string ToString()
     {
         return $"{nameof(DesktopPreUploadCheckRequestPreview)} {{ FileName = {FileName}, "
             + $"SizeBytes = {SizeBytes}, ContentType = {ContentType}, HasSha256 = {Sha256Hex.Length == 64}, "
-            + $"BusinessObjectKeyPreview = {BusinessObjectKeyPreview}, CapturedAtUtc = {CapturedAtUtc} }}";
+            + $"BusinessObjectKeyPreview = {BusinessObjectKeyPreview}, CapturedAtUtc = {CapturedAtUtc}, "
+            + $"HasGroupNodeId = {GroupNodeId.HasValue} }}";
     }
 
     private static bool IsLowercaseSha256Hex(string? value)
@@ -101,6 +109,13 @@ public sealed class DesktopPreUploadCheckRequestPreview
         }
 
         return true;
+    }
+
+    private static Guid? TryParseGroupNodeId(DesktopSelectedGroupContext? selectedGroupContext)
+    {
+        return Guid.TryParse(selectedGroupContext?.Id, out Guid groupNodeId)
+            ? groupNodeId
+            : null;
     }
 }
 
@@ -165,6 +180,50 @@ public sealed class DesktopPreUploadCheckResult
         return new DesktopPreUploadCheckResult(status, decision, message);
     }
 
+    public static DesktopPreUploadCheckResult FromLiveDecision(DesktopPreUploadCheckDecision decision)
+    {
+        string message = decision switch
+        {
+            DesktopPreUploadCheckDecision.Allow => DesktopUploadSectionText.PreUploadCheckAllowedLiveMessage,
+            DesktopPreUploadCheckDecision.AllowWithReview =>
+                DesktopUploadSectionText.PreUploadCheckAllowWithReviewLiveMessage,
+            DesktopPreUploadCheckDecision.BlockHardDuplicate =>
+                DesktopUploadSectionText.PreUploadCheckBlockHardDuplicateLiveMessage,
+            DesktopPreUploadCheckDecision.BlockPossibleFalsification =>
+                DesktopUploadSectionText.PreUploadCheckBlockPossibleFalsificationLiveMessage,
+            _ => DesktopUploadSectionText.PreUploadCheckLiveMalformedMessage
+        };
+
+        DesktopPreUploadCheckStatus status = decision switch
+        {
+            DesktopPreUploadCheckDecision.Allow => DesktopPreUploadCheckStatus.Allowed,
+            DesktopPreUploadCheckDecision.AllowWithReview => DesktopPreUploadCheckStatus.AllowedWithReview,
+            _ => DesktopPreUploadCheckStatus.Blocked
+        };
+
+        return new DesktopPreUploadCheckResult(status, decision, message);
+    }
+
+    public static DesktopPreUploadCheckResult LiveUnavailable { get; } = new(
+        DesktopPreUploadCheckStatus.Unavailable,
+        decision: null,
+        DesktopUploadSectionText.PreUploadCheckLiveUnavailableMessage);
+
+    public static DesktopPreUploadCheckResult LiveUnauthorized { get; } = new(
+        DesktopPreUploadCheckStatus.Unauthorized,
+        decision: null,
+        DesktopUploadSectionText.PreUploadCheckLiveUnauthorizedMessage);
+
+    public static DesktopPreUploadCheckResult LiveFailed { get; } = new(
+        DesktopPreUploadCheckStatus.Failed,
+        decision: null,
+        DesktopUploadSectionText.PreUploadCheckLiveFailedMessage);
+
+    public static DesktopPreUploadCheckResult LiveMalformed { get; } = new(
+        DesktopPreUploadCheckStatus.Malformed,
+        decision: null,
+        DesktopUploadSectionText.PreUploadCheckLiveMalformedMessage);
+
     public override string ToString()
     {
         return $"{nameof(DesktopPreUploadCheckResult)} {{ Status = {Status}, Decision = {DecisionPreview ?? "<none>"}, "
@@ -178,7 +237,11 @@ public enum DesktopPreUploadCheckStatus
     Allowed,
     AllowedWithReview,
     Blocked,
-    Canceled
+    Canceled,
+    Unavailable,
+    Unauthorized,
+    Failed,
+    Malformed
 }
 
 public enum DesktopPreUploadCheckDecision

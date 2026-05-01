@@ -57,6 +57,9 @@ public static class DesktopCompositionRoot
         DesktopGroupTreeOptions effectiveGroupTreeOptions = authOptions.IsControlPlaneSignInConfigured
             ? DesktopGroupTreeOptions.EnabledForLiveControlPlane
             : groupTreeOptions;
+        DesktopUploadSectionOptions effectiveUploadSectionOptions = authOptions.IsControlPlaneSignInConfigured
+            ? uploadSectionOptions.WithLiveControlPlanePreUploadCheck()
+            : uploadSectionOptions;
 
         var services = new ServiceCollection();
 
@@ -66,7 +69,7 @@ public static class DesktopCompositionRoot
 #endif
 
         services.AddSingleton(authOptions);
-        services.AddSingleton(uploadSectionOptions);
+        services.AddSingleton(effectiveUploadSectionOptions);
         services.AddSingleton(effectiveGroupTreeOptions);
         services.AddSingleton<IDesktopShellLifecycle, PlaceholderDesktopShellLifecycle>();
         services.AddSingleton<IDesktopSessionStore, DisabledDesktopSessionStore>();
@@ -114,7 +117,7 @@ public static class DesktopCompositionRoot
             services.AddSingleton<IDesktopGroupTreeClient, DisabledDesktopGroupTreeClient>();
         }
 
-        if (uploadSectionOptions.IsDevFakeUploadFileEnabled)
+        if (effectiveUploadSectionOptions.IsDevFakeUploadFileEnabled)
         {
             services.AddSingleton<IDesktopVideoFilePicker, FakeDesktopVideoFilePicker>();
         }
@@ -123,7 +126,7 @@ public static class DesktopCompositionRoot
             services.AddSingleton<IDesktopVideoFilePicker, WpfDesktopVideoFilePicker>();
         }
 
-        if (uploadSectionOptions.IsDevFakeUploadHashEnabled)
+        if (effectiveUploadSectionOptions.IsDevFakeUploadHashEnabled)
         {
             services.AddSingleton<IDesktopVideoHashService, FakeDesktopVideoHashService>();
         }
@@ -132,7 +135,12 @@ public static class DesktopCompositionRoot
             services.AddSingleton<IDesktopVideoHashService, DesktopVideoHashService>();
         }
 
-        if (uploadSectionOptions.IsDevFakePreUploadCheckEnabled)
+        if (effectiveUploadSectionOptions.IsLiveControlPlanePreUploadCheckEnabled
+            && authOptions.IsControlPlaneSignInConfigured)
+        {
+            services.AddSingleton<IDesktopPreUploadCheckClient, HttpDesktopPreUploadCheckClient>();
+        }
+        else if (effectiveUploadSectionOptions.IsDevFakePreUploadCheckEnabled)
         {
             services.AddSingleton<IDesktopPreUploadCheckClient, FakeDesktopPreUploadCheckClient>();
         }
@@ -141,7 +149,7 @@ public static class DesktopCompositionRoot
             services.AddSingleton<IDesktopPreUploadCheckClient, DisabledDesktopPreUploadCheckClient>();
         }
 
-        if (uploadSectionOptions.IsDevFakeSiteUploadEnabled)
+        if (effectiveUploadSectionOptions.IsDevFakeSiteUploadEnabled)
         {
             services.AddSingleton<IDesktopDirectSiteUploadClient, FakeDesktopDirectSiteUploadClient>();
         }
@@ -150,7 +158,7 @@ public static class DesktopCompositionRoot
             services.AddSingleton<IDesktopDirectSiteUploadClient, DisabledDesktopDirectSiteUploadClient>();
         }
 
-        if (uploadSectionOptions.IsDevFakeUploadReceiptEnabled)
+        if (effectiveUploadSectionOptions.IsDevFakeUploadReceiptEnabled)
         {
             services.AddSingleton<IDesktopUploadReceiptClient, FakeDesktopUploadReceiptClient>();
         }

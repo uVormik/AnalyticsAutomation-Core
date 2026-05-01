@@ -33,6 +33,7 @@ public interface IDesktopSessionStore
 public sealed record DesktopSessionSnapshot(
     DesktopSessionStatus Status,
     Guid? UserId,
+    Guid? DeviceId,
     string? DisplayName,
     bool HasAccessToken,
     bool HasRefreshToken,
@@ -41,6 +42,7 @@ public sealed record DesktopSessionSnapshot(
     public static DesktopSessionSnapshot SignedOut { get; } = new(
         DesktopSessionStatus.SignedOut,
         UserId: null,
+        DeviceId: null,
         DisplayName: null,
         HasAccessToken: false,
         HasRefreshToken: false,
@@ -55,6 +57,7 @@ public sealed record DesktopSessionSnapshot(
         return new DesktopSessionSnapshot(
             DesktopSessionStatus.SignedIn,
             session.UserId,
+            session.DeviceId,
             session.DisplayName,
             HasAccessToken: true,
             HasRefreshToken: !string.IsNullOrWhiteSpace(session.RefreshToken),
@@ -63,7 +66,7 @@ public sealed record DesktopSessionSnapshot(
 
     public override string ToString()
     {
-        return $"{nameof(DesktopSessionSnapshot)} {{ Status = {Status}, UserId = {UserId}, "
+        return $"{nameof(DesktopSessionSnapshot)} {{ Status = {Status}, UserId = {UserId}, DeviceId = {DeviceId}, "
             + $"DisplayName = {DisplayName}, HasAccessToken = {HasAccessToken}, "
             + $"HasRefreshToken = {HasRefreshToken}, ExpiresAtUtc = {ExpiresAtUtc:O} }}";
     }
