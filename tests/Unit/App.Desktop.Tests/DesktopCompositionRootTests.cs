@@ -24,6 +24,7 @@ public sealed class DesktopCompositionRootTests
         Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeUploadFileEnabled);
         Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeUploadHashEnabled);
         Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeBusinessObjectKeyEnabled);
+        Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsLiveControlPlanePreUploadCheckEnabled);
         Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakePreUploadCheckEnabled);
         Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeSiteUploadEnabled);
         Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeUploadReceiptEnabled);
@@ -61,6 +62,7 @@ public sealed class DesktopCompositionRootTests
         Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeUploadFileEnabled);
         Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeUploadHashEnabled);
         Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeBusinessObjectKeyEnabled);
+        Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsLiveControlPlanePreUploadCheckEnabled);
         Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakePreUploadCheckEnabled);
         Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeSiteUploadEnabled);
         Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeUploadReceiptEnabled);
@@ -472,10 +474,16 @@ public sealed class DesktopCompositionRootTests
 
         Assert.IsType<HttpDesktopAuthClient>(services.GetRequiredService<IDesktopAuthClient>());
         Assert.IsType<HttpDesktopGroupTreeClient>(services.GetRequiredService<IDesktopGroupTreeClient>());
+        Assert.IsType<HttpDesktopPreUploadCheckClient>(
+            services.GetRequiredService<IDesktopPreUploadCheckClient>());
         Assert.IsType<DisabledDesktopSessionStore>(services.GetRequiredService<IDesktopSessionStore>());
         Assert.True(services.GetRequiredService<DesktopAuthOptions>().IsControlPlaneSignInConfigured);
         Assert.True(services.GetRequiredService<DesktopGroupTreeOptions>().IsLiveControlPlaneGroupTreeEnabled);
         Assert.False(services.GetRequiredService<DesktopGroupTreeOptions>().IsDevFakeGroupTreeEnabled);
+        Assert.True(services.GetRequiredService<DesktopUploadSectionOptions>().IsLiveControlPlanePreUploadCheckEnabled);
+        Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakePreUploadCheckEnabled);
+        Assert.True(services.GetRequiredService<DesktopUploadSectionViewModel>().IsLiveControlPlanePreUploadCheckEnabled);
+        Assert.False(services.GetRequiredService<DesktopUploadSectionViewModel>().IsDevFakePreUploadCheckEnabled);
         Assert.Equal(
             new Uri("https://control-plane.local"),
             services.GetRequiredService<HttpClient>().BaseAddress);
@@ -532,6 +540,26 @@ public sealed class DesktopCompositionRootTests
         Assert.False(services.GetRequiredService<DesktopGroupTreeViewModel>().IsDevFakeGroupTreeEnabled);
         Assert.IsType<HttpDesktopAuthClient>(services.GetRequiredService<IDesktopAuthClient>());
         Assert.IsType<HttpDesktopGroupTreeClient>(services.GetRequiredService<IDesktopGroupTreeClient>());
+    }
+
+    [Fact]
+    public void ExplicitFakePreUploadCheckFlagDoesNotReplaceConfiguredLivePreUploadCheckClient()
+    {
+        using var environment = new EnvironmentVariableScope()
+            .Set(DesktopAuthOptions.ControlPlaneBaseAddressEnvironmentVariable, "https://control-plane.local")
+            .Set(DesktopAuthOptions.DevFakeAuthEnabledEnvironmentVariable, "true")
+            .Set(DesktopUploadSectionOptions.DevFakePreUploadCheckEnabledEnvironmentVariable, "true");
+
+        using var services = DesktopCompositionRoot.BuildServicesFromEnvironment();
+
+        Assert.False(services.GetRequiredService<DesktopAuthOptions>().IsDevFakeAuthEnabled);
+        Assert.True(services.GetRequiredService<DesktopAuthOptions>().IsControlPlaneSignInConfigured);
+        Assert.True(services.GetRequiredService<DesktopUploadSectionOptions>().IsLiveControlPlanePreUploadCheckEnabled);
+        Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakePreUploadCheckEnabled);
+        Assert.True(services.GetRequiredService<DesktopUploadSectionViewModel>().IsLiveControlPlanePreUploadCheckEnabled);
+        Assert.False(services.GetRequiredService<DesktopUploadSectionViewModel>().IsDevFakePreUploadCheckEnabled);
+        Assert.IsType<HttpDesktopPreUploadCheckClient>(
+            services.GetRequiredService<IDesktopPreUploadCheckClient>());
     }
 
     [Fact]

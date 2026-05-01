@@ -1,0 +1,168 @@
+Title:
+S2-69 Desktop PreUploadCheck Control-Plane Client Probe / Existing API Boundary
+
+Module:
+App.Desktop / PreUploadCheck control-plane client probe
+
+Owner:
+Coder 1 acting as Coder 2 / Desktop Client
+
+Client form:
+desktop standalone
+
+Type:
+narrow runtime desktop-only client boundary slice after S2-68 GroupTree control-plane probe
+
+Status:
+Runtime task card created with implementation.
+
+Goal:
+Probe the existing App.Api / Modules.VideoUpload / contracts PreUploadCheck surface read-only and, only because an existing approved endpoint was found, add an App.Desktop-local live PreUploadCheck client boundary without backend, contract, migration, deploy, Web, or Android changes.
+
+Existing PreUploadCheck API endpoint/contract found:
+Yes.
+
+Read-only sources inspected:
+- src/App.Api/Program.cs
+- src/Modules/VideoUpload/VideoUploadModule.cs
+- src/BuildingBlocks/Contracts/VideoUpload/PreUploadCheckDtos.cs
+- tests/Integration/App.Api/UploadControlPlaneAuthorizationTests.cs
+- tests/Integration/VideoUpload/PreUploadCheckServiceTests.cs
+- tests/Integration/** references found by repository search
+
+Existing approved surface used:
+- POST /api/video/pre-upload-check
+- Authorization: bearer session access token from existing desktop sign-in session
+- Request shape derived from existing code only:
+  VideoPreUploadCheckRequestDto with userId, deviceId, groupNodeId, businessObjectKey, fileName, sizeBytes, byteSha256, contentType, capturedAtUtc
+- Response shape derived from existing code only:
+  VideoPreUploadCheckResponseDto with preUploadCheckId, decision, canUploadToSite, reasonCode, message, existingPreUploadCheckId, requiredNextSteps, sitePlan, checkedAtUtc
+
+Scope:
+- Keep the current Russian SignIn UI before authentication.
+- After SignIn, keep the signed-in shell.
+- Preserve S2-68 GroupTree live/fake behavior.
+- Preserve S2-64 fake/dev PreUploadCheck visual smoke behavior when no live base address is configured.
+- Add HttpDesktopPreUploadCheckClient as an App.Desktop-local IDesktopPreUploadCheckClient implementation.
+- Select the live client only when AA_DESKTOP_CONTROL_PLANE_BASE_ADDRESS is configured.
+- Do not select fake PreUploadCheck when a live base address is configured.
+- Keep selected group context preview-only in the upload section.
+- Keep PreUploadCheck decision as the input for the downstream existing fake/dev site upload chain.
+- Clear PreUploadCheck preview/decision state on back and sign-out.
+
+Allowed changed areas:
+- docs/task-cards/S2-69_desktop-preuploadcheck-control-plane-client-probe-task-card.txt
+- src/App.Desktop/**
+- tests/Unit/App.Desktop.Tests/**
+
+Forbidden changed areas:
+- src/App.Api/**
+- src/App.Worker/**
+- src/App.Web/**
+- src/App.Mobile.Android/**
+- src/App.UI.Shared/**
+- src/BuildingBlocks.Contracts/**
+- src/Modules/**
+- DB migrations
+- .github/workflows/**
+- deploy scripts
+- docs/ops/**
+- committed screenshots or runtime artifacts
+
+Contracts:
+none
+
+Migrations:
+none
+
+Feature flags/env guard:
+- Existing AA_DESKTOP_DEV_FAKE_PREUPLOAD_CHECK_ENABLED=true keeps the fake/dev PreUploadCheck visual-smoke path when no live control-plane base address is configured.
+- Existing AA_DESKTOP_CONTROL_PLANE_BASE_ADDRESS enables the live App.Api PreUploadCheck client.
+- If AA_DESKTOP_CONTROL_PLANE_BASE_ADDRESS is configured, fake PreUploadCheck is not selected even when AA_DESKTOP_DEV_FAKE_PREUPLOAD_CHECK_ENABLED=true.
+- If AA_DESKTOP_CONTROL_PLANE_BASE_ADDRESS is absent and fake guard is off, PreUploadCheck remains disabled/unavailable with a safe Russian message.
+
+Events:
+none
+
+Offline behavior:
+none
+
+Security guardrails:
+- The live client sends the bearer access token only in the request header.
+- Do not log or display accessToken, refreshToken, Authorization, password, raw session id, raw response body, token-like values, or full local file paths.
+- The live client sends only safe fields from the existing request contract.
+- The live client does not read, log, or surface raw response bodies.
+- Unavailable, failed, unauthorized, and malformed responses produce safe Russian status messages.
+- Video bytes do not go through App.Api.
+- Screenshots and runtime artifacts stay under C:\CODEX\Temp and are not committed.
+
+Explicitly out of scope:
+- App.Api changes.
+- Modules changes.
+- BuildingBlocks.Contracts changes.
+- Backend endpoint/DTO/contract additions.
+- DB migrations.
+- Deploy/workflow changes.
+- App.Web changes.
+- App.Mobile.Android changes.
+- Real site upload changes.
+- Real UploadReceipt changes.
+- Video bytes through App.Api.
+- Offline queue.
+- Report draft runtime.
+
+Deferred:
+Real PreUploadCheck endpoint/contract was found, so the desktop HTTP client boundary is implemented in S2-69. Production source of truth for businessObjectKey and report-draft/business-object binding remains deferred to a separate approved slice. Real site upload and real UploadReceipt behavior remain deferred beyond the existing fake/dev chain.
+
+Rollback:
+revert S2-69 PR
+
+Validation:
+- git diff --check
+- dotnet restore AnalyticsAutomation-Core.sln -nologo
+- dotnet format whitespace AnalyticsAutomation-Core.sln --verify-no-changes --no-restore
+- dotnet build src/App.Desktop/App.Desktop.csproj -nologo -v minimal
+- dotnet build AnalyticsAutomation-Core.sln -nologo -v minimal
+- dotnet test tests/Unit/App.Desktop.Tests/App.Desktop.Tests.csproj -nologo -v minimal
+- hidden/control Unicode scan over changed text files
+- App.Desktop fake-auth/fake-group-tree/fake-upload-chain visual smoke with screenshots
+
+Definition of done:
+- Existing PreUploadCheck API/contract is documented as found.
+- HttpDesktopPreUploadCheckClient uses only POST /api/video/pre-upload-check and the existing VideoPreUploadCheck request/response shape.
+- Live PreUploadCheck client requires AA_DESKTOP_CONTROL_PLANE_BASE_ADDRESS.
+- Fake PreUploadCheck remains disabled by default and enabled only by AA_DESKTOP_DEV_FAKE_PREUPLOAD_CHECK_ENABLED=true when live base address is absent.
+- Fake PreUploadCheck is not selected when live base address is configured.
+- Disabled/no-base/no-fake state shows a safe Russian disabled/deferred message.
+- Live unavailable, failed, unauthorized, and malformed responses show safe Russian messages.
+- Tokens/passwords/Authorization/raw bodies/full local paths are not visible in UI/result diagnostics.
+- Request preview remains safe and does not show raw request/response body.
+- Back/sign-out clear PreUploadCheck preview and decision state.
+- No App.Api, contracts, migrations, deploy, App.Web, or App.Mobile.Android files are changed.
+- No real site upload or real UploadReceipt behavior changes are introduced beyond the existing fake/dev chain.
+- Automated App.Desktop unit tests cover guards, live endpoint request construction, safe decision mapping, safe failures, fake preservation, reset behavior, downstream fake/dev gating, and visible-string safety.
+
+Visual-smoke definition of done:
+- Run App.Desktop with:
+  AA_DESKTOP_DEV_FAKE_AUTH_ENABLED=true
+  AA_DESKTOP_DEV_FAKE_GROUP_TREE_ENABLED=true
+  AA_DESKTOP_DEV_FAKE_UPLOAD_FILE_ENABLED=true
+  AA_DESKTOP_DEV_FAKE_UPLOAD_HASH_ENABLED=true
+  AA_DESKTOP_DEV_FAKE_BUSINESS_OBJECT_KEY_ENABLED=true
+  AA_DESKTOP_DEV_FAKE_PREUPLOAD_CHECK_ENABLED=true
+  AA_DESKTOP_DEV_FAKE_SITE_UPLOAD_ENABLED=true
+  AA_DESKTOP_DEV_FAKE_UPLOAD_RECEIPT_ENABLED=true
+- Do not set AA_DESKTOP_CONTROL_PLANE_BASE_ADDRESS for fake-auth visual smoke.
+- Use non-secret fake-auth visual-smoke data:
+  login: visual-smoke-user
+  password: visual-smoke-password
+- Capture screenshots under C:\CODEX\Temp\S2-69_DESKTOP_PREUPLOADCHECK_CLIENT_PROBE_VISUAL_SMOKE_<timestamp>\.
+- Required screenshots:
+  01_baseline_signin.png
+  02_signed_in_shell.png
+  03_upload_section_before_preuploadcheck.png
+  04_preuploadcheck_request_preview.png
+  05_after_fake_preuploadcheck_allow.png
+  06_after_sign_out.png
+- Confirm no password, accessToken, refreshToken, Authorization, raw session id, raw response body, raw path, or real secret is visible.
+- Confirm screenshots and runtime artifacts are not committed.

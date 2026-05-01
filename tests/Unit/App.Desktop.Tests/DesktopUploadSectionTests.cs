@@ -1,4 +1,11 @@
+using System.Net;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+
 using App.Desktop.Boundaries;
+using App.Desktop.Services.Auth;
+using App.Desktop.Services.GroupTree;
 using App.Desktop.Services.Upload;
 
 namespace App.Desktop.Tests;
@@ -99,7 +106,7 @@ public sealed class DesktopUploadSectionTests
             "Выполняется предварительная проверка в desktop-local dev boundary.",
             DesktopUploadSectionText.PreUploadCheckInProgressMessage);
         Assert.Equal(
-            "Предварительная проверка пока доступна только в dev-smoke режиме. Реальный вызов App.Api будет добавлен отдельным approved slice.",
+            "Предварительная проверка недоступна: задайте live control-plane base address или включите dev-smoke guard.",
             DesktopUploadSectionText.PreUploadCheckDeferredMessage);
         Assert.Equal(
             "Предварительная проверка: загрузка разрешена в dev-smoke режиме.",
@@ -231,17 +238,51 @@ public sealed class DesktopUploadSectionTests
     }
 
     [Fact]
+    public void PreUploadCheckClientUsesOnlyApprovedEndpointAndDoesNotReadRawBodiesOrBytes()
+    {
+        string[] sourceFiles =
+        [
+            Path.Combine(FindRepositoryRoot(), "src", "App.Desktop", "Services", "Upload", "DesktopPreUploadCheck.cs"),
+            Path.Combine(FindRepositoryRoot(), "src", "App.Desktop", "Services", "Upload", "DisabledDesktopPreUploadCheckClient.cs"),
+            Path.Combine(FindRepositoryRoot(), "src", "App.Desktop", "Services", "Upload", "FakeDesktopPreUploadCheckClient.cs"),
+            Path.Combine(FindRepositoryRoot(), "src", "App.Desktop", "Services", "Upload", "HttpDesktopPreUploadCheckClient.cs"),
+            Path.Combine(FindRepositoryRoot(), "src", "App.Desktop", "Boundaries", "DesktopPreUploadCheckBoundary.cs")
+        ];
+
+        foreach (string sourceFile in sourceFiles)
+        {
+            string source = File.ReadAllText(sourceFile);
+
+            Assert.DoesNotContain("ReadAsStringAsync", source, StringComparison.Ordinal);
+            Assert.DoesNotContain("ReadAllBytes", source, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("ReadAllBytesAsync", source, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("WriteLine", source, StringComparison.Ordinal);
+            Assert.DoesNotContain("Log", source, StringComparison.Ordinal);
+            Assert.DoesNotContain("/api/video/upload-receipt", source, StringComparison.Ordinal);
+            Assert.DoesNotContain("/api/video/upload-receipt-sync", source, StringComparison.Ordinal);
+        }
+
+        string liveClientSource = File.ReadAllText(
+            Path.Combine(FindRepositoryRoot(), "src", "App.Desktop", "Services", "Upload", "HttpDesktopPreUploadCheckClient.cs"));
+
+        Assert.Contains("/api/video/pre-upload-check", liveClientSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("/api/video/pre-upload-check/", liveClientSource, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void FakeUploadFileSelectionHashBusinessObjectKeyPreUploadCheckSiteUploadAndUploadReceiptAreDevOnlyAndDisabledByDefault()
     {
         Assert.False(DesktopUploadSectionOptions.Disabled.IsDevFakeUploadFileEnabled);
         Assert.False(DesktopUploadSectionOptions.Disabled.IsDevFakeUploadHashEnabled);
         Assert.False(DesktopUploadSectionOptions.Disabled.IsDevFakeBusinessObjectKeyEnabled);
+        Assert.False(DesktopUploadSectionOptions.Disabled.IsLiveControlPlanePreUploadCheckEnabled);
         Assert.False(DesktopUploadSectionOptions.Disabled.IsDevFakePreUploadCheckEnabled);
         Assert.False(DesktopUploadSectionOptions.Disabled.IsDevFakeSiteUploadEnabled);
         Assert.False(DesktopUploadSectionOptions.Disabled.IsDevFakeUploadReceiptEnabled);
         Assert.False(DesktopUploadSectionOptions.FromEnvironmentValue(null).IsDevFakeUploadFileEnabled);
         Assert.False(DesktopUploadSectionOptions.FromEnvironmentValue(null).IsDevFakeUploadHashEnabled);
         Assert.False(DesktopUploadSectionOptions.FromEnvironmentValue(null).IsDevFakeBusinessObjectKeyEnabled);
+        Assert.False(DesktopUploadSectionOptions.FromEnvironmentValue(null).IsLiveControlPlanePreUploadCheckEnabled);
         Assert.False(DesktopUploadSectionOptions.FromEnvironmentValue(null).IsDevFakePreUploadCheckEnabled);
         Assert.False(DesktopUploadSectionOptions.FromEnvironmentValue(null).IsDevFakeSiteUploadEnabled);
         Assert.False(DesktopUploadSectionOptions.FromEnvironmentValue(null).IsDevFakeUploadReceiptEnabled);
@@ -729,6 +770,230 @@ public sealed class DesktopUploadSectionTests
 
         Assert.Equal(decision, result.Decision);
         Assert.Equal(expectedDecisionPreview, result.DecisionPreview);
+    }
+
+    [Fact]
+    public async Task HttpPreUploadCheckClientUsesExistingEndpointAndSafeRequestPayload()
+    {
+        string accessToken = CreateSensitiveValue("access");
+        Guid userId = Guid.NewGuid();
+        Guid deviceId = Guid.NewGuid();
+        Guid groupNodeId = Guid.NewGuid();
+        DesktopSessionState sessionState = await CreateSignedInSessionStateAsync(userId, deviceId, accessToken);
+        var groupSelectionState = new DesktopGroupSelectionState();
+        Assert.True(groupSelectionState.TrySelect(new DesktopGroupTreeNode(
+            groupNodeId.ToString("D"),
+            "Safe Group",
+            Depth: 1,
+            CanSelect: true)));
+        DesktopPreUploadCheckRequestPreview requestPreview =
+            DesktopPreUploadCheckRequestPreview.TryCreate(
+                DesktopUploadSelectedFile.VisualSmokeFile,
+                FakeDesktopVideoHashService.VisualSmokeSha256Hex,
+                new DesktopUploadBusinessObjectKey(DesktopUploadBusinessObjectKey.VisualSmokeValue),
+                groupSelectionState.SelectedGroup)
+            ?? throw new InvalidOperationException("Preview was not created.");
+        var handler = new StubHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = JsonContent(new
+            {
+                preUploadCheckId = Guid.NewGuid(),
+                decision = "ALLOW",
+                canUploadToSite = true,
+                reasonCode = "fast_path_clear",
+                message = $"server-message-{CreateSensitiveValue("refresh")}",
+                existingPreUploadCheckId = (string?)null,
+                requiredNextSteps = new[] { "UPLOAD_TO_SITE_DIRECT", "SEND_UPLOAD_RECEIPT" },
+                sitePlan = new
+                {
+                    provider = "Stub",
+                    externalVideoId = "site-video-001",
+                    storageKey = "videos/site-video-001.mp4",
+                    requiredReceiptEndpoint = "/api/video/upload-receipt"
+                },
+                checkedAtUtc = DateTimeOffset.UtcNow
+            })
+        });
+        var client = new HttpDesktopPreUploadCheckClient(
+            new HttpClient(handler)
+            {
+                BaseAddress = new Uri("https://control-plane.local")
+            },
+            sessionState,
+            sessionState);
+
+        DesktopPreUploadCheckResult result = await client.CheckAsync(requestPreview, CancellationToken.None);
+
+        Assert.Equal(DesktopPreUploadCheckStatus.Allowed, result.Status);
+        Assert.Equal(DesktopPreUploadCheckDecision.Allow, result.Decision);
+        Assert.NotNull(handler.LastRequest);
+        Assert.Equal(HttpMethod.Post, handler.LastRequest.Method);
+        Assert.Equal("/api/video/pre-upload-check", handler.LastRequest.RequestUri?.AbsolutePath);
+        Assert.Equal("Bearer", handler.LastRequest.Headers.Authorization?.Scheme);
+        Assert.Equal(accessToken, handler.LastRequest.Headers.Authorization?.Parameter);
+
+        JsonNode body = JsonNode.Parse(handler.LastRequestBody ?? string.Empty)
+            ?? throw new InvalidOperationException("Request JSON was not captured.");
+        Assert.Equal(userId, body["userId"]?.GetValue<Guid>());
+        Assert.Equal(deviceId, body["deviceId"]?.GetValue<Guid>());
+        Assert.Equal(groupNodeId, body["groupNodeId"]?.GetValue<Guid>());
+        Assert.Equal(DesktopUploadBusinessObjectKey.VisualSmokeValue, body["businessObjectKey"]?.GetValue<string>());
+        Assert.Equal(DesktopUploadSelectedFile.VisualSmokeFileName, body["fileName"]?.GetValue<string>());
+        Assert.Equal(DesktopUploadSelectedFile.VisualSmokeFileSizeBytes, body["sizeBytes"]?.GetValue<long>());
+        Assert.Equal(FakeDesktopVideoHashService.VisualSmokeSha256Hex, body["byteSha256"]?.GetValue<string>());
+        Assert.Equal(DesktopUploadSelectedFile.VisualSmokeContentType, body["contentType"]?.GetValue<string>());
+        Assert.NotNull(body["capturedAtUtc"]);
+        Assert.DoesNotContain(accessToken, handler.LastRequestBody ?? string.Empty, StringComparison.Ordinal);
+        Assert.DoesNotContain(accessToken, result.ToString(), StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("ALLOW", true, DesktopPreUploadCheckStatus.Allowed, DesktopPreUploadCheckDecision.Allow, "ALLOW")]
+    [InlineData("ALLOW_WITH_REVIEW", true, DesktopPreUploadCheckStatus.AllowedWithReview, DesktopPreUploadCheckDecision.AllowWithReview, "ALLOW_WITH_REVIEW")]
+    [InlineData("BLOCK_HARD_DUPLICATE", false, DesktopPreUploadCheckStatus.Blocked, DesktopPreUploadCheckDecision.BlockHardDuplicate, "BLOCK_HARD_DUPLICATE")]
+    [InlineData("BLOCK_POSSIBLE_FALSIFICATION", false, DesktopPreUploadCheckStatus.Blocked, DesktopPreUploadCheckDecision.BlockPossibleFalsification, "BLOCK_POSSIBLE_FALSIFICATION")]
+    public async Task HttpPreUploadCheckClientMapsExistingResponseDecisionsSafely(
+        string apiDecision,
+        bool canUploadToSite,
+        DesktopPreUploadCheckStatus expectedStatus,
+        DesktopPreUploadCheckDecision expectedDecision,
+        string expectedDecisionPreview)
+    {
+        DesktopSessionState sessionState = await CreateSignedInSessionStateAsync(
+            Guid.NewGuid(),
+            deviceId: null,
+            CreateSensitiveValue("access"));
+        var handler = new StubHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = JsonContent(new
+            {
+                preUploadCheckId = Guid.NewGuid(),
+                decision = apiDecision,
+                canUploadToSite,
+                reasonCode = "mapped",
+                message = "safe server message is intentionally not surfaced",
+                existingPreUploadCheckId = (string?)null,
+                requiredNextSteps = canUploadToSite
+                    ? new[] { "UPLOAD_TO_SITE_DIRECT", "SEND_UPLOAD_RECEIPT" }
+                    : new[] { "DO_NOT_UPLOAD", "SHOW_DECISION_TO_USER" },
+                sitePlan = canUploadToSite
+                    ? new
+                    {
+                        provider = "Stub",
+                        externalVideoId = "site-video-001",
+                        storageKey = "videos/site-video-001.mp4",
+                        requiredReceiptEndpoint = "/api/video/upload-receipt"
+                    }
+                    : null,
+                checkedAtUtc = DateTimeOffset.UtcNow
+            })
+        });
+        var client = new HttpDesktopPreUploadCheckClient(
+            new HttpClient(handler)
+            {
+                BaseAddress = new Uri("https://control-plane.local")
+            },
+            sessionState,
+            sessionState);
+
+        DesktopPreUploadCheckResult result = await client.CheckAsync(CreateVisualSmokePreUploadPreview(), CancellationToken.None);
+
+        Assert.Equal(expectedStatus, result.Status);
+        Assert.Equal(expectedDecision, result.Decision);
+        Assert.Equal(expectedDecisionPreview, result.DecisionPreview);
+        Assert.DoesNotContain("safe server message", result.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task HttpPreUploadCheckClientHandlesUnavailableUnauthorizedFailedAndMalformedResponsesSafely()
+    {
+        string accessToken = CreateSensitiveValue("access");
+        DesktopSessionState sessionState = await CreateSignedInSessionStateAsync(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            accessToken);
+        DesktopPreUploadCheckRequestPreview requestPreview = CreateVisualSmokePreUploadPreview();
+
+        var unauthorized = new HttpDesktopPreUploadCheckClient(
+            CreateHttpClient(_ => new HttpResponseMessage(HttpStatusCode.Unauthorized)),
+            sessionState,
+            sessionState);
+        DesktopPreUploadCheckResult unauthorizedResult =
+            await unauthorized.CheckAsync(requestPreview, CancellationToken.None);
+        Assert.Equal(DesktopPreUploadCheckStatus.Unauthorized, unauthorizedResult.Status);
+        Assert.Equal(DesktopUploadSectionText.PreUploadCheckLiveUnauthorizedMessage, unauthorizedResult.Message);
+
+        var unavailable = new HttpDesktopPreUploadCheckClient(
+            new HttpClient(new StubHttpMessageHandler(_ => throw new HttpRequestException(
+                $"transport failed {accessToken}")))
+            {
+                BaseAddress = new Uri("https://control-plane.local")
+            },
+            sessionState,
+            sessionState);
+        DesktopPreUploadCheckResult unavailableResult =
+            await unavailable.CheckAsync(requestPreview, CancellationToken.None);
+        Assert.Equal(DesktopPreUploadCheckStatus.Unavailable, unavailableResult.Status);
+        Assert.Equal(DesktopUploadSectionText.PreUploadCheckLiveUnavailableMessage, unavailableResult.Message);
+
+        string rawFailureBody = $"{{\"accessToken\":\"{CreateSensitiveValue("response")}\"}}";
+        var failed = new HttpDesktopPreUploadCheckClient(
+            CreateHttpClient(_ => new HttpResponseMessage(HttpStatusCode.InternalServerError)
+            {
+                Content = new StringContent(rawFailureBody, Encoding.UTF8, "application/json")
+            }),
+            sessionState,
+            sessionState);
+        DesktopPreUploadCheckResult failedResult =
+            await failed.CheckAsync(requestPreview, CancellationToken.None);
+        Assert.Equal(DesktopPreUploadCheckStatus.Failed, failedResult.Status);
+        Assert.Equal(DesktopUploadSectionText.PreUploadCheckLiveFailedMessage, failedResult.Message);
+        Assert.DoesNotContain(rawFailureBody, failedResult.ToString(), StringComparison.Ordinal);
+
+        var malformed = new HttpDesktopPreUploadCheckClient(
+            CreateHttpClient(_ => new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("{\"decision\":\"ALLOW\",", Encoding.UTF8, "application/json")
+            }),
+            sessionState,
+            sessionState);
+        DesktopPreUploadCheckResult malformedResult =
+            await malformed.CheckAsync(requestPreview, CancellationToken.None);
+        Assert.Equal(DesktopPreUploadCheckStatus.Malformed, malformedResult.Status);
+        Assert.Equal(DesktopUploadSectionText.PreUploadCheckLiveMalformedMessage, malformedResult.Message);
+
+        foreach (DesktopPreUploadCheckResult result in
+            new[] { unauthorizedResult, unavailableResult, failedResult, malformedResult })
+        {
+            Assert.Null(result.Decision);
+            Assert.DoesNotContain(accessToken, result.ToString(), StringComparison.Ordinal);
+            Assert.DoesNotContain("accessToken", result.ToString(), StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("refreshToken", result.ToString(), StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("Authorization", result.ToString(), StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("raw response", result.ToString(), StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
+    [Fact]
+    public async Task HttpPreUploadCheckClientWithoutSessionDoesNotSendRequest()
+    {
+        var handler = new StubHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = JsonContent(new { })
+        });
+        var client = new HttpDesktopPreUploadCheckClient(
+            new HttpClient(handler)
+            {
+                BaseAddress = new Uri("https://control-plane.local")
+            },
+            new StaticDesktopControlPlaneAccessTokenProvider(accessToken: null),
+            new StaticDesktopSessionState(DesktopSessionSnapshot.SignedOut));
+
+        DesktopPreUploadCheckResult result =
+            await client.CheckAsync(CreateVisualSmokePreUploadPreview(), CancellationToken.None);
+
+        Assert.Equal(DesktopPreUploadCheckStatus.Unauthorized, result.Status);
+        Assert.Null(handler.LastRequest);
     }
 
     [Fact]
@@ -1424,12 +1689,22 @@ public sealed class DesktopUploadSectionTests
             DesktopUploadSectionText.StepFourTitle,
             DesktopUploadSectionText.PreUploadCheckNotReadyMessage,
             DesktopUploadSectionText.PreUploadCheckReadyMessage,
+            DesktopUploadSectionText.PreUploadCheckLiveReadyMessage,
             DesktopUploadSectionText.PreUploadCheckInProgressMessage,
+            DesktopUploadSectionText.PreUploadCheckLiveInProgressMessage,
             DesktopUploadSectionText.PreUploadCheckDeferredMessage,
             DesktopUploadSectionText.PreUploadCheckAllowedDevMessage,
             DesktopUploadSectionText.PreUploadCheckAllowWithReviewDevMessage,
             DesktopUploadSectionText.PreUploadCheckBlockHardDuplicateDevMessage,
             DesktopUploadSectionText.PreUploadCheckBlockPossibleFalsificationDevMessage,
+            DesktopUploadSectionText.PreUploadCheckAllowedLiveMessage,
+            DesktopUploadSectionText.PreUploadCheckAllowWithReviewLiveMessage,
+            DesktopUploadSectionText.PreUploadCheckBlockHardDuplicateLiveMessage,
+            DesktopUploadSectionText.PreUploadCheckBlockPossibleFalsificationLiveMessage,
+            DesktopUploadSectionText.PreUploadCheckLiveUnauthorizedMessage,
+            DesktopUploadSectionText.PreUploadCheckLiveUnavailableMessage,
+            DesktopUploadSectionText.PreUploadCheckLiveFailedMessage,
+            DesktopUploadSectionText.PreUploadCheckLiveMalformedMessage,
             DesktopUploadSectionText.PreUploadCheckCanceledMessage,
             DesktopUploadSectionText.PreUploadCheckButton,
             DesktopUploadSectionText.PreUploadCheckBusyButton,
@@ -1604,6 +1879,60 @@ public sealed class DesktopUploadSectionTests
         return await viewModel.UploadToSiteAsync(CancellationToken.None);
     }
 
+    private static DesktopPreUploadCheckRequestPreview CreateVisualSmokePreUploadPreview()
+    {
+        return DesktopPreUploadCheckRequestPreview.TryCreate(
+            DesktopUploadSelectedFile.VisualSmokeFile,
+            FakeDesktopVideoHashService.VisualSmokeSha256Hex,
+            new DesktopUploadBusinessObjectKey(DesktopUploadBusinessObjectKey.VisualSmokeValue))
+            ?? throw new InvalidOperationException("Preview was not created.");
+    }
+
+    private static async Task<DesktopSessionState> CreateSignedInSessionStateAsync(
+        Guid userId,
+        Guid? deviceId,
+        string accessToken)
+    {
+        var sessionState = new DesktopSessionState(new DisabledDesktopSessionStore());
+        DateTimeOffset issuedAtUtc = DateTimeOffset.UtcNow;
+
+        await sessionState.SetSignedInAsync(
+            DesktopAuthenticatedSession.Create(
+                Guid.NewGuid(),
+                userId,
+                deviceId,
+                "Live User",
+                accessToken,
+                refreshToken: null,
+                issuedAtUtc,
+                issuedAtUtc.AddMinutes(15),
+                isOfflineRestricted: false),
+            CancellationToken.None);
+
+        return sessionState;
+    }
+
+    private static HttpClient CreateHttpClient(Func<HttpRequestMessage, HttpResponseMessage> responseFactory)
+    {
+        return new HttpClient(new StubHttpMessageHandler(responseFactory))
+        {
+            BaseAddress = new Uri("https://control-plane.local")
+        };
+    }
+
+    private static StringContent JsonContent<T>(T value)
+    {
+        return new StringContent(
+            JsonSerializer.Serialize(value),
+            Encoding.UTF8,
+            "application/json");
+    }
+
+    private static string CreateSensitiveValue(string prefix)
+    {
+        return $"{prefix}-{Guid.NewGuid():N}";
+    }
+
     private sealed class CancelingDesktopVideoFilePicker : IDesktopVideoFilePicker
     {
         public ValueTask<DesktopVideoFilePickerResult> PickVideoFileAsync(CancellationToken cancellationToken)
@@ -1658,6 +1987,72 @@ public sealed class DesktopUploadSectionTests
         {
             CallCount++;
             throw new InvalidOperationException("Disabled fake UploadReceipt boundary should not be called.");
+        }
+    }
+
+    private sealed class StaticDesktopControlPlaneAccessTokenProvider(string? accessToken) :
+        IDesktopControlPlaneAccessTokenProvider
+    {
+        public ValueTask<DesktopControlPlaneAccessTokenSnapshot> GetCurrentAccessTokenAsync(
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            return ValueTask.FromResult(new DesktopControlPlaneAccessTokenSnapshot(
+                IsAuthenticated: !string.IsNullOrWhiteSpace(accessToken),
+                accessToken));
+        }
+    }
+
+    private sealed class StaticDesktopSessionState(DesktopSessionSnapshot current) : IDesktopSessionState
+    {
+        public DesktopSessionSnapshot Current { get; private set; } = current;
+
+        public ValueTask<DesktopSessionSnapshot> LoadAsync(CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            return ValueTask.FromResult(Current);
+        }
+
+        public ValueTask<DesktopSessionSnapshot> SetSignedInAsync(
+            DesktopAuthenticatedSession session,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            Current = DesktopSessionSnapshot.FromSession(session);
+            return ValueTask.FromResult(Current);
+        }
+
+        public ValueTask<DesktopSessionSnapshot> SignOutAsync(CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            Current = DesktopSessionSnapshot.SignedOut;
+            return ValueTask.FromResult(Current);
+        }
+    }
+
+    private sealed class StubHttpMessageHandler(Func<HttpRequestMessage, HttpResponseMessage> responseFactory) :
+        HttpMessageHandler
+    {
+        public HttpRequestMessage? LastRequest { get; private set; }
+
+        public string? LastRequestBody { get; private set; }
+
+        protected override async Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            LastRequest = request;
+            LastRequestBody = request.Content is null
+                ? null
+                : await request.Content.ReadAsStringAsync(cancellationToken);
+
+            return responseFactory(request);
         }
     }
 

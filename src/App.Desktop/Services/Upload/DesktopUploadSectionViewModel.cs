@@ -141,6 +141,9 @@ public sealed class DesktopUploadSectionViewModel(
     public bool IsDevFakePreUploadCheckEnabled =>
         _uploadSectionOptions.IsDevFakePreUploadCheckEnabled;
 
+    public bool IsLiveControlPlanePreUploadCheckEnabled =>
+        _uploadSectionOptions.IsLiveControlPlanePreUploadCheckEnabled;
+
     public bool IsDevFakeSiteUploadEnabled =>
         _uploadSectionOptions.IsDevFakeSiteUploadEnabled;
 
@@ -159,7 +162,11 @@ public sealed class DesktopUploadSectionViewModel(
         DesktopUploadSectionText.BusinessObjectKeyEmptyValidationMessage;
 
     public DesktopPreUploadCheckRequestPreview? PreUploadCheckRequestPreview =>
-        DesktopPreUploadCheckRequestPreview.TryCreate(SelectedFile, Sha256Hex, BusinessObjectKey);
+        DesktopPreUploadCheckRequestPreview.TryCreate(
+            SelectedFile,
+            Sha256Hex,
+            BusinessObjectKey,
+            SelectedGroupContext);
 
     public bool HasPreUploadCheckRequestPreview => PreUploadCheckRequestPreview is not null;
 
@@ -390,7 +397,7 @@ public sealed class DesktopUploadSectionViewModel(
             return null;
         }
 
-        if (!IsDevFakePreUploadCheckEnabled)
+        if (!IsDevFakePreUploadCheckEnabled && !IsLiveControlPlanePreUploadCheckEnabled)
         {
             PreUploadCheckResult = DesktopPreUploadCheckResult.Deferred;
             PreUploadCheckStatusMessage = DesktopUploadSectionText.PreUploadCheckDeferredMessage;
@@ -400,7 +407,9 @@ public sealed class DesktopUploadSectionViewModel(
 
         IsCheckingPreUpload = true;
         PreUploadCheckResult = null;
-        PreUploadCheckStatusMessage = DesktopUploadSectionText.PreUploadCheckInProgressMessage;
+        PreUploadCheckStatusMessage = IsLiveControlPlanePreUploadCheckEnabled
+            ? DesktopUploadSectionText.PreUploadCheckLiveInProgressMessage
+            : DesktopUploadSectionText.PreUploadCheckInProgressMessage;
         ResetSiteUploadState();
 
         try
@@ -566,7 +575,7 @@ public sealed class DesktopUploadSectionViewModel(
         }
 
         PreUploadCheckStatusMessage = HasPreUploadCheckRequestPreview
-            ? DesktopUploadSectionText.PreUploadCheckReadyMessage
+            ? GetPreUploadCheckReadyMessage()
             : DesktopUploadSectionText.PreUploadCheckNotReadyMessage;
     }
 
@@ -616,5 +625,12 @@ public sealed class DesktopUploadSectionViewModel(
             or DesktopPreUploadCheckDecision.BlockPossibleFalsification
             ? DesktopUploadSectionText.SiteUploadBlockedByPreUploadCheckMessage
             : DesktopUploadSectionText.SiteUploadNotReadyMessage;
+    }
+
+    private string GetPreUploadCheckReadyMessage()
+    {
+        return IsLiveControlPlanePreUploadCheckEnabled
+            ? DesktopUploadSectionText.PreUploadCheckLiveReadyMessage
+            : DesktopUploadSectionText.PreUploadCheckReadyMessage;
     }
 }

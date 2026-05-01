@@ -186,10 +186,14 @@ public static class DesktopUploadSectionText
         "Выберите файл, рассчитайте SHA-256 и укажите ключ бизнес-объекта для preview запроса.";
     public const string PreUploadCheckReadyMessage =
         "Preview запроса готов. Реальный вызов App.Api в этом slice не выполняется.";
+    public const string PreUploadCheckLiveReadyMessage =
+        "Preview запроса готов. Будет использован существующий control-plane endpoint PreUploadCheck.";
     public const string PreUploadCheckInProgressMessage =
         "Выполняется предварительная проверка в desktop-local dev boundary.";
+    public const string PreUploadCheckLiveInProgressMessage =
+        "Выполняется предварительная проверка через control-plane boundary.";
     public const string PreUploadCheckDeferredMessage =
-        "Предварительная проверка пока доступна только в dev-smoke режиме. Реальный вызов App.Api будет добавлен отдельным approved slice.";
+        "Предварительная проверка недоступна: задайте live control-plane base address или включите dev-smoke guard.";
     public const string PreUploadCheckAllowedDevMessage =
         "Предварительная проверка: загрузка разрешена в dev-smoke режиме.";
     public const string PreUploadCheckAllowWithReviewDevMessage =
@@ -198,6 +202,22 @@ public static class DesktopUploadSectionText
         "Предварительная проверка: загрузка заблокирована как hard duplicate в dev-smoke режиме.";
     public const string PreUploadCheckBlockPossibleFalsificationDevMessage =
         "Предварительная проверка: загрузка заблокирована как possible falsification в dev-smoke режиме.";
+    public const string PreUploadCheckAllowedLiveMessage =
+        "Предварительная проверка выполнена: загрузка разрешена.";
+    public const string PreUploadCheckAllowWithReviewLiveMessage =
+        "Предварительная проверка выполнена: загрузка разрешена с последующей проверкой.";
+    public const string PreUploadCheckBlockHardDuplicateLiveMessage =
+        "Предварительная проверка выполнена: загрузка заблокирована как hard duplicate.";
+    public const string PreUploadCheckBlockPossibleFalsificationLiveMessage =
+        "Предварительная проверка выполнена: загрузка заблокирована как possible falsification.";
+    public const string PreUploadCheckLiveUnauthorizedMessage =
+        "Предварительная проверка недоступна: требуется повторный вход.";
+    public const string PreUploadCheckLiveUnavailableMessage =
+        "Предварительная проверка временно недоступна. Проверьте подключение или настройку.";
+    public const string PreUploadCheckLiveFailedMessage =
+        "Предварительная проверка не выполнена. Попробуйте ещё раз.";
+    public const string PreUploadCheckLiveMalformedMessage =
+        "Предварительная проверка вернула неподдерживаемый ответ.";
     public const string PreUploadCheckCanceledMessage = "Предварительная проверка отменена.";
     public const string PreUploadCheckButton = "Проверить перед загрузкой";
     public const string PreUploadCheckBusyButton = "Проверяется...";
