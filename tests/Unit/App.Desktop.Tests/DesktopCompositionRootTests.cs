@@ -27,6 +27,7 @@ public sealed class DesktopCompositionRootTests
         Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakePreUploadCheckEnabled);
         Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeSiteUploadEnabled);
         Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeUploadReceiptEnabled);
+        Assert.False(services.GetRequiredService<DesktopGroupTreeOptions>().IsLiveControlPlaneGroupTreeEnabled);
         Assert.False(services.GetRequiredService<DesktopGroupTreeOptions>().IsDevFakeGroupTreeEnabled);
         Assert.IsType<DisabledDesktopGroupTreeClient>(services.GetRequiredService<IDesktopGroupTreeClient>());
         Assert.IsType<DesktopGroupTreeViewModel>(services.GetRequiredService<DesktopGroupTreeViewModel>());
@@ -63,6 +64,7 @@ public sealed class DesktopCompositionRootTests
         Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakePreUploadCheckEnabled);
         Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeSiteUploadEnabled);
         Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeUploadReceiptEnabled);
+        Assert.False(services.GetRequiredService<DesktopGroupTreeOptions>().IsLiveControlPlaneGroupTreeEnabled);
         Assert.False(services.GetRequiredService<DesktopGroupTreeOptions>().IsDevFakeGroupTreeEnabled);
         Assert.IsType<UnavailableDesktopAuthClient>(services.GetRequiredService<IDesktopAuthClient>());
         Assert.IsType<DisabledDesktopGroupTreeClient>(services.GetRequiredService<IDesktopGroupTreeClient>());
@@ -387,10 +389,12 @@ public sealed class DesktopCompositionRootTests
         using var services = DesktopCompositionRoot.BuildServicesFromEnvironment();
 
 #if DEBUG
+        Assert.False(services.GetRequiredService<DesktopGroupTreeOptions>().IsLiveControlPlaneGroupTreeEnabled);
         Assert.True(services.GetRequiredService<DesktopGroupTreeOptions>().IsDevFakeGroupTreeEnabled);
         Assert.True(services.GetRequiredService<DesktopGroupTreeViewModel>().IsDevFakeGroupTreeEnabled);
         Assert.IsType<FakeDesktopGroupTreeClient>(services.GetRequiredService<IDesktopGroupTreeClient>());
 #else
+        Assert.False(services.GetRequiredService<DesktopGroupTreeOptions>().IsLiveControlPlaneGroupTreeEnabled);
         Assert.False(services.GetRequiredService<DesktopGroupTreeOptions>().IsDevFakeGroupTreeEnabled);
         Assert.False(services.GetRequiredService<DesktopGroupTreeViewModel>().IsDevFakeGroupTreeEnabled);
         Assert.IsType<DisabledDesktopGroupTreeClient>(services.GetRequiredService<IDesktopGroupTreeClient>());
@@ -421,6 +425,7 @@ public sealed class DesktopCompositionRootTests
         Assert.True(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakePreUploadCheckEnabled);
         Assert.True(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeSiteUploadEnabled);
         Assert.True(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeUploadReceiptEnabled);
+        Assert.False(services.GetRequiredService<DesktopGroupTreeOptions>().IsLiveControlPlaneGroupTreeEnabled);
         Assert.True(services.GetRequiredService<DesktopGroupTreeOptions>().IsDevFakeGroupTreeEnabled);
         Assert.IsType<FakeDesktopAuthClient>(services.GetRequiredService<IDesktopAuthClient>());
         Assert.IsType<FakeDesktopGroupTreeClient>(services.GetRequiredService<IDesktopGroupTreeClient>());
@@ -444,6 +449,7 @@ public sealed class DesktopCompositionRootTests
         Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakePreUploadCheckEnabled);
         Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeSiteUploadEnabled);
         Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeUploadReceiptEnabled);
+        Assert.False(services.GetRequiredService<DesktopGroupTreeOptions>().IsLiveControlPlaneGroupTreeEnabled);
         Assert.False(services.GetRequiredService<DesktopGroupTreeOptions>().IsDevFakeGroupTreeEnabled);
         Assert.IsType<UnavailableDesktopAuthClient>(services.GetRequiredService<IDesktopAuthClient>());
         Assert.IsType<DisabledDesktopGroupTreeClient>(services.GetRequiredService<IDesktopGroupTreeClient>());
@@ -465,8 +471,11 @@ public sealed class DesktopCompositionRootTests
             DesktopAuthOptions.FromControlPlaneBaseAddress("https://control-plane.local"));
 
         Assert.IsType<HttpDesktopAuthClient>(services.GetRequiredService<IDesktopAuthClient>());
+        Assert.IsType<HttpDesktopGroupTreeClient>(services.GetRequiredService<IDesktopGroupTreeClient>());
         Assert.IsType<DisabledDesktopSessionStore>(services.GetRequiredService<IDesktopSessionStore>());
         Assert.True(services.GetRequiredService<DesktopAuthOptions>().IsControlPlaneSignInConfigured);
+        Assert.True(services.GetRequiredService<DesktopGroupTreeOptions>().IsLiveControlPlaneGroupTreeEnabled);
+        Assert.False(services.GetRequiredService<DesktopGroupTreeOptions>().IsDevFakeGroupTreeEnabled);
         Assert.Equal(
             new Uri("https://control-plane.local"),
             services.GetRequiredService<HttpClient>().BaseAddress);
@@ -503,6 +512,39 @@ public sealed class DesktopCompositionRootTests
         Assert.Equal(
             new Uri("https://control-plane.local"),
             services.GetRequiredService<HttpClient>().BaseAddress);
+    }
+
+    [Fact]
+    public void ExplicitFakeGroupTreeFlagDoesNotReplaceConfiguredLiveGroupTreeClient()
+    {
+        using var environment = new EnvironmentVariableScope()
+            .Set(DesktopAuthOptions.ControlPlaneBaseAddressEnvironmentVariable, "https://control-plane.local")
+            .Set(DesktopAuthOptions.DevFakeAuthEnabledEnvironmentVariable, "true")
+            .Set(DesktopGroupTreeOptions.DevFakeGroupTreeEnabledEnvironmentVariable, "true");
+
+        using var services = DesktopCompositionRoot.BuildServicesFromEnvironment();
+
+        Assert.False(services.GetRequiredService<DesktopAuthOptions>().IsDevFakeAuthEnabled);
+        Assert.True(services.GetRequiredService<DesktopAuthOptions>().IsControlPlaneSignInConfigured);
+        Assert.True(services.GetRequiredService<DesktopGroupTreeOptions>().IsLiveControlPlaneGroupTreeEnabled);
+        Assert.False(services.GetRequiredService<DesktopGroupTreeOptions>().IsDevFakeGroupTreeEnabled);
+        Assert.True(services.GetRequiredService<DesktopGroupTreeViewModel>().IsLiveControlPlaneGroupTreeEnabled);
+        Assert.False(services.GetRequiredService<DesktopGroupTreeViewModel>().IsDevFakeGroupTreeEnabled);
+        Assert.IsType<HttpDesktopAuthClient>(services.GetRequiredService<IDesktopAuthClient>());
+        Assert.IsType<HttpDesktopGroupTreeClient>(services.GetRequiredService<IDesktopGroupTreeClient>());
+    }
+
+    [Fact]
+    public void ExplicitGroupTreeOptionsCannotOverrideConfiguredLiveBaseAddress()
+    {
+        using var services = DesktopCompositionRoot.BuildServices(
+            DesktopAuthOptions.FromControlPlaneBaseAddress("https://control-plane.local"),
+            DesktopUploadSectionOptions.Disabled,
+            DesktopGroupTreeOptions.EnabledForDevFakeGroupTree);
+
+        Assert.True(services.GetRequiredService<DesktopGroupTreeOptions>().IsLiveControlPlaneGroupTreeEnabled);
+        Assert.False(services.GetRequiredService<DesktopGroupTreeOptions>().IsDevFakeGroupTreeEnabled);
+        Assert.IsType<HttpDesktopGroupTreeClient>(services.GetRequiredService<IDesktopGroupTreeClient>());
     }
 
     [Fact]

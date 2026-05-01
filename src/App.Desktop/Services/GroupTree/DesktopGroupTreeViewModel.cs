@@ -18,6 +18,8 @@ public sealed class DesktopGroupTreeViewModel(
 
     public bool IsDevFakeGroupTreeEnabled => _groupTreeOptions.IsDevFakeGroupTreeEnabled;
 
+    public bool IsLiveControlPlaneGroupTreeEnabled => _groupTreeOptions.IsLiveControlPlaneGroupTreeEnabled;
+
     public IReadOnlyList<DesktopGroupTreeNode> Nodes { get; private set; } = [];
 
     public bool HasNodes => Nodes.Count > 0;
@@ -34,7 +36,7 @@ public sealed class DesktopGroupTreeViewModel(
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        if (!IsDevFakeGroupTreeEnabled)
+        if (!_groupTreeOptions.IsGroupTreeClientConfigured)
         {
             Nodes = [];
             StatusMessage = DesktopGroupTreeText.DisabledMessage;
@@ -42,7 +44,9 @@ public sealed class DesktopGroupTreeViewModel(
         }
 
         IsLoading = true;
-        StatusMessage = DesktopGroupTreeText.LoadingMessage;
+        StatusMessage = IsLiveControlPlaneGroupTreeEnabled
+            ? DesktopGroupTreeText.LiveLoadingMessage
+            : DesktopGroupTreeText.LoadingMessage;
 
         try
         {
@@ -68,7 +72,7 @@ public sealed class DesktopGroupTreeViewModel(
 
     public DesktopSelectedGroupContext? SelectGroup(string groupId)
     {
-        if (!IsDevFakeGroupTreeEnabled)
+        if (!_groupTreeOptions.IsGroupTreeClientConfigured)
         {
             StatusMessage = DesktopGroupTreeText.DisabledMessage;
             return null;

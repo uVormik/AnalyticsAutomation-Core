@@ -1,3 +1,7 @@
+using System.Net;
+using System.Text;
+using System.Text.Json;
+
 using App.Desktop.Boundaries;
 using App.Desktop.Services.GroupTree;
 using App.Desktop.Services.Upload;
@@ -30,6 +34,34 @@ public sealed class DesktopGroupTreeTests
     }
 
     [Fact]
+    public void LiveGroupTreeRequiresConfiguredControlPlaneBaseAddress()
+    {
+        DesktopGroupTreeOptions disabled = DesktopGroupTreeOptions.FromEnvironmentValues(
+            controlPlaneBaseAddress: null,
+            devFakeGroupTreeEnabled: null);
+        DesktopGroupTreeOptions live = DesktopGroupTreeOptions.FromEnvironmentValues(
+            "https://control-plane.local",
+            devFakeGroupTreeEnabled: null);
+
+        Assert.False(disabled.IsLiveControlPlaneGroupTreeEnabled);
+        Assert.False(disabled.IsGroupTreeClientConfigured);
+        Assert.True(live.IsLiveControlPlaneGroupTreeEnabled);
+        Assert.False(live.IsDevFakeGroupTreeEnabled);
+        Assert.True(live.IsGroupTreeClientConfigured);
+    }
+
+    [Fact]
+    public void LiveBaseAddressDisablesFakeGroupTreeSelection()
+    {
+        DesktopGroupTreeOptions options = DesktopGroupTreeOptions.FromEnvironmentValues(
+            "https://control-plane.local",
+            devFakeGroupTreeEnabled: "true");
+
+        Assert.True(options.IsLiveControlPlaneGroupTreeEnabled);
+        Assert.False(options.IsDevFakeGroupTreeEnabled);
+    }
+
+    [Fact]
     public async Task DisabledGroupTreeShowsSafeMessageAndDoesNotCallBoundary()
     {
         var client = new ThrowingDesktopGroupTreeClient();
@@ -44,6 +76,160 @@ public sealed class DesktopGroupTreeTests
         Assert.Empty(viewModel.Nodes);
         Assert.Equal(DesktopGroupTreeText.DisabledMessage, viewModel.StatusMessage);
         Assert.Equal(0, client.CallCount);
+    }
+
+    [Fact]
+    public async Task HttpGroupTreeClientUsesExistingNodesEndpointAndReturnsSafeNodes()
+    {
+        string accessToken = CreateSensitiveValue("access");
+        Guid rootId = Guid.NewGuid();
+        Guid branchId = Guid.NewGuid();
+        Guid siteId = Guid.NewGuid();
+        var handler = new StubHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = JsonContent<object[]>(
+            [
+                new
+                {
+                    groupNodeId = rootId,
+                    parentGroupNodeId = (Guid?)null,
+                    code = "root",
+                    name = "Вся организация",
+                    depth = 0,
+                    isActive = true
+                },
+                new
+                {
+                    groupNodeId = branchId,
+                    parentGroupNodeId = (Guid?)rootId,
+                    code = "branch-001",
+                    name = "Тестовая ветка",
+                    depth = 1,
+                    isActive = true
+                },
+                new
+                {
+                    groupNodeId = siteId,
+                    parentGroupNodeId = (Guid?)branchId,
+                    code = "site-001",
+                    name = "Тестовый объект",
+                    depth = 2,
+                    isActive = true
+                }
+            ])
+        });
+        var httpClient = new HttpClient(handler)
+        {
+            BaseAddress = new Uri("https://control-plane.local")
+        };
+        var client = new HttpDesktopGroupTreeClient(
+            httpClient,
+            new StaticDesktopControlPlaneAccessTokenProvider(accessToken));
+
+        DesktopGroupTreeLoadResult result = await client.GetGroupTreeAsync(CancellationToken.None);
+
+        Assert.Equal(DesktopGroupTreeLoadStatus.Loaded, result.Status);
+        Assert.Equal(DesktopGroupTreeText.LiveLoadedMessage, result.Message);
+        Assert.NotNull(handler.LastRequest);
+        Assert.Equal(HttpMethod.Get, handler.LastRequest.Method);
+        Assert.Equal("/api/group-tree/nodes", handler.LastRequest.RequestUri?.AbsolutePath);
+        Assert.Equal("Bearer", handler.LastRequest.Headers.Authorization?.Scheme);
+        Assert.Equal(accessToken, handler.LastRequest.Headers.Authorization?.Parameter);
+        Assert.Collection(
+            result.Nodes,
+            node => AssertNode(node, rootId.ToString("D"), "Вся организация", canSelect: false),
+            node => AssertNode(node, branchId.ToString("D"), "Тестовая ветка", canSelect: false),
+            node => AssertNode(node, siteId.ToString("D"), "Тестовый объект", canSelect: true));
+        Assert.DoesNotContain(accessToken, result.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task HttpGroupTreeClientDoesNotExposeTokenValuesOrRawFailureBody()
+    {
+        string accessToken = CreateSensitiveValue("access");
+        string responseToken = CreateSensitiveValue("refresh");
+        string rawBody = $"{{\"accessToken\":\"{responseToken}\",\"detail\":\"unsafe\"}}";
+        var handler = new StubHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.InternalServerError)
+        {
+            Content = new StringContent(rawBody, Encoding.UTF8, "application/json")
+        });
+        var httpClient = new HttpClient(handler)
+        {
+            BaseAddress = new Uri("https://control-plane.local")
+        };
+        var client = new HttpDesktopGroupTreeClient(
+            httpClient,
+            new StaticDesktopControlPlaneAccessTokenProvider(accessToken));
+
+        DesktopGroupTreeLoadResult result = await client.GetGroupTreeAsync(CancellationToken.None);
+
+        Assert.Equal(DesktopGroupTreeLoadStatus.Failed, result.Status);
+        Assert.Equal(DesktopGroupTreeText.LiveFailedMessage, result.Message);
+        Assert.DoesNotContain(accessToken, result.ToString(), StringComparison.Ordinal);
+        Assert.DoesNotContain(responseToken, result.ToString(), StringComparison.Ordinal);
+        Assert.DoesNotContain(rawBody, result.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task HttpGroupTreeClientHandlesUnavailableAndMalformedResponsesSafely()
+    {
+        string accessToken = CreateSensitiveValue("access");
+        var unavailableHandler = new StubHttpMessageHandler(_ => throw new HttpRequestException(
+            $"Transport failed with {accessToken}"));
+        var unavailableClient = new HttpDesktopGroupTreeClient(
+            new HttpClient(unavailableHandler)
+            {
+                BaseAddress = new Uri("https://control-plane.local")
+            },
+            new StaticDesktopControlPlaneAccessTokenProvider(accessToken));
+
+        DesktopGroupTreeLoadResult unavailable =
+            await unavailableClient.GetGroupTreeAsync(CancellationToken.None);
+
+        Assert.Equal(DesktopGroupTreeLoadStatus.Unavailable, unavailable.Status);
+        Assert.Equal(DesktopGroupTreeText.LiveUnavailableMessage, unavailable.Message);
+        Assert.DoesNotContain(accessToken, unavailable.ToString(), StringComparison.Ordinal);
+
+        string malformedBody = $"{{\"refreshToken\":\"{CreateSensitiveValue("refresh")}\",";
+        var malformedHandler = new StubHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(malformedBody, Encoding.UTF8, "application/json")
+        });
+        var malformedClient = new HttpDesktopGroupTreeClient(
+            new HttpClient(malformedHandler)
+            {
+                BaseAddress = new Uri("https://control-plane.local")
+            },
+            new StaticDesktopControlPlaneAccessTokenProvider(accessToken));
+
+        DesktopGroupTreeLoadResult malformed =
+            await malformedClient.GetGroupTreeAsync(CancellationToken.None);
+
+        Assert.Equal(DesktopGroupTreeLoadStatus.Failed, malformed.Status);
+        Assert.Equal(DesktopGroupTreeText.LiveMalformedMessage, malformed.Message);
+        Assert.DoesNotContain(accessToken, malformed.ToString(), StringComparison.Ordinal);
+        Assert.DoesNotContain(malformedBody, malformed.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task HttpGroupTreeClientWithoutSessionShowsSafeUnavailableMessage()
+    {
+        var handler = new StubHttpMessageHandler(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = JsonContent(Array.Empty<object>())
+        });
+        var client = new HttpDesktopGroupTreeClient(
+            new HttpClient(handler)
+            {
+                BaseAddress = new Uri("https://control-plane.local")
+            },
+            new StaticDesktopControlPlaneAccessTokenProvider(accessToken: null));
+
+        DesktopGroupTreeLoadResult result = await client.GetGroupTreeAsync(CancellationToken.None);
+
+        Assert.Equal(DesktopGroupTreeLoadStatus.Unavailable, result.Status);
+        Assert.Equal(DesktopGroupTreeText.LiveUnauthorizedMessage, result.Message);
+        Assert.Null(handler.LastRequest);
     }
 
     [Fact]
@@ -166,7 +352,7 @@ public sealed class DesktopGroupTreeTests
     }
 
     [Fact]
-    public void GroupTreeFilesDoNotIntroduceRealAppApiCalls()
+    public void GroupTreeFilesOnlyUseApprovedGroupTreeEndpointAndNoUploadChainCalls()
     {
         string[] sourceFiles =
         [
@@ -175,20 +361,55 @@ public sealed class DesktopGroupTreeTests
             Path.Combine(FindRepositoryRoot(), "src", "App.Desktop", "Services", "GroupTree", "DesktopGroupSelectionState.cs"),
             Path.Combine(FindRepositoryRoot(), "src", "App.Desktop", "Services", "GroupTree", "DesktopGroupTreeViewModel.cs"),
             Path.Combine(FindRepositoryRoot(), "src", "App.Desktop", "Services", "GroupTree", "DisabledDesktopGroupTreeClient.cs"),
-            Path.Combine(FindRepositoryRoot(), "src", "App.Desktop", "Services", "GroupTree", "FakeDesktopGroupTreeClient.cs")
+            Path.Combine(FindRepositoryRoot(), "src", "App.Desktop", "Services", "GroupTree", "FakeDesktopGroupTreeClient.cs"),
+            Path.Combine(FindRepositoryRoot(), "src", "App.Desktop", "Services", "GroupTree", "HttpDesktopGroupTreeClient.cs")
         ];
 
         foreach (string sourceFile in sourceFiles)
         {
             string source = File.ReadAllText(sourceFile);
 
-            Assert.DoesNotContain("HttpClient", source, StringComparison.Ordinal);
             Assert.DoesNotContain("IControlPlaneApiClient", source, StringComparison.Ordinal);
             Assert.DoesNotContain("RequestPreUploadCheckAsync", source, StringComparison.Ordinal);
             Assert.DoesNotContain("RecordUploadReceiptAsync", source, StringComparison.Ordinal);
-            Assert.DoesNotContain("GetAsync", source, StringComparison.OrdinalIgnoreCase);
             Assert.DoesNotContain("PostAsync", source, StringComparison.OrdinalIgnoreCase);
-            Assert.DoesNotContain("SendAsync", source, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("/api/group-tree/routing-preview", source, StringComparison.Ordinal);
+            Assert.DoesNotContain("/api/auth", source, StringComparison.Ordinal);
+        }
+
+        string liveClientSource = File.ReadAllText(
+            Path.Combine(FindRepositoryRoot(), "src", "App.Desktop", "Services", "GroupTree", "HttpDesktopGroupTreeClient.cs"));
+
+        Assert.Contains("/api/group-tree/nodes", liveClientSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("/api/group-tree/nodes/", liveClientSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("ReadAsStringAsync", liveClientSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("WriteLine", liveClientSource, StringComparison.Ordinal);
+        Assert.DoesNotContain("Log", liveClientSource, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void LiveGroupTreeVisualStringsDoNotExposeTokenLabels()
+    {
+        string[] visibleStrings =
+        [
+            DesktopGroupTreeText.LiveLoadingMessage,
+            DesktopGroupTreeText.LiveLoadedMessage,
+            DesktopGroupTreeText.LiveUnauthorizedMessage,
+            DesktopGroupTreeText.LiveUnavailableMessage,
+            DesktopGroupTreeText.LiveFailedMessage,
+            DesktopGroupTreeText.LiveMalformedMessage,
+            DesktopGroupTreeLoadResult.Unavailable(DesktopGroupTreeText.LiveUnauthorizedMessage).ToString(),
+            DesktopGroupTreeLoadResult.Failed(DesktopGroupTreeText.LiveMalformedMessage).ToString()
+        ];
+
+        foreach (string visibleString in visibleStrings)
+        {
+            Assert.DoesNotContain("password", visibleString, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("Authorization", visibleString, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("accessToken", visibleString, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("refreshToken", visibleString, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("session_id", visibleString, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("raw response", visibleString, StringComparison.OrdinalIgnoreCase);
         }
     }
 
@@ -280,6 +501,49 @@ public sealed class DesktopGroupTreeTests
             CallCount++;
             throw new InvalidOperationException("Disabled fake GroupTree boundary should not be called.");
         }
+    }
+
+    private sealed class StaticDesktopControlPlaneAccessTokenProvider(string? accessToken) :
+        IDesktopControlPlaneAccessTokenProvider
+    {
+        public ValueTask<DesktopControlPlaneAccessTokenSnapshot> GetCurrentAccessTokenAsync(
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            return ValueTask.FromResult(new DesktopControlPlaneAccessTokenSnapshot(
+                IsAuthenticated: !string.IsNullOrWhiteSpace(accessToken),
+                accessToken));
+        }
+    }
+
+    private sealed class StubHttpMessageHandler(Func<HttpRequestMessage, HttpResponseMessage> responseFactory) :
+        HttpMessageHandler
+    {
+        public HttpRequestMessage? LastRequest { get; private set; }
+
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            LastRequest = request;
+            return Task.FromResult(responseFactory(request));
+        }
+    }
+
+    private static StringContent JsonContent<T>(T value)
+    {
+        return new StringContent(
+            JsonSerializer.Serialize(value),
+            Encoding.UTF8,
+            "application/json");
+    }
+
+    private static string CreateSensitiveValue(string prefix)
+    {
+        return $"{prefix}-{Guid.NewGuid():N}";
     }
 
     private static string FindRepositoryRoot()

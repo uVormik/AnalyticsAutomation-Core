@@ -1,0 +1,164 @@
+Title:
+S2-68 Desktop GroupTree Control-Plane Client Probe / Existing API Boundary
+
+Module:
+App.Desktop / GroupTree control-plane client probe
+
+Owner:
+Coder 1 acting as Coder 2 / Desktop Client
+
+Client form:
+desktop standalone
+
+Type:
+narrow runtime desktop-only client boundary slice after S2-67 fake GroupTree placeholder
+
+Status:
+Runtime task card created with implementation.
+
+Goal:
+Probe the existing App.Api / Modules.GroupTree / contracts surface read-only and, only because an existing approved endpoint was found, add an App.Desktop-local live GroupTree client boundary without backend, contract, migration, deploy, Web, or Android changes.
+
+Existing GroupTree API endpoint/contract found:
+Yes.
+
+Read-only sources inspected:
+- src/App.Api/Program.cs
+- src/Modules/GroupTree/GroupTreeModule.cs
+- src/BuildingBlocks/Contracts/Groups/GroupTreeFoundationDtos.cs
+- src/BuildingBlocks/Contracts/Groups/GroupTreeDtos.cs
+- tests/Integration/App.Api/AnonymousEndpointTests.cs
+- tests/Integration/App.Api/AuthenticatedEndpointTests.cs
+- tests/Integration/** references found by repository search
+
+Existing approved surface used:
+- GET /api/group-tree/nodes
+- Authorization: bearer session access token from existing desktop sign-in session
+- Response shape derived from existing code only:
+  GroupNodeFlatDto[] with groupNodeId, parentGroupNodeId, code, name, depth, isActive
+
+Scope:
+- Keep the current Russian SignIn UI before authentication.
+- After SignIn, keep the signed-in shell.
+- Preserve the S2-67 fake/dev GroupTree visual-smoke behavior.
+- Add HttpDesktopGroupTreeClient as an App.Desktop-local IDesktopGroupTreeClient implementation.
+- Select the live client only when AA_DESKTOP_CONTROL_PLANE_BASE_ADDRESS is configured.
+- Do not select fake GroupTree when a live base address is configured.
+- Keep selected group context preview-only for the upload section.
+- Clear selected group context on back/sign-out.
+
+Allowed changed areas:
+- docs/task-cards/S2-68_desktop-group-tree-control-plane-client-probe-task-card.txt
+- src/App.Desktop/**
+- tests/Unit/App.Desktop.Tests/**
+
+Forbidden changed areas:
+- src/App.Api/**
+- src/App.Worker/**
+- src/App.Web/**
+- src/App.Mobile.Android/**
+- src/App.UI.Shared/**
+- src/BuildingBlocks.Contracts/**
+- src/Modules/**
+- DB migrations
+- .github/workflows/**
+- deploy scripts
+- docs/ops/**
+- committed screenshots or runtime artifacts
+
+Contracts:
+none
+
+Migrations:
+none
+
+Feature flags/env guard:
+- Existing AA_DESKTOP_DEV_FAKE_GROUP_TREE_ENABLED=true keeps the fake/dev GroupTree visual-smoke path when no live control-plane base address is configured.
+- Existing AA_DESKTOP_CONTROL_PLANE_BASE_ADDRESS enables the live App.Api GroupTree client.
+- If AA_DESKTOP_CONTROL_PLANE_BASE_ADDRESS is configured, fake GroupTree is not selected even when AA_DESKTOP_DEV_FAKE_GROUP_TREE_ENABLED=true.
+- If AA_DESKTOP_CONTROL_PLANE_BASE_ADDRESS is absent and fake guard is off, GroupTree remains disabled/unavailable with a safe Russian message.
+
+Events:
+none
+
+Offline behavior:
+none
+
+Security guardrails:
+- Do not log or display accessToken, refreshToken, Authorization, password, raw session id, raw response body, token-like values, or full local paths.
+- The live client sends only the bearer access token in the request header and never includes it in result diagnostics.
+- The live client does not read or expose raw response bodies.
+- Unavailable, unauthorized, failed, or malformed responses produce safe Russian status messages.
+- Screenshots and runtime artifacts stay under C:\CODEX\Temp and are not committed.
+
+Explicitly out of scope:
+- App.Api changes.
+- Modules changes.
+- BuildingBlocks.Contracts changes.
+- Backend endpoint/DTO/contract additions.
+- DB migrations.
+- Deploy/workflow changes.
+- App.Web changes.
+- App.Mobile.Android changes.
+- Real PreUploadCheck changes.
+- Real direct site upload changes.
+- Real UploadReceipt changes.
+- Video bytes through App.Api.
+- Offline queue.
+- Report draft runtime.
+
+Deferred:
+No backend/API contract work is performed in S2-68. Further GroupTree production behavior beyond loading and preview-only desktop selection remains a later approved slice. Business object/report-draft binding and upload chain integration remain deferred.
+
+Rollback:
+revert S2-68 PR
+
+Validation:
+- git diff --check
+- dotnet restore AnalyticsAutomation-Core.sln -nologo
+- dotnet format whitespace AnalyticsAutomation-Core.sln --verify-no-changes --no-restore
+- dotnet build src/App.Desktop/App.Desktop.csproj -nologo -v minimal
+- dotnet build AnalyticsAutomation-Core.sln -nologo -v minimal
+- dotnet test tests/Unit/App.Desktop.Tests/App.Desktop.Tests.csproj -nologo -v minimal
+- hidden/control Unicode scan over changed text files
+- App.Desktop fake-auth/fake-group-tree/fake-upload-chain visual smoke with screenshots
+
+Definition of done:
+- Existing GroupTree API/contract is documented as found.
+- HttpDesktopGroupTreeClient uses only GET /api/group-tree/nodes and the existing GroupNodeFlatDto response shape.
+- Live GroupTree client requires AA_DESKTOP_CONTROL_PLANE_BASE_ADDRESS.
+- Fake GroupTree remains disabled by default and enabled only by AA_DESKTOP_DEV_FAKE_GROUP_TREE_ENABLED=true when live base address is absent.
+- Fake GroupTree is not selected when live base address is configured.
+- Disabled/no-base/no-fake state shows a safe Russian disabled message.
+- Live unavailable, failed, unauthorized, and malformed responses show safe Russian messages.
+- Tokens/passwords/Authorization/raw bodies/full local paths are not visible in UI/result diagnostics.
+- Selected group context remains preview-only in the upload section.
+- Back/sign-out clear selected group state.
+- No App.Api, contracts, migrations, deploy, App.Web, or App.Mobile.Android files are changed.
+- No real PreUploadCheck/site upload/UploadReceipt behavior changes are introduced beyond the existing fake/dev chain.
+- Automated App.Desktop unit tests cover guards, live endpoint request construction, safe failures, fake preservation, preview-only group context, reset behavior, forbidden upload-chain calls, and visible-string safety.
+
+Visual-smoke definition of done:
+- Run App.Desktop with:
+  AA_DESKTOP_DEV_FAKE_AUTH_ENABLED=true
+  AA_DESKTOP_DEV_FAKE_GROUP_TREE_ENABLED=true
+  AA_DESKTOP_DEV_FAKE_UPLOAD_FILE_ENABLED=true
+  AA_DESKTOP_DEV_FAKE_UPLOAD_HASH_ENABLED=true
+  AA_DESKTOP_DEV_FAKE_BUSINESS_OBJECT_KEY_ENABLED=true
+  AA_DESKTOP_DEV_FAKE_PREUPLOAD_CHECK_ENABLED=true
+  AA_DESKTOP_DEV_FAKE_SITE_UPLOAD_ENABLED=true
+  AA_DESKTOP_DEV_FAKE_UPLOAD_RECEIPT_ENABLED=true
+- Do not set AA_DESKTOP_CONTROL_PLANE_BASE_ADDRESS for fake-auth visual smoke.
+- Use non-secret fake-auth visual-smoke data:
+  login: visual-smoke-user
+  password: visual-smoke-password
+- Capture screenshots under C:\CODEX\Temp\S2-68_DESKTOP_GROUP_TREE_CLIENT_PROBE_VISUAL_SMOKE_<timestamp>\.
+- Required screenshots:
+  01_baseline_signin.png
+  02_signed_in_shell.png
+  03_group_tree_fake_nodes.png
+  04_after_fake_group_selected.png
+  05_upload_section_with_group_context.png
+  06_after_sign_out.png
+- Confirm no password, accessToken, refreshToken, Authorization, raw session id, raw response body, raw path, or real secret is visible.
+- Confirm screenshots and runtime artifacts are not committed.

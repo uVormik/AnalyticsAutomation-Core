@@ -98,6 +98,25 @@ public sealed class DesktopSessionStateTests
     }
 
     [Fact]
+    public async Task ControlPlaneAccessTokenBoundaryReturnsTokenWithoutDiagnosticLeak()
+    {
+        var state = new DesktopSessionState(new RecordingDesktopSessionStore());
+        var boundary = (IDesktopControlPlaneAccessTokenProvider)state;
+        var session = CreateAuthenticatedSession();
+
+        await state.SetSignedInAsync(session, CancellationToken.None);
+
+        DesktopControlPlaneAccessTokenSnapshot snapshot =
+            await boundary.GetCurrentAccessTokenAsync(CancellationToken.None);
+
+        Assert.True(snapshot.IsAuthenticated);
+        Assert.True(snapshot.HasAccessToken);
+        Assert.Equal(session.AccessToken, snapshot.AccessToken);
+        Assert.DoesNotContain(session.AccessToken, snapshot.ToString(), StringComparison.Ordinal);
+        Assert.DoesNotContain("Authorization", snapshot.ToString(), StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task SessionDiagnosticsDoNotIncludeTokenValues()
     {
         var store = new RecordingDesktopSessionStore();

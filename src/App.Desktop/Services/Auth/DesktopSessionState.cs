@@ -4,7 +4,8 @@ namespace App.Desktop.Services.Auth;
 
 public sealed class DesktopSessionState(IDesktopSessionStore sessionStore) :
     IDesktopSessionState,
-    IDesktopAuthSessionBoundary
+    IDesktopAuthSessionBoundary,
+    IDesktopControlPlaneAccessTokenProvider
 {
     private DesktopSessionSnapshot _current = DesktopSessionSnapshot.SignedOut;
     private DesktopAuthenticatedSession? _session;
@@ -69,6 +70,16 @@ public sealed class DesktopSessionState(IDesktopSessionStore sessionStore) :
         return ValueTask.FromResult(new DesktopAuthSessionSnapshot(
             _current.IsSignedIn,
             _current.DisplayName));
+    }
+
+    ValueTask<DesktopControlPlaneAccessTokenSnapshot> IDesktopControlPlaneAccessTokenProvider.GetCurrentAccessTokenAsync(
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        return ValueTask.FromResult(new DesktopControlPlaneAccessTokenSnapshot(
+            _current.IsSignedIn,
+            _session?.AccessToken));
     }
 
     async ValueTask IDesktopAuthSessionBoundary.SignOutAsync(CancellationToken cancellationToken)
