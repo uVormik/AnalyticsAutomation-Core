@@ -2,6 +2,7 @@ using System.Net.Http;
 
 using App.Desktop.Boundaries;
 using App.Desktop.Services.Auth;
+using App.Desktop.Services.GroupTree;
 using App.Desktop.Services.Placeholders;
 using App.Desktop.Services.Upload;
 
@@ -20,7 +21,8 @@ public static class DesktopCompositionRoot
     {
         return BuildServices(
             DesktopAuthOptions.FromEnvironment(),
-            DesktopUploadSectionOptions.FromEnvironment());
+            DesktopUploadSectionOptions.FromEnvironment(),
+            DesktopGroupTreeOptions.FromEnvironment());
     }
 
     public static ServiceProvider BuildServices(DesktopAuthOptions authOptions)
@@ -32,8 +34,17 @@ public static class DesktopCompositionRoot
         DesktopAuthOptions authOptions,
         DesktopUploadSectionOptions uploadSectionOptions)
     {
+        return BuildServices(authOptions, uploadSectionOptions, DesktopGroupTreeOptions.Disabled);
+    }
+
+    public static ServiceProvider BuildServices(
+        DesktopAuthOptions authOptions,
+        DesktopUploadSectionOptions uploadSectionOptions,
+        DesktopGroupTreeOptions groupTreeOptions)
+    {
         ArgumentNullException.ThrowIfNull(authOptions);
         ArgumentNullException.ThrowIfNull(uploadSectionOptions);
+        ArgumentNullException.ThrowIfNull(groupTreeOptions);
 
         var services = new ServiceCollection();
 
@@ -44,9 +55,11 @@ public static class DesktopCompositionRoot
 
         services.AddSingleton(authOptions);
         services.AddSingleton(uploadSectionOptions);
+        services.AddSingleton(groupTreeOptions);
         services.AddSingleton<IDesktopShellLifecycle, PlaceholderDesktopShellLifecycle>();
         services.AddSingleton<IDesktopSessionStore, DisabledDesktopSessionStore>();
         services.AddSingleton<DesktopSessionState>();
+        services.AddSingleton<DesktopGroupSelectionState>();
         services.AddSingleton<IDesktopSessionState>(
             serviceProvider => serviceProvider.GetRequiredService<DesktopSessionState>());
         services.AddSingleton<IDesktopAuthSessionBoundary>(
@@ -70,8 +83,18 @@ public static class DesktopCompositionRoot
 
         services.AddSingleton<IDesktopSignInService, DesktopSignInService>();
         services.AddTransient<DesktopSignInViewModel>();
+        services.AddTransient<DesktopGroupTreeViewModel>();
         services.AddTransient<DesktopUploadSectionViewModel>();
         services.AddSingleton<ISecureSessionStorage, PlaceholderSecureSessionStorage>();
+        if (groupTreeOptions.IsDevFakeGroupTreeEnabled)
+        {
+            services.AddSingleton<IDesktopGroupTreeClient, FakeDesktopGroupTreeClient>();
+        }
+        else
+        {
+            services.AddSingleton<IDesktopGroupTreeClient, DisabledDesktopGroupTreeClient>();
+        }
+
         if (uploadSectionOptions.IsDevFakeUploadFileEnabled)
         {
             services.AddSingleton<IDesktopVideoFilePicker, FakeDesktopVideoFilePicker>();

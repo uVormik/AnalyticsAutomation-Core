@@ -1,0 +1,147 @@
+Title:
+S2-67 Desktop Group Tree Selection Placeholder / Fake Group Context Boundary
+
+Module:
+App.Desktop / GroupTree selection placeholder
+
+Owner:
+Coder 1 acting as Coder 2 / Desktop Client
+
+Client form:
+desktop standalone
+
+Type:
+narrow runtime desktop UI slice after S2-66 upload receipt fake/dev chain
+
+Status:
+Runtime task card created with implementation.
+
+Goal:
+Activate the signed-in "Группы" desktop section, add an App.Desktop-local fake/dev GroupTree boundary for visual smoke, allow selecting a safe fake group node, and show that selected group context in the upload section as preview-only upload context.
+
+Context:
+S2-58 added the debug-only fake-auth visual-smoke harness.
+S2-59 added the Russian signed-in shell and navigation placeholders.
+S2-60 through S2-66 built the desktop upload dev-smoke chain for file selection, SHA-256, temporary businessObjectKey, fake PreUploadCheck, fake direct site upload, and fake UploadReceipt.
+The architectural upload flow still includes GroupTree before upload context:
+SignIn -> GroupTree -> file select -> SHA-256 -> businessObjectKey -> PreUploadCheck -> direct site upload -> UploadReceipt.
+
+Scope:
+- Keep the current Russian SignIn UI before authentication.
+- After fake-auth SignIn, show the signed-in shell.
+- Make the "Группы" card an active navigation entry.
+- Show the "Группы" section title and deferred App.Api integration note.
+- Add an App.Desktop-local IDesktopGroupTreeClient boundary.
+- Keep the fake/dev GroupTree disabled by default.
+- Enable fake/dev GroupTree only with AA_DESKTOP_DEV_FAKE_GROUP_TREE_ENABLED=true.
+- Show fake nodes only when the env guard is enabled:
+  - root / Вся организация
+  - branch-001 / Тестовая ветка
+  - site-001 / Тестовый объект
+- Allow selecting site-001 and show:
+  - "Выбрана группа: Тестовый объект"
+  - safe key/id preview site-001
+- Provide a safe continue action from the selected fake group preview to the upload section without treating the fake group as production truth.
+- Show selected group context in the upload section as preview-only:
+  - "Контекст группы"
+  - "Тестовый объект"
+  - site-001
+- If no group is selected, show:
+  - "Группа не выбрана. Для production-flow выбор группы будет обязательным в отдельном slice."
+- Back/sign-out clear selected group state.
+
+Allowed changed areas:
+- docs/task-cards/S2-67_desktop-group-tree-selection-placeholder-task-card.txt
+- src/App.Desktop/**
+- tests/Unit/App.Desktop.Tests/**
+
+Forbidden changed areas:
+- src/App.Api/**
+- src/App.Worker/**
+- src/App.Web/**
+- src/App.Mobile.Android/**
+- src/App.UI.Shared/**
+- src/BuildingBlocks.Contracts/**
+- src/Modules/**
+- DB migrations
+- .github/workflows/**
+- deploy scripts
+- docs/ops/**
+- committed screenshots or runtime artifacts
+
+Contracts:
+none
+
+Migrations:
+none
+
+Feature flags/env guard:
+AA_DESKTOP_DEV_FAKE_GROUP_TREE_ENABLED=true for visual smoke only.
+
+Events:
+none
+
+Offline behavior:
+none
+
+Security guardrails:
+- Do not call App.Api for GroupTree in S2-67.
+- Do not add backend DTOs, shared contracts, API routes, migrations, deploy changes, App.Web changes, or App.Mobile.Android changes.
+- Do not claim fake group node ids are a production source of truth.
+- Do not display or log password, accessToken, refreshToken, Authorization, raw session id, raw response body, token-like values, or full local paths.
+- Screenshots and runtime artifacts stay under C:\CODEX\Temp and are not committed.
+
+Deferred:
+Real App.Api GroupTree integration is not implemented in S2-67. The real control-plane GroupTree client remains a separate approved slice.
+
+Rollback:
+revert S2-67 PR
+
+Validation:
+- git diff --check
+- dotnet restore AnalyticsAutomation-Core.sln -nologo
+- dotnet format whitespace AnalyticsAutomation-Core.sln --verify-no-changes --no-restore
+- dotnet build src/App.Desktop/App.Desktop.csproj -nologo -v minimal
+- dotnet build AnalyticsAutomation-Core.sln -nologo -v minimal
+- dotnet test tests/Unit/App.Desktop.Tests/App.Desktop.Tests.csproj -nologo -v minimal
+- hidden/control Unicode scan over changed text files
+- App.Desktop fake-auth/fake-group-tree/fake-upload-chain visual smoke with screenshots
+
+Definition of done:
+- The "Группы" card is active after successful SignIn.
+- Fake GroupTree is disabled by default.
+- Fake GroupTree is enabled only by AA_DESKTOP_DEV_FAKE_GROUP_TREE_ENABLED=true in debug/dev-test visual smoke.
+- Disabled GroupTree shows the safe deferred message and makes no App.Api call.
+- Enabled fake GroupTree shows root, branch-001, and site-001 with safe Russian labels.
+- Selecting site-001 shows the safe selected group preview.
+- Upload section shows the selected group context as preview-only.
+- Upload section shows the safe missing-group message when no group is selected.
+- Back/sign-out clear selected group state.
+- No PreUploadCheck, site upload, or UploadReceipt behavior changes beyond the existing fake/dev chain.
+- Automated App.Desktop tests cover env guard behavior, fake nodes, selection preview, upload group context, reset behavior, forbidden call patterns, and visible-string safety.
+- Required visual-smoke screenshots are saved under C:\CODEX\Temp and kept out of git.
+
+Visual-smoke definition of done:
+- Run App.Desktop with:
+  AA_DESKTOP_DEV_FAKE_AUTH_ENABLED=true
+  AA_DESKTOP_DEV_FAKE_GROUP_TREE_ENABLED=true
+  AA_DESKTOP_DEV_FAKE_UPLOAD_FILE_ENABLED=true
+  AA_DESKTOP_DEV_FAKE_UPLOAD_HASH_ENABLED=true
+  AA_DESKTOP_DEV_FAKE_BUSINESS_OBJECT_KEY_ENABLED=true
+  AA_DESKTOP_DEV_FAKE_PREUPLOAD_CHECK_ENABLED=true
+  AA_DESKTOP_DEV_FAKE_SITE_UPLOAD_ENABLED=true
+  AA_DESKTOP_DEV_FAKE_UPLOAD_RECEIPT_ENABLED=true
+- Do not set AA_DESKTOP_CONTROL_PLANE_BASE_ADDRESS.
+- Use non-secret fake-auth visual-smoke data:
+  - login: visual-smoke-user
+  - password: visual-smoke-password
+- Capture screenshots under C:\CODEX\Temp\S2-67_DESKTOP_GROUP_TREE_SELECTION_VISUAL_SMOKE_<timestamp>\.
+- Required screenshots:
+  - 01_baseline_signin.png
+  - 02_signed_in_shell.png
+  - 03_group_tree_fake_nodes.png
+  - 04_after_fake_group_selected.png
+  - 05_upload_section_with_group_context.png
+  - 06_after_sign_out.png
+- Confirm no password, accessToken, refreshToken, Authorization, raw session id, raw response body, raw path, or real secret is visible.
+- Confirm screenshots and runtime artifacts are not committed.
