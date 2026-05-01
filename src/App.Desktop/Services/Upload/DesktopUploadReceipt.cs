@@ -16,7 +16,9 @@ public sealed class DesktopUploadReceiptRequestPreview
         string externalVideoId,
         string siteStorageKey,
         string siteUploadStatusPreview,
-        string capturedAtUtc)
+        string capturedAtUtc,
+        Guid? preUploadCheckId,
+        Guid? groupNodeId)
     {
         FileName = fileName;
         SizeBytes = sizeBytes;
@@ -28,6 +30,8 @@ public sealed class DesktopUploadReceiptRequestPreview
         SiteStorageKey = siteStorageKey;
         SiteUploadStatusPreview = siteUploadStatusPreview;
         CapturedAtUtc = capturedAtUtc;
+        PreUploadCheckId = preUploadCheckId;
+        GroupNodeId = groupNodeId;
     }
 
     public string FileName { get; }
@@ -49,6 +53,10 @@ public sealed class DesktopUploadReceiptRequestPreview
     public string SiteUploadStatusPreview { get; }
 
     public string CapturedAtUtc { get; }
+
+    public Guid? PreUploadCheckId { get; }
+
+    public Guid? GroupNodeId { get; }
 
     public static DesktopUploadReceiptRequestPreview? TryCreate(
         DesktopSiteUploadRequestPreview? siteUploadRequestPreview,
@@ -73,7 +81,9 @@ public sealed class DesktopUploadReceiptRequestPreview
             externalVideoId,
             siteStorageKey,
             siteUploadStatusPreview,
-            siteUploadRequestPreview.CapturedAtUtc);
+            siteUploadRequestPreview.CapturedAtUtc,
+            siteUploadRequestPreview.PreUploadCheckId,
+            siteUploadRequestPreview.GroupNodeId);
     }
 
     public override string ToString()
@@ -83,7 +93,9 @@ public sealed class DesktopUploadReceiptRequestPreview
             + $"BusinessObjectKeyPreview = {BusinessObjectKeyPreview}, "
             + $"PreUploadCheckDecisionPreview = {PreUploadCheckDecisionPreview}, "
             + $"ExternalVideoId = {ExternalVideoId}, SiteStorageKey = {SiteStorageKey}, "
-            + $"SiteUploadStatusPreview = {SiteUploadStatusPreview}, CapturedAtUtc = {CapturedAtUtc} }}";
+            + $"SiteUploadStatusPreview = {SiteUploadStatusPreview}, "
+            + $"HasPreUploadCheckId = {PreUploadCheckId.HasValue}, HasGroupNodeId = {GroupNodeId.HasValue}, "
+            + $"CapturedAtUtc = {CapturedAtUtc} }}";
     }
 
     private static bool TryCreateSafeReceiptValue(string? value, bool allowSlash, out string safeValue)
@@ -158,6 +170,7 @@ public sealed class DesktopUploadReceiptResult
     public string? StatusPreview => Status switch
     {
         DesktopUploadReceiptStatus.Accepted => "ACCEPTED",
+        DesktopUploadReceiptStatus.AlreadyAccepted => "ALREADY_ACCEPTED",
         _ => null
     };
 
@@ -185,6 +198,45 @@ public sealed class DesktopUploadReceiptResult
         receiptId: "visual-smoke-upload-receipt-001",
         serverCorrelationId: "visual-smoke-correlation-001");
 
+    public static DesktopUploadReceiptResult FromLiveAccepted(
+        Guid uploadReceiptId,
+        bool wasAlreadyAccepted)
+    {
+        return new DesktopUploadReceiptResult(
+            wasAlreadyAccepted
+                ? DesktopUploadReceiptStatus.AlreadyAccepted
+                : DesktopUploadReceiptStatus.Accepted,
+            wasAlreadyAccepted
+                ? DesktopUploadSectionText.UploadReceiptAlreadyAcceptedLiveMessage
+                : DesktopUploadSectionText.UploadReceiptAcceptedLiveMessage,
+            uploadReceiptId.ToString("D"),
+            serverCorrelationId: null);
+    }
+
+    public static DesktopUploadReceiptResult LiveUnavailable { get; } = new(
+        DesktopUploadReceiptStatus.Unavailable,
+        DesktopUploadSectionText.UploadReceiptLiveUnavailableMessage,
+        receiptId: null,
+        serverCorrelationId: null);
+
+    public static DesktopUploadReceiptResult LiveUnauthorized { get; } = new(
+        DesktopUploadReceiptStatus.Unauthorized,
+        DesktopUploadSectionText.UploadReceiptLiveUnauthorizedMessage,
+        receiptId: null,
+        serverCorrelationId: null);
+
+    public static DesktopUploadReceiptResult LiveFailed { get; } = new(
+        DesktopUploadReceiptStatus.Failed,
+        DesktopUploadSectionText.UploadReceiptLiveFailedMessage,
+        receiptId: null,
+        serverCorrelationId: null);
+
+    public static DesktopUploadReceiptResult LiveMalformed { get; } = new(
+        DesktopUploadReceiptStatus.Malformed,
+        DesktopUploadSectionText.UploadReceiptLiveMalformedMessage,
+        receiptId: null,
+        serverCorrelationId: null);
+
     public override string ToString()
     {
         return $"{nameof(DesktopUploadReceiptResult)} {{ Status = {StatusPreview ?? Status.ToString()}, "
@@ -197,5 +249,10 @@ public enum DesktopUploadReceiptStatus
 {
     Deferred,
     Accepted,
-    Canceled
+    AlreadyAccepted,
+    Canceled,
+    Unavailable,
+    Unauthorized,
+    Failed,
+    Malformed
 }

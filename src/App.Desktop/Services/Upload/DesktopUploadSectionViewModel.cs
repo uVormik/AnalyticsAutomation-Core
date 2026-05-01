@@ -150,6 +150,9 @@ public sealed class DesktopUploadSectionViewModel(
     public bool IsDevFakeUploadReceiptEnabled =>
         _uploadSectionOptions.IsDevFakeUploadReceiptEnabled;
 
+    public bool IsLiveControlPlaneUploadReceiptEnabled =>
+        _uploadSectionOptions.IsLiveControlPlaneUploadReceiptEnabled;
+
     public string BusinessObjectKeyInput { get; set; } = string.Empty;
 
     public DesktopUploadBusinessObjectKey? BusinessObjectKey { get; private set; }
@@ -222,7 +225,8 @@ public sealed class DesktopUploadSectionViewModel(
 
     public DesktopUploadReceiptResult? UploadReceiptResult { get; private set; }
 
-    public bool HasUploadReceiptResult => UploadReceiptResult?.Status == DesktopUploadReceiptStatus.Accepted;
+    public bool HasUploadReceiptResult => UploadReceiptResult?.Status is
+        DesktopUploadReceiptStatus.Accepted or DesktopUploadReceiptStatus.AlreadyAccepted;
 
     public string? UploadReceiptStatusPreview => UploadReceiptResult?.StatusPreview;
 
@@ -493,7 +497,7 @@ public sealed class DesktopUploadSectionViewModel(
             return null;
         }
 
-        if (!IsDevFakeUploadReceiptEnabled)
+        if (!IsDevFakeUploadReceiptEnabled && !IsLiveControlPlaneUploadReceiptEnabled)
         {
             UploadReceiptResult = DesktopUploadReceiptResult.Deferred;
             UploadReceiptStatusMessage = DesktopUploadSectionText.UploadReceiptDeferredMessage;
@@ -502,7 +506,9 @@ public sealed class DesktopUploadSectionViewModel(
 
         IsCreatingUploadReceipt = true;
         UploadReceiptResult = null;
-        UploadReceiptStatusMessage = DesktopUploadSectionText.UploadReceiptInProgressMessage;
+        UploadReceiptStatusMessage = IsLiveControlPlaneUploadReceiptEnabled
+            ? DesktopUploadSectionText.UploadReceiptLiveInProgressMessage
+            : DesktopUploadSectionText.UploadReceiptInProgressMessage;
 
         try
         {
@@ -615,7 +621,7 @@ public sealed class DesktopUploadSectionViewModel(
         }
 
         UploadReceiptStatusMessage = UploadReceiptRequestPreview is not null
-            ? DesktopUploadSectionText.UploadReceiptReadyMessage
+            ? GetUploadReceiptReadyMessage()
             : DesktopUploadSectionText.UploadReceiptNotReadyMessage;
     }
 
@@ -632,5 +638,12 @@ public sealed class DesktopUploadSectionViewModel(
         return IsLiveControlPlanePreUploadCheckEnabled
             ? DesktopUploadSectionText.PreUploadCheckLiveReadyMessage
             : DesktopUploadSectionText.PreUploadCheckReadyMessage;
+    }
+
+    private string GetUploadReceiptReadyMessage()
+    {
+        return IsLiveControlPlaneUploadReceiptEnabled
+            ? DesktopUploadSectionText.UploadReceiptLiveReadyMessage
+            : DesktopUploadSectionText.UploadReceiptReadyMessage;
     }
 }
