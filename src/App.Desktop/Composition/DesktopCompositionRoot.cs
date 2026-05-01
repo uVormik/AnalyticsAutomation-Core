@@ -90,6 +90,15 @@ public static class DesktopCompositionRoot
             services.AddSingleton<IDesktopVideoHashService, DesktopVideoHashService>();
         }
 
+        if (uploadSectionOptions.IsDevFakePreUploadCheckEnabled)
+        {
+            services.AddSingleton<IDesktopPreUploadCheckClient, FakeDesktopPreUploadCheckClient>();
+        }
+        else
+        {
+            services.AddSingleton<IDesktopPreUploadCheckClient, DisabledDesktopPreUploadCheckClient>();
+        }
+
         services.AddSingleton<IDesktopFilePicker, PlaceholderDesktopFilePicker>();
         services.AddSingleton<ILocalFileMetadataService, PlaceholderLocalFileMetadataService>();
         services.AddSingleton<IControlPlaneApiClient, PlaceholderControlPlaneApiClient>();

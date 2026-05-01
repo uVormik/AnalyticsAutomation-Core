@@ -23,8 +23,11 @@ public sealed class DesktopCompositionRootTests
         Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeUploadFileEnabled);
         Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeUploadHashEnabled);
         Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeBusinessObjectKeyEnabled);
+        Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakePreUploadCheckEnabled);
         Assert.IsType<WpfDesktopVideoFilePicker>(services.GetRequiredService<IDesktopVideoFilePicker>());
         Assert.IsType<DesktopVideoHashService>(services.GetRequiredService<IDesktopVideoHashService>());
+        Assert.IsType<DisabledDesktopPreUploadCheckClient>(
+            services.GetRequiredService<IDesktopPreUploadCheckClient>());
     }
 
     [Fact]
@@ -35,7 +38,8 @@ public sealed class DesktopCompositionRootTests
             .Set(DesktopAuthOptions.DevFakeAuthEnabledEnvironmentVariable, null)
             .Set(DesktopUploadSectionOptions.DevFakeUploadFileEnabledEnvironmentVariable, null)
             .Set(DesktopUploadSectionOptions.DevFakeUploadHashEnabledEnvironmentVariable, null)
-            .Set(DesktopUploadSectionOptions.DevFakeBusinessObjectKeyEnabledEnvironmentVariable, null);
+            .Set(DesktopUploadSectionOptions.DevFakeBusinessObjectKeyEnabledEnvironmentVariable, null)
+            .Set(DesktopUploadSectionOptions.DevFakePreUploadCheckEnabledEnvironmentVariable, null);
 
         using var services = DesktopCompositionRoot.BuildServicesFromEnvironment();
 
@@ -43,9 +47,12 @@ public sealed class DesktopCompositionRootTests
         Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeUploadFileEnabled);
         Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeUploadHashEnabled);
         Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeBusinessObjectKeyEnabled);
+        Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakePreUploadCheckEnabled);
         Assert.IsType<UnavailableDesktopAuthClient>(services.GetRequiredService<IDesktopAuthClient>());
         Assert.IsType<WpfDesktopVideoFilePicker>(services.GetRequiredService<IDesktopVideoFilePicker>());
         Assert.IsType<DesktopVideoHashService>(services.GetRequiredService<IDesktopVideoHashService>());
+        Assert.IsType<DisabledDesktopPreUploadCheckClient>(
+            services.GetRequiredService<IDesktopPreUploadCheckClient>());
     }
 
     [Fact]
@@ -56,7 +63,8 @@ public sealed class DesktopCompositionRootTests
             .Set(DesktopAuthOptions.DevFakeAuthEnabledEnvironmentVariable, null)
             .Set(DesktopUploadSectionOptions.DevFakeUploadFileEnabledEnvironmentVariable, "true")
             .Set(DesktopUploadSectionOptions.DevFakeUploadHashEnabledEnvironmentVariable, null)
-            .Set(DesktopUploadSectionOptions.DevFakeBusinessObjectKeyEnabledEnvironmentVariable, null);
+            .Set(DesktopUploadSectionOptions.DevFakeBusinessObjectKeyEnabledEnvironmentVariable, null)
+            .Set(DesktopUploadSectionOptions.DevFakePreUploadCheckEnabledEnvironmentVariable, null);
 
         using var services = DesktopCompositionRoot.BuildServicesFromEnvironment();
 
@@ -64,14 +72,20 @@ public sealed class DesktopCompositionRootTests
         Assert.True(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeUploadFileEnabled);
         Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeUploadHashEnabled);
         Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeBusinessObjectKeyEnabled);
+        Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakePreUploadCheckEnabled);
         Assert.IsType<FakeDesktopVideoFilePicker>(services.GetRequiredService<IDesktopVideoFilePicker>());
         Assert.IsType<DesktopVideoHashService>(services.GetRequiredService<IDesktopVideoHashService>());
+        Assert.IsType<DisabledDesktopPreUploadCheckClient>(
+            services.GetRequiredService<IDesktopPreUploadCheckClient>());
 #else
         Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeUploadFileEnabled);
         Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeUploadHashEnabled);
         Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeBusinessObjectKeyEnabled);
+        Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakePreUploadCheckEnabled);
         Assert.IsType<WpfDesktopVideoFilePicker>(services.GetRequiredService<IDesktopVideoFilePicker>());
         Assert.IsType<DesktopVideoHashService>(services.GetRequiredService<IDesktopVideoHashService>());
+        Assert.IsType<DisabledDesktopPreUploadCheckClient>(
+            services.GetRequiredService<IDesktopPreUploadCheckClient>());
 #endif
     }
 
@@ -83,7 +97,8 @@ public sealed class DesktopCompositionRootTests
             .Set(DesktopAuthOptions.DevFakeAuthEnabledEnvironmentVariable, null)
             .Set(DesktopUploadSectionOptions.DevFakeUploadFileEnabledEnvironmentVariable, null)
             .Set(DesktopUploadSectionOptions.DevFakeUploadHashEnabledEnvironmentVariable, "true")
-            .Set(DesktopUploadSectionOptions.DevFakeBusinessObjectKeyEnabledEnvironmentVariable, null);
+            .Set(DesktopUploadSectionOptions.DevFakeBusinessObjectKeyEnabledEnvironmentVariable, null)
+            .Set(DesktopUploadSectionOptions.DevFakePreUploadCheckEnabledEnvironmentVariable, null);
 
         using var services = DesktopCompositionRoot.BuildServicesFromEnvironment();
 
@@ -91,14 +106,20 @@ public sealed class DesktopCompositionRootTests
         Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeUploadFileEnabled);
         Assert.True(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeUploadHashEnabled);
         Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeBusinessObjectKeyEnabled);
+        Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakePreUploadCheckEnabled);
         Assert.IsType<WpfDesktopVideoFilePicker>(services.GetRequiredService<IDesktopVideoFilePicker>());
         Assert.IsType<FakeDesktopVideoHashService>(services.GetRequiredService<IDesktopVideoHashService>());
+        Assert.IsType<DisabledDesktopPreUploadCheckClient>(
+            services.GetRequiredService<IDesktopPreUploadCheckClient>());
 #else
         Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeUploadFileEnabled);
         Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeUploadHashEnabled);
         Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeBusinessObjectKeyEnabled);
+        Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakePreUploadCheckEnabled);
         Assert.IsType<WpfDesktopVideoFilePicker>(services.GetRequiredService<IDesktopVideoFilePicker>());
         Assert.IsType<DesktopVideoHashService>(services.GetRequiredService<IDesktopVideoHashService>());
+        Assert.IsType<DisabledDesktopPreUploadCheckClient>(
+            services.GetRequiredService<IDesktopPreUploadCheckClient>());
 #endif
     }
 
@@ -110,7 +131,8 @@ public sealed class DesktopCompositionRootTests
             .Set(DesktopAuthOptions.DevFakeAuthEnabledEnvironmentVariable, null)
             .Set(DesktopUploadSectionOptions.DevFakeUploadFileEnabledEnvironmentVariable, "true")
             .Set(DesktopUploadSectionOptions.DevFakeUploadHashEnabledEnvironmentVariable, "true")
-            .Set(DesktopUploadSectionOptions.DevFakeBusinessObjectKeyEnabledEnvironmentVariable, null);
+            .Set(DesktopUploadSectionOptions.DevFakeBusinessObjectKeyEnabledEnvironmentVariable, null)
+            .Set(DesktopUploadSectionOptions.DevFakePreUploadCheckEnabledEnvironmentVariable, null);
 
         using var services = DesktopCompositionRoot.BuildServicesFromEnvironment();
 
@@ -118,14 +140,20 @@ public sealed class DesktopCompositionRootTests
         Assert.True(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeUploadFileEnabled);
         Assert.True(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeUploadHashEnabled);
         Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeBusinessObjectKeyEnabled);
+        Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakePreUploadCheckEnabled);
         Assert.IsType<FakeDesktopVideoFilePicker>(services.GetRequiredService<IDesktopVideoFilePicker>());
         Assert.IsType<FakeDesktopVideoHashService>(services.GetRequiredService<IDesktopVideoHashService>());
+        Assert.IsType<DisabledDesktopPreUploadCheckClient>(
+            services.GetRequiredService<IDesktopPreUploadCheckClient>());
 #else
         Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeUploadFileEnabled);
         Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeUploadHashEnabled);
         Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeBusinessObjectKeyEnabled);
+        Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakePreUploadCheckEnabled);
         Assert.IsType<WpfDesktopVideoFilePicker>(services.GetRequiredService<IDesktopVideoFilePicker>());
         Assert.IsType<DesktopVideoHashService>(services.GetRequiredService<IDesktopVideoHashService>());
+        Assert.IsType<DisabledDesktopPreUploadCheckClient>(
+            services.GetRequiredService<IDesktopPreUploadCheckClient>());
 #endif
     }
 
@@ -137,7 +165,8 @@ public sealed class DesktopCompositionRootTests
             .Set(DesktopAuthOptions.DevFakeAuthEnabledEnvironmentVariable, null)
             .Set(DesktopUploadSectionOptions.DevFakeUploadFileEnabledEnvironmentVariable, null)
             .Set(DesktopUploadSectionOptions.DevFakeUploadHashEnabledEnvironmentVariable, null)
-            .Set(DesktopUploadSectionOptions.DevFakeBusinessObjectKeyEnabledEnvironmentVariable, "true");
+            .Set(DesktopUploadSectionOptions.DevFakeBusinessObjectKeyEnabledEnvironmentVariable, "true")
+            .Set(DesktopUploadSectionOptions.DevFakePreUploadCheckEnabledEnvironmentVariable, null);
 
         using var services = DesktopCompositionRoot.BuildServicesFromEnvironment();
 
@@ -145,12 +174,52 @@ public sealed class DesktopCompositionRootTests
         Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeUploadFileEnabled);
         Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeUploadHashEnabled);
         Assert.True(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeBusinessObjectKeyEnabled);
+        Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakePreUploadCheckEnabled);
         Assert.True(services.GetRequiredService<DesktopUploadSectionViewModel>().IsDevFakeBusinessObjectKeyEnabled);
+        Assert.False(services.GetRequiredService<DesktopUploadSectionViewModel>().IsDevFakePreUploadCheckEnabled);
+        Assert.IsType<DisabledDesktopPreUploadCheckClient>(
+            services.GetRequiredService<IDesktopPreUploadCheckClient>());
 #else
         Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeUploadFileEnabled);
         Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeUploadHashEnabled);
         Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeBusinessObjectKeyEnabled);
+        Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakePreUploadCheckEnabled);
         Assert.False(services.GetRequiredService<DesktopUploadSectionViewModel>().IsDevFakeBusinessObjectKeyEnabled);
+        Assert.False(services.GetRequiredService<DesktopUploadSectionViewModel>().IsDevFakePreUploadCheckEnabled);
+        Assert.IsType<DisabledDesktopPreUploadCheckClient>(
+            services.GetRequiredService<IDesktopPreUploadCheckClient>());
+#endif
+    }
+
+    [Fact]
+    public void EnvironmentOptionsEnableFakePreUploadCheckOnlyWhenExplicitlyRequested()
+    {
+        using var environment = new EnvironmentVariableScope()
+            .Set(DesktopAuthOptions.ControlPlaneBaseAddressEnvironmentVariable, null)
+            .Set(DesktopAuthOptions.DevFakeAuthEnabledEnvironmentVariable, null)
+            .Set(DesktopUploadSectionOptions.DevFakeUploadFileEnabledEnvironmentVariable, null)
+            .Set(DesktopUploadSectionOptions.DevFakeUploadHashEnabledEnvironmentVariable, null)
+            .Set(DesktopUploadSectionOptions.DevFakeBusinessObjectKeyEnabledEnvironmentVariable, null)
+            .Set(DesktopUploadSectionOptions.DevFakePreUploadCheckEnabledEnvironmentVariable, "true");
+
+        using var services = DesktopCompositionRoot.BuildServicesFromEnvironment();
+
+#if DEBUG
+        Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeUploadFileEnabled);
+        Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeUploadHashEnabled);
+        Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeBusinessObjectKeyEnabled);
+        Assert.True(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakePreUploadCheckEnabled);
+        Assert.True(services.GetRequiredService<DesktopUploadSectionViewModel>().IsDevFakePreUploadCheckEnabled);
+        Assert.IsType<FakeDesktopPreUploadCheckClient>(
+            services.GetRequiredService<IDesktopPreUploadCheckClient>());
+#else
+        Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeUploadFileEnabled);
+        Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeUploadHashEnabled);
+        Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeBusinessObjectKeyEnabled);
+        Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakePreUploadCheckEnabled);
+        Assert.False(services.GetRequiredService<DesktopUploadSectionViewModel>().IsDevFakePreUploadCheckEnabled);
+        Assert.IsType<DisabledDesktopPreUploadCheckClient>(
+            services.GetRequiredService<IDesktopPreUploadCheckClient>());
 #endif
     }
 
@@ -162,7 +231,8 @@ public sealed class DesktopCompositionRootTests
             .Set(DesktopAuthOptions.DevFakeAuthEnabledEnvironmentVariable, "true")
             .Set(DesktopUploadSectionOptions.DevFakeUploadFileEnabledEnvironmentVariable, "true")
             .Set(DesktopUploadSectionOptions.DevFakeUploadHashEnabledEnvironmentVariable, "true")
-            .Set(DesktopUploadSectionOptions.DevFakeBusinessObjectKeyEnabledEnvironmentVariable, "true");
+            .Set(DesktopUploadSectionOptions.DevFakeBusinessObjectKeyEnabledEnvironmentVariable, "true")
+            .Set(DesktopUploadSectionOptions.DevFakePreUploadCheckEnabledEnvironmentVariable, "true");
 
         using var services = DesktopCompositionRoot.BuildServicesFromEnvironment();
 
@@ -171,18 +241,25 @@ public sealed class DesktopCompositionRootTests
         Assert.True(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeUploadFileEnabled);
         Assert.True(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeUploadHashEnabled);
         Assert.True(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeBusinessObjectKeyEnabled);
+        Assert.True(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakePreUploadCheckEnabled);
         Assert.IsType<FakeDesktopAuthClient>(services.GetRequiredService<IDesktopAuthClient>());
         Assert.IsType<FakeDesktopVideoFilePicker>(services.GetRequiredService<IDesktopVideoFilePicker>());
         Assert.IsType<FakeDesktopVideoHashService>(services.GetRequiredService<IDesktopVideoHashService>());
         Assert.True(services.GetRequiredService<DesktopUploadSectionViewModel>().IsDevFakeBusinessObjectKeyEnabled);
+        Assert.True(services.GetRequiredService<DesktopUploadSectionViewModel>().IsDevFakePreUploadCheckEnabled);
+        Assert.IsType<FakeDesktopPreUploadCheckClient>(
+            services.GetRequiredService<IDesktopPreUploadCheckClient>());
 #else
         Assert.False(services.GetRequiredService<DesktopAuthOptions>().IsDevFakeAuthEnabled);
         Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeUploadFileEnabled);
         Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeUploadHashEnabled);
         Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeBusinessObjectKeyEnabled);
+        Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakePreUploadCheckEnabled);
         Assert.IsType<UnavailableDesktopAuthClient>(services.GetRequiredService<IDesktopAuthClient>());
         Assert.IsType<WpfDesktopVideoFilePicker>(services.GetRequiredService<IDesktopVideoFilePicker>());
         Assert.IsType<DesktopVideoHashService>(services.GetRequiredService<IDesktopVideoHashService>());
+        Assert.IsType<DisabledDesktopPreUploadCheckClient>(
+            services.GetRequiredService<IDesktopPreUploadCheckClient>());
 #endif
     }
 

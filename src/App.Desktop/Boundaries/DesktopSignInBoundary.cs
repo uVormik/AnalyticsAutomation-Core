@@ -137,7 +137,7 @@ public static class DesktopUploadSectionText
     public const string Description =
         "Этот раздел показывает безопасные сведения о выбранном видеофайле. Реальная загрузка будет включена в следующем approved desktop slice.";
     public const string NavigationCardMessage = "Открыть заготовку выбора видеофайла.";
-    public const string StepOneTitle = "Шаг 1. Выбор видеофайла";
+    public const string StepOneTitle = "Шаг 1. Метаданные файла";
     public const string SelectVideoFileButton = "Выбрать видеофайл";
     public const string PlaceholderResult = "Выберите видеофайл для безопасного предпросмотра.";
     public const string SelectingFileMessage = "Открывается выбор видеофайла.";
@@ -174,8 +174,35 @@ public static class DesktopUploadSectionText
     public const string BusinessObjectKeyAcceptedMessage =
         "Ключ бизнес-объекта принят для безопасного preview.";
     public const string BusinessObjectKeyPreviewLabel = "businessObjectKey";
+    public const string StepFourTitle = "Шаг 4. Предварительная проверка";
+    public const string PreUploadCheckNotReadyMessage =
+        "Выберите файл, рассчитайте SHA-256 и укажите ключ бизнес-объекта для preview запроса.";
+    public const string PreUploadCheckReadyMessage =
+        "Preview запроса готов. Реальный вызов App.Api в этом slice не выполняется.";
+    public const string PreUploadCheckInProgressMessage =
+        "Выполняется предварительная проверка в desktop-local dev boundary.";
+    public const string PreUploadCheckDeferredMessage =
+        "Предварительная проверка пока доступна только в dev-smoke режиме. Реальный вызов App.Api будет добавлен отдельным approved slice.";
+    public const string PreUploadCheckAllowedDevMessage =
+        "Предварительная проверка: загрузка разрешена в dev-smoke режиме.";
+    public const string PreUploadCheckAllowWithReviewDevMessage =
+        "Предварительная проверка: загрузка разрешена с review в dev-smoke режиме.";
+    public const string PreUploadCheckBlockHardDuplicateDevMessage =
+        "Предварительная проверка: загрузка заблокирована как hard duplicate в dev-smoke режиме.";
+    public const string PreUploadCheckBlockPossibleFalsificationDevMessage =
+        "Предварительная проверка: загрузка заблокирована как possible falsification в dev-smoke режиме.";
+    public const string PreUploadCheckCanceledMessage = "Предварительная проверка отменена.";
+    public const string PreUploadCheckButton = "Проверить перед загрузкой";
+    public const string PreUploadCheckBusyButton = "Проверяется...";
+    public const string PreUploadCheckFileNameLabel = "Имя файла";
+    public const string PreUploadCheckFileSizeLabel = "Размер";
+    public const string PreUploadCheckContentTypeLabel = "Тип содержимого";
+    public const string PreUploadCheckSha256Label = "SHA-256";
+    public const string PreUploadCheckBusinessObjectKeyLabel = "businessObjectKey";
+    public const string PreUploadCheckCapturedAtUtcLabel = "capturedAtUtc";
+    public const string PreUploadCheckDecisionLabel = "Решение";
     public const string NextStepDeferredMessage =
-        "Следующий шаг отложен: PreUploadCheck будет добавлен отдельным approved desktop slice.";
+        "Следующий шаг отложен: direct site upload boundary будет добавлен отдельным approved desktop slice.";
 }
 
 public sealed record DesktopUploadSelectedFile(

@@ -5,12 +5,29 @@ namespace App.Desktop.Services.Upload;
 public sealed class DesktopUploadSectionViewModel(
     IDesktopVideoFilePicker videoFilePicker,
     IDesktopVideoHashService videoHashService,
+    IDesktopPreUploadCheckClient preUploadCheckClient,
     DesktopUploadSectionOptions uploadSectionOptions)
 {
     public DesktopUploadSectionViewModel(
         IDesktopVideoFilePicker videoFilePicker,
         IDesktopVideoHashService videoHashService)
-        : this(videoFilePicker, videoHashService, DesktopUploadSectionOptions.Disabled)
+        : this(
+            videoFilePicker,
+            videoHashService,
+            new DisabledDesktopPreUploadCheckClient(),
+            DesktopUploadSectionOptions.Disabled)
+    {
+    }
+
+    public DesktopUploadSectionViewModel(
+        IDesktopVideoFilePicker videoFilePicker,
+        IDesktopVideoHashService videoHashService,
+        DesktopUploadSectionOptions uploadSectionOptions)
+        : this(
+            videoFilePicker,
+            videoHashService,
+            new DisabledDesktopPreUploadCheckClient(),
+            uploadSectionOptions)
     {
     }
 
@@ -18,6 +35,8 @@ public sealed class DesktopUploadSectionViewModel(
         videoFilePicker ?? throw new ArgumentNullException(nameof(videoFilePicker));
     private readonly IDesktopVideoHashService _videoHashService =
         videoHashService ?? throw new ArgumentNullException(nameof(videoHashService));
+    private readonly IDesktopPreUploadCheckClient _preUploadCheckClient =
+        preUploadCheckClient ?? throw new ArgumentNullException(nameof(preUploadCheckClient));
     private readonly DesktopUploadSectionOptions _uploadSectionOptions =
         uploadSectionOptions ?? throw new ArgumentNullException(nameof(uploadSectionOptions));
 
@@ -30,6 +49,8 @@ public sealed class DesktopUploadSectionViewModel(
     public bool IsSelectingFile { get; private set; }
 
     public bool IsHashing { get; private set; }
+
+    public bool IsCheckingPreUpload { get; private set; }
 
     public bool CanCalculateHash => SelectedFile is not null && !IsSelectingFile && !IsHashing;
 
@@ -48,6 +69,9 @@ public sealed class DesktopUploadSectionViewModel(
     public bool IsDevFakeBusinessObjectKeyEnabled =>
         _uploadSectionOptions.IsDevFakeBusinessObjectKeyEnabled;
 
+    public bool IsDevFakePreUploadCheckEnabled =>
+        _uploadSectionOptions.IsDevFakePreUploadCheckEnabled;
+
     public string BusinessObjectKeyInput { get; set; } = string.Empty;
 
     public DesktopUploadBusinessObjectKey? BusinessObjectKey { get; private set; }
@@ -58,6 +82,23 @@ public sealed class DesktopUploadSectionViewModel(
 
     public string BusinessObjectKeyStatusMessage { get; private set; } =
         DesktopUploadSectionText.BusinessObjectKeyEmptyValidationMessage;
+
+    public DesktopPreUploadCheckRequestPreview? PreUploadCheckRequestPreview =>
+        DesktopPreUploadCheckRequestPreview.TryCreate(SelectedFile, Sha256Hex, BusinessObjectKey);
+
+    public bool HasPreUploadCheckRequestPreview => PreUploadCheckRequestPreview is not null;
+
+    public bool CanRequestPreUploadCheck =>
+        HasPreUploadCheckRequestPreview && !IsSelectingFile && !IsHashing && !IsCheckingPreUpload;
+
+    public DesktopPreUploadCheckResult? PreUploadCheckResult { get; private set; }
+
+    public bool HasPreUploadCheckDecision => PreUploadCheckResult?.Decision is not null;
+
+    public string? PreUploadCheckDecisionPreview => PreUploadCheckResult?.DecisionPreview;
+
+    public string PreUploadCheckStatusMessage { get; private set; } =
+        DesktopUploadSectionText.PreUploadCheckNotReadyMessage;
 
     public void OpenUploadSection()
     {
@@ -87,6 +128,7 @@ public sealed class DesktopUploadSectionViewModel(
         SelectionStatusMessage = DesktopUploadSectionText.SelectingFileMessage;
         ResetSelectedFileHashState();
         ResetBusinessObjectKeyState();
+        ResetPreUploadCheckState();
 
         try
         {
@@ -100,6 +142,7 @@ public sealed class DesktopUploadSectionViewModel(
                     : DesktopVideoHashRequest.FromSource(result.HashSource);
                 SelectionStatusMessage = DesktopUploadSectionText.SelectedFilePreviewMessage;
                 HashStatusMessage = DesktopUploadSectionText.HashReadyMessage;
+                RefreshPreUploadCheckReadiness();
                 return SelectedFile;
             }
 
@@ -126,6 +169,7 @@ public sealed class DesktopUploadSectionViewModel(
         IsHashing = true;
         Sha256Hex = null;
         HashStatusMessage = DesktopUploadSectionText.HashInProgressMessage;
+        ResetPreUploadCheckState();
 
         try
         {
@@ -143,6 +187,7 @@ public sealed class DesktopUploadSectionViewModel(
             {
                 Sha256Hex = result.Sha256Hex;
                 HashStatusMessage = DesktopUploadSectionText.HashSucceededMessage;
+                RefreshPreUploadCheckReadiness();
                 return result;
             }
 
@@ -157,6 +202,7 @@ public sealed class DesktopUploadSectionViewModel(
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             HashStatusMessage = DesktopUploadSectionText.HashCanceledMessage;
+            RefreshPreUploadCheckReadiness();
             return DesktopVideoHashResult.Canceled;
         }
         finally
@@ -173,6 +219,8 @@ public sealed class DesktopUploadSectionViewModel(
         BusinessObjectKeyInput = validation.SafeInputValue;
         BusinessObjectKey = validation.BusinessObjectKey;
         BusinessObjectKeyStatusMessage = validation.Message;
+        ResetPreUploadCheckDecision();
+        RefreshPreUploadCheckReadiness();
 
         return validation;
     }
@@ -188,12 +236,56 @@ public sealed class DesktopUploadSectionViewModel(
         return ApplyBusinessObjectKey();
     }
 
+    public async ValueTask<DesktopPreUploadCheckResult?> CheckPreUploadAsync(CancellationToken cancellationToken)
+    {
+        if (IsCheckingPreUpload)
+        {
+            return PreUploadCheckResult;
+        }
+
+        DesktopPreUploadCheckRequestPreview? requestPreview = PreUploadCheckRequestPreview;
+        if (requestPreview is null)
+        {
+            PreUploadCheckStatusMessage = DesktopUploadSectionText.PreUploadCheckNotReadyMessage;
+            return null;
+        }
+
+        if (!IsDevFakePreUploadCheckEnabled)
+        {
+            PreUploadCheckResult = DesktopPreUploadCheckResult.Deferred;
+            PreUploadCheckStatusMessage = DesktopUploadSectionText.PreUploadCheckDeferredMessage;
+            return PreUploadCheckResult;
+        }
+
+        IsCheckingPreUpload = true;
+        PreUploadCheckResult = null;
+        PreUploadCheckStatusMessage = DesktopUploadSectionText.PreUploadCheckInProgressMessage;
+
+        try
+        {
+            PreUploadCheckResult = await _preUploadCheckClient.CheckAsync(requestPreview, cancellationToken);
+            PreUploadCheckStatusMessage = PreUploadCheckResult.Message;
+            return PreUploadCheckResult;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            PreUploadCheckResult = DesktopPreUploadCheckResult.Canceled;
+            PreUploadCheckStatusMessage = DesktopUploadSectionText.PreUploadCheckCanceledMessage;
+            return PreUploadCheckResult;
+        }
+        finally
+        {
+            IsCheckingPreUpload = false;
+        }
+    }
+
     private void ResetSelection()
     {
         SelectedFile = null;
         SelectionStatusMessage = DesktopUploadSectionText.PlaceholderResult;
         ResetSelectedFileHashState();
         ResetBusinessObjectKeyState();
+        ResetPreUploadCheckState();
     }
 
     private void ResetSelectedFileHashState()
@@ -202,6 +294,7 @@ public sealed class DesktopUploadSectionViewModel(
         IsHashing = false;
         Sha256Hex = null;
         HashStatusMessage = DesktopUploadSectionText.HashNotReadyMessage;
+        ResetPreUploadCheckState();
     }
 
     private void ResetBusinessObjectKeyState()
@@ -209,5 +302,31 @@ public sealed class DesktopUploadSectionViewModel(
         BusinessObjectKeyInput = string.Empty;
         BusinessObjectKey = null;
         BusinessObjectKeyStatusMessage = DesktopUploadSectionText.BusinessObjectKeyEmptyValidationMessage;
+        ResetPreUploadCheckState();
+    }
+
+    private void ResetPreUploadCheckState()
+    {
+        IsCheckingPreUpload = false;
+        PreUploadCheckResult = null;
+        PreUploadCheckStatusMessage = DesktopUploadSectionText.PreUploadCheckNotReadyMessage;
+    }
+
+    private void ResetPreUploadCheckDecision()
+    {
+        IsCheckingPreUpload = false;
+        PreUploadCheckResult = null;
+    }
+
+    private void RefreshPreUploadCheckReadiness()
+    {
+        if (IsCheckingPreUpload)
+        {
+            return;
+        }
+
+        PreUploadCheckStatusMessage = HasPreUploadCheckRequestPreview
+            ? DesktopUploadSectionText.PreUploadCheckReadyMessage
+            : DesktopUploadSectionText.PreUploadCheckNotReadyMessage;
     }
 }

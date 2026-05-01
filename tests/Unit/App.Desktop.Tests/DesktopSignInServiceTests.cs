@@ -268,6 +268,9 @@ public sealed class DesktopSignInServiceTests
         Assert.Contains("UploadSectionViewModel.BusinessObjectKeyInput", markup, StringComparison.Ordinal);
         Assert.Contains("UploadSectionViewModel.ApplyBusinessObjectKey()", markup, StringComparison.Ordinal);
         Assert.Contains("UploadSectionViewModel.UseDevFakeBusinessObjectKey()", markup, StringComparison.Ordinal);
+        Assert.Contains("DesktopUploadSectionText.StepFourTitle", markup, StringComparison.Ordinal);
+        Assert.Contains("UploadSectionViewModel.PreUploadCheckRequestPreview", markup, StringComparison.Ordinal);
+        Assert.Contains("UploadSectionViewModel.CheckPreUploadAsync(CancellationToken.None)", markup, StringComparison.Ordinal);
         Assert.DoesNotContain("<UploadPlaceholder", markup, StringComparison.Ordinal);
         Assert.DoesNotContain("IDesktopUploadOrchestrator", markup, StringComparison.Ordinal);
         Assert.DoesNotContain("IControlPlaneApiClient", markup, StringComparison.Ordinal);
