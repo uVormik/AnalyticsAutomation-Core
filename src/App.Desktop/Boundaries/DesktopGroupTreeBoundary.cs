@@ -9,13 +9,23 @@ public static class DesktopGroupTreeText
 {
     public const string Title = "Группы";
     public const string Description =
-        "Раздел подготовлен. Реальная загрузка дерева групп из App.Api будет добавлена отдельным approved slice.";
+        "Раздел подготовлен. Dev-smoke дерево доступно локально, а live-режим использует существующий App.Api endpoint /api/group-tree/nodes.";
     public const string NavigationCardMessage = "Открыть безопасный preview выбора группы.";
     public const string DisabledMessage =
-        "Дерево групп пока доступно только в dev-smoke режиме. Реальный вызов App.Api будет добавлен отдельным approved slice.";
+        "Дерево групп недоступно: не задан live control-plane base address и dev-smoke guard выключен.";
     public const string LoadingMessage = "Загружается desktop-local dev-smoke дерево групп.";
+    public const string LiveLoadingMessage = "Загружается дерево групп из App.Api control plane.";
     public const string LoadedMessage = "Dev-smoke дерево групп загружено из desktop-local fake boundary.";
-    public const string SelectionUnavailableMessage = "Выберите доступный dev-smoke узел группы.";
+    public const string LiveLoadedMessage = "Дерево групп загружено из App.Api control plane.";
+    public const string LiveUnauthorizedMessage =
+        "Сессия не подтверждена для загрузки дерева групп. Выполните вход снова.";
+    public const string LiveUnavailableMessage =
+        "Дерево групп сейчас недоступно. Проверьте подключение и повторите попытку позже.";
+    public const string LiveFailedMessage =
+        "Не удалось загрузить дерево групп из App.Api. Подробности скрыты безопасно.";
+    public const string LiveMalformedMessage =
+        "App.Api вернул неподдерживаемый ответ дерева групп. Интеграция остановлена безопасно.";
+    public const string SelectionUnavailableMessage = "Выберите доступный узел группы.";
     public const string BackToWorkspaceButton = "Назад к рабочей области";
     public const string SelectGroupButton = "Выбрать";
     public const string ContinueToUploadButton = "Перейти к загрузке видео";
@@ -87,18 +97,46 @@ public sealed class DesktopGroupTreeLoadResult
 
     public static DesktopGroupTreeLoadResult Loaded(IReadOnlyList<DesktopGroupTreeNode> nodes)
     {
+        return Loaded(nodes, DesktopGroupTreeText.LoadedMessage);
+    }
+
+    public static DesktopGroupTreeLoadResult Loaded(
+        IReadOnlyList<DesktopGroupTreeNode> nodes,
+        string message)
+    {
         ArgumentNullException.ThrowIfNull(nodes);
+        ArgumentException.ThrowIfNullOrWhiteSpace(message);
 
         return new DesktopGroupTreeLoadResult(
             DesktopGroupTreeLoadStatus.Loaded,
             nodes,
-            DesktopGroupTreeText.LoadedMessage);
+            message);
     }
 
     public static DesktopGroupTreeLoadResult Canceled { get; } = new(
         DesktopGroupTreeLoadStatus.Canceled,
         [],
         DesktopGroupTreeText.SelectionUnavailableMessage);
+
+    public static DesktopGroupTreeLoadResult Unavailable(string message)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(message);
+
+        return new DesktopGroupTreeLoadResult(
+            DesktopGroupTreeLoadStatus.Unavailable,
+            [],
+            message);
+    }
+
+    public static DesktopGroupTreeLoadResult Failed(string message)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(message);
+
+        return new DesktopGroupTreeLoadResult(
+            DesktopGroupTreeLoadStatus.Failed,
+            [],
+            message);
+    }
 
     public override string ToString()
     {
@@ -111,5 +149,7 @@ public enum DesktopGroupTreeLoadStatus
 {
     Disabled,
     Loaded,
-    Canceled
+    Canceled,
+    Unavailable,
+    Failed
 }

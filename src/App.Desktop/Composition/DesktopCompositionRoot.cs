@@ -19,22 +19,30 @@ public static class DesktopCompositionRoot
 
     public static ServiceProvider BuildServicesFromEnvironment()
     {
+        DesktopAuthOptions authOptions = DesktopAuthOptions.FromEnvironment();
+
         return BuildServices(
-            DesktopAuthOptions.FromEnvironment(),
+            authOptions,
             DesktopUploadSectionOptions.FromEnvironment(),
-            DesktopGroupTreeOptions.FromEnvironment());
+            DesktopGroupTreeOptions.FromAuthOptions(authOptions));
     }
 
     public static ServiceProvider BuildServices(DesktopAuthOptions authOptions)
     {
-        return BuildServices(authOptions, DesktopUploadSectionOptions.Disabled);
+        return BuildServices(
+            authOptions,
+            DesktopUploadSectionOptions.Disabled,
+            DesktopGroupTreeOptions.FromAuthOptions(authOptions, devFakeGroupTreeEnabled: null));
     }
 
     public static ServiceProvider BuildServices(
         DesktopAuthOptions authOptions,
         DesktopUploadSectionOptions uploadSectionOptions)
     {
-        return BuildServices(authOptions, uploadSectionOptions, DesktopGroupTreeOptions.Disabled);
+        return BuildServices(
+            authOptions,
+            uploadSectionOptions,
+            DesktopGroupTreeOptions.FromAuthOptions(authOptions, devFakeGroupTreeEnabled: null));
     }
 
     public static ServiceProvider BuildServices(
@@ -46,6 +54,10 @@ public static class DesktopCompositionRoot
         ArgumentNullException.ThrowIfNull(uploadSectionOptions);
         ArgumentNullException.ThrowIfNull(groupTreeOptions);
 
+        DesktopGroupTreeOptions effectiveGroupTreeOptions = authOptions.IsControlPlaneSignInConfigured
+            ? DesktopGroupTreeOptions.EnabledForLiveControlPlane
+            : groupTreeOptions;
+
         var services = new ServiceCollection();
 
         services.AddWpfBlazorWebView();
@@ -55,7 +67,7 @@ public static class DesktopCompositionRoot
 
         services.AddSingleton(authOptions);
         services.AddSingleton(uploadSectionOptions);
-        services.AddSingleton(groupTreeOptions);
+        services.AddSingleton(effectiveGroupTreeOptions);
         services.AddSingleton<IDesktopShellLifecycle, PlaceholderDesktopShellLifecycle>();
         services.AddSingleton<IDesktopSessionStore, DisabledDesktopSessionStore>();
         services.AddSingleton<DesktopSessionState>();
@@ -63,6 +75,8 @@ public static class DesktopCompositionRoot
         services.AddSingleton<IDesktopSessionState>(
             serviceProvider => serviceProvider.GetRequiredService<DesktopSessionState>());
         services.AddSingleton<IDesktopAuthSessionBoundary>(
+            serviceProvider => serviceProvider.GetRequiredService<DesktopSessionState>());
+        services.AddSingleton<IDesktopControlPlaneAccessTokenProvider>(
             serviceProvider => serviceProvider.GetRequiredService<DesktopSessionState>());
         if (authOptions.IsDevFakeAuthEnabled)
         {
@@ -86,7 +100,12 @@ public static class DesktopCompositionRoot
         services.AddTransient<DesktopGroupTreeViewModel>();
         services.AddTransient<DesktopUploadSectionViewModel>();
         services.AddSingleton<ISecureSessionStorage, PlaceholderSecureSessionStorage>();
-        if (groupTreeOptions.IsDevFakeGroupTreeEnabled)
+        if (effectiveGroupTreeOptions.IsLiveControlPlaneGroupTreeEnabled
+            && authOptions.IsControlPlaneSignInConfigured)
+        {
+            services.AddSingleton<IDesktopGroupTreeClient, HttpDesktopGroupTreeClient>();
+        }
+        else if (effectiveGroupTreeOptions.IsDevFakeGroupTreeEnabled)
         {
             services.AddSingleton<IDesktopGroupTreeClient, FakeDesktopGroupTreeClient>();
         }

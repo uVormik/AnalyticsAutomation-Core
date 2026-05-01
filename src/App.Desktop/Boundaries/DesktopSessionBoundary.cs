@@ -13,6 +13,12 @@ public interface IDesktopSessionState
     ValueTask<DesktopSessionSnapshot> SignOutAsync(CancellationToken cancellationToken);
 }
 
+public interface IDesktopControlPlaneAccessTokenProvider
+{
+    ValueTask<DesktopControlPlaneAccessTokenSnapshot> GetCurrentAccessTokenAsync(
+        CancellationToken cancellationToken);
+}
+
 public interface IDesktopSessionStore
 {
     ValueTask<DesktopStoredSession?> LoadAsync(CancellationToken cancellationToken);
@@ -67,6 +73,19 @@ public enum DesktopSessionStatus
 {
     SignedOut,
     SignedIn
+}
+
+public sealed record DesktopControlPlaneAccessTokenSnapshot(
+    bool IsAuthenticated,
+    string? AccessToken)
+{
+    public bool HasAccessToken => IsAuthenticated && !string.IsNullOrWhiteSpace(AccessToken);
+
+    public override string ToString()
+    {
+        return $"{nameof(DesktopControlPlaneAccessTokenSnapshot)} {{ IsAuthenticated = {IsAuthenticated}, "
+            + $"HasAccessToken = {HasAccessToken} }}";
+    }
 }
 
 public sealed class DesktopAuthenticatedSession
