@@ -480,6 +480,8 @@ public sealed class DesktopCompositionRootTests
         Assert.IsType<HttpDesktopGroupTreeClient>(services.GetRequiredService<IDesktopGroupTreeClient>());
         Assert.IsType<HttpDesktopPreUploadCheckClient>(
             services.GetRequiredService<IDesktopPreUploadCheckClient>());
+        Assert.IsType<DisabledDesktopDirectSiteUploadClient>(
+            services.GetRequiredService<IDesktopDirectSiteUploadClient>());
         Assert.IsType<HttpDesktopUploadReceiptClient>(
             services.GetRequiredService<IDesktopUploadReceiptClient>());
         Assert.IsType<DisabledDesktopSessionStore>(services.GetRequiredService<IDesktopSessionStore>());
@@ -489,10 +491,12 @@ public sealed class DesktopCompositionRootTests
         Assert.True(services.GetRequiredService<DesktopUploadSectionOptions>().IsLiveControlPlanePreUploadCheckEnabled);
         Assert.True(services.GetRequiredService<DesktopUploadSectionOptions>().IsLiveControlPlaneUploadReceiptEnabled);
         Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakePreUploadCheckEnabled);
+        Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeSiteUploadEnabled);
         Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeUploadReceiptEnabled);
         Assert.True(services.GetRequiredService<DesktopUploadSectionViewModel>().IsLiveControlPlanePreUploadCheckEnabled);
         Assert.True(services.GetRequiredService<DesktopUploadSectionViewModel>().IsLiveControlPlaneUploadReceiptEnabled);
         Assert.False(services.GetRequiredService<DesktopUploadSectionViewModel>().IsDevFakePreUploadCheckEnabled);
+        Assert.False(services.GetRequiredService<DesktopUploadSectionViewModel>().IsDevFakeSiteUploadEnabled);
         Assert.False(services.GetRequiredService<DesktopUploadSectionViewModel>().IsDevFakeUploadReceiptEnabled);
         Assert.Equal(
             new Uri("https://control-plane.local"),
@@ -570,6 +574,35 @@ public sealed class DesktopCompositionRootTests
         Assert.False(services.GetRequiredService<DesktopUploadSectionViewModel>().IsDevFakePreUploadCheckEnabled);
         Assert.IsType<HttpDesktopPreUploadCheckClient>(
             services.GetRequiredService<IDesktopPreUploadCheckClient>());
+    }
+
+    [Fact]
+    public void ExplicitFakeSiteUploadFlagDoesNotRunWithConfiguredControlPlaneBecauseProviderIsDeferred()
+    {
+        using var environment = new EnvironmentVariableScope()
+            .Set(DesktopAuthOptions.ControlPlaneBaseAddressEnvironmentVariable, "https://control-plane.local")
+            .Set(DesktopAuthOptions.DevFakeAuthEnabledEnvironmentVariable, "true")
+            .Set(DesktopUploadSectionOptions.DevFakeSiteUploadEnabledEnvironmentVariable, "true")
+            .Set(DesktopUploadSectionOptions.DevFakeUploadReceiptEnabledEnvironmentVariable, "true");
+
+        using var services = DesktopCompositionRoot.BuildServicesFromEnvironment();
+
+        Assert.False(services.GetRequiredService<DesktopAuthOptions>().IsDevFakeAuthEnabled);
+        Assert.True(services.GetRequiredService<DesktopAuthOptions>().IsControlPlaneSignInConfigured);
+        Assert.True(services.GetRequiredService<DesktopUploadSectionOptions>().IsLiveControlPlanePreUploadCheckEnabled);
+        Assert.True(services.GetRequiredService<DesktopUploadSectionOptions>().IsLiveControlPlaneUploadReceiptEnabled);
+        Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeSiteUploadEnabled);
+        Assert.False(services.GetRequiredService<DesktopUploadSectionOptions>().IsDevFakeUploadReceiptEnabled);
+        Assert.True(services.GetRequiredService<DesktopUploadSectionViewModel>().IsLiveControlPlanePreUploadCheckEnabled);
+        Assert.True(services.GetRequiredService<DesktopUploadSectionViewModel>().IsLiveControlPlaneUploadReceiptEnabled);
+        Assert.False(services.GetRequiredService<DesktopUploadSectionViewModel>().IsDevFakeSiteUploadEnabled);
+        Assert.False(services.GetRequiredService<DesktopUploadSectionViewModel>().IsDevFakeUploadReceiptEnabled);
+        Assert.IsType<HttpDesktopPreUploadCheckClient>(
+            services.GetRequiredService<IDesktopPreUploadCheckClient>());
+        Assert.IsType<DisabledDesktopDirectSiteUploadClient>(
+            services.GetRequiredService<IDesktopDirectSiteUploadClient>());
+        Assert.IsType<HttpDesktopUploadReceiptClient>(
+            services.GetRequiredService<IDesktopUploadReceiptClient>());
     }
 
     [Fact]
