@@ -124,11 +124,17 @@ public sealed class DesktopPreUploadCheckResult
     private DesktopPreUploadCheckResult(
         DesktopPreUploadCheckStatus status,
         DesktopPreUploadCheckDecision? decision,
-        string message)
+        string message,
+        Guid? preUploadCheckId,
+        string? sitePlanExternalVideoId,
+        string? sitePlanStorageKey)
     {
         Status = status;
         Decision = decision;
         Message = message;
+        PreUploadCheckId = preUploadCheckId;
+        SitePlanExternalVideoId = sitePlanExternalVideoId;
+        SitePlanStorageKey = sitePlanStorageKey;
     }
 
     public DesktopPreUploadCheckStatus Status { get; }
@@ -146,15 +152,27 @@ public sealed class DesktopPreUploadCheckResult
 
     public string Message { get; }
 
+    public Guid? PreUploadCheckId { get; }
+
+    public string? SitePlanExternalVideoId { get; }
+
+    public string? SitePlanStorageKey { get; }
+
     public static DesktopPreUploadCheckResult Deferred { get; } = new(
         DesktopPreUploadCheckStatus.Deferred,
         decision: null,
-        DesktopUploadSectionText.PreUploadCheckDeferredMessage);
+        DesktopUploadSectionText.PreUploadCheckDeferredMessage,
+        preUploadCheckId: null,
+        sitePlanExternalVideoId: null,
+        sitePlanStorageKey: null);
 
     public static DesktopPreUploadCheckResult Canceled { get; } = new(
         DesktopPreUploadCheckStatus.Canceled,
         decision: null,
-        DesktopUploadSectionText.PreUploadCheckCanceledMessage);
+        DesktopUploadSectionText.PreUploadCheckCanceledMessage,
+        preUploadCheckId: null,
+        sitePlanExternalVideoId: null,
+        sitePlanStorageKey: null);
 
     public static DesktopPreUploadCheckResult FromFakeDecision(DesktopPreUploadCheckDecision decision)
     {
@@ -177,10 +195,20 @@ public sealed class DesktopPreUploadCheckResult
             _ => DesktopPreUploadCheckStatus.Blocked
         };
 
-        return new DesktopPreUploadCheckResult(status, decision, message);
+        return new DesktopPreUploadCheckResult(
+            status,
+            decision,
+            message,
+            preUploadCheckId: null,
+            sitePlanExternalVideoId: null,
+            sitePlanStorageKey: null);
     }
 
-    public static DesktopPreUploadCheckResult FromLiveDecision(DesktopPreUploadCheckDecision decision)
+    public static DesktopPreUploadCheckResult FromLiveDecision(
+        DesktopPreUploadCheckDecision decision,
+        Guid preUploadCheckId,
+        string? sitePlanExternalVideoId,
+        string? sitePlanStorageKey)
     {
         string message = decision switch
         {
@@ -201,32 +229,52 @@ public sealed class DesktopPreUploadCheckResult
             _ => DesktopPreUploadCheckStatus.Blocked
         };
 
-        return new DesktopPreUploadCheckResult(status, decision, message);
+        return new DesktopPreUploadCheckResult(
+            status,
+            decision,
+            message,
+            preUploadCheckId,
+            sitePlanExternalVideoId,
+            sitePlanStorageKey);
     }
 
     public static DesktopPreUploadCheckResult LiveUnavailable { get; } = new(
         DesktopPreUploadCheckStatus.Unavailable,
         decision: null,
-        DesktopUploadSectionText.PreUploadCheckLiveUnavailableMessage);
+        DesktopUploadSectionText.PreUploadCheckLiveUnavailableMessage,
+        preUploadCheckId: null,
+        sitePlanExternalVideoId: null,
+        sitePlanStorageKey: null);
 
     public static DesktopPreUploadCheckResult LiveUnauthorized { get; } = new(
         DesktopPreUploadCheckStatus.Unauthorized,
         decision: null,
-        DesktopUploadSectionText.PreUploadCheckLiveUnauthorizedMessage);
+        DesktopUploadSectionText.PreUploadCheckLiveUnauthorizedMessage,
+        preUploadCheckId: null,
+        sitePlanExternalVideoId: null,
+        sitePlanStorageKey: null);
 
     public static DesktopPreUploadCheckResult LiveFailed { get; } = new(
         DesktopPreUploadCheckStatus.Failed,
         decision: null,
-        DesktopUploadSectionText.PreUploadCheckLiveFailedMessage);
+        DesktopUploadSectionText.PreUploadCheckLiveFailedMessage,
+        preUploadCheckId: null,
+        sitePlanExternalVideoId: null,
+        sitePlanStorageKey: null);
 
     public static DesktopPreUploadCheckResult LiveMalformed { get; } = new(
         DesktopPreUploadCheckStatus.Malformed,
         decision: null,
-        DesktopUploadSectionText.PreUploadCheckLiveMalformedMessage);
+        DesktopUploadSectionText.PreUploadCheckLiveMalformedMessage,
+        preUploadCheckId: null,
+        sitePlanExternalVideoId: null,
+        sitePlanStorageKey: null);
 
     public override string ToString()
     {
         return $"{nameof(DesktopPreUploadCheckResult)} {{ Status = {Status}, Decision = {DecisionPreview ?? "<none>"}, "
+            + $"HasPreUploadCheckId = {PreUploadCheckId.HasValue}, "
+            + $"HasSitePlan = {!string.IsNullOrWhiteSpace(SitePlanExternalVideoId) && !string.IsNullOrWhiteSpace(SitePlanStorageKey)}, "
             + $"Message = {Message} }}";
     }
 }

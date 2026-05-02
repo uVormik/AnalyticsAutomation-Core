@@ -58,7 +58,9 @@ public static class DesktopCompositionRoot
             ? DesktopGroupTreeOptions.EnabledForLiveControlPlane
             : groupTreeOptions;
         DesktopUploadSectionOptions effectiveUploadSectionOptions = authOptions.IsControlPlaneSignInConfigured
-            ? uploadSectionOptions.WithLiveControlPlanePreUploadCheck()
+            ? uploadSectionOptions
+                .WithLiveControlPlanePreUploadCheck()
+                .WithLiveControlPlaneUploadReceipt()
             : uploadSectionOptions;
 
         var services = new ServiceCollection();
@@ -158,7 +160,12 @@ public static class DesktopCompositionRoot
             services.AddSingleton<IDesktopDirectSiteUploadClient, DisabledDesktopDirectSiteUploadClient>();
         }
 
-        if (effectiveUploadSectionOptions.IsDevFakeUploadReceiptEnabled)
+        if (effectiveUploadSectionOptions.IsLiveControlPlaneUploadReceiptEnabled
+            && authOptions.IsControlPlaneSignInConfigured)
+        {
+            services.AddSingleton<IDesktopUploadReceiptClient, HttpDesktopUploadReceiptClient>();
+        }
+        else if (effectiveUploadSectionOptions.IsDevFakeUploadReceiptEnabled)
         {
             services.AddSingleton<IDesktopUploadReceiptClient, FakeDesktopUploadReceiptClient>();
         }

@@ -259,12 +259,28 @@ public static class DesktopUploadSectionText
         "Нужны выбранный файл, SHA-256, businessObjectKey, решение ALLOW или ALLOW_WITH_REVIEW и успешная загрузка на сайт.";
     public const string UploadReceiptReadyMessage =
         "Preview квитанции загрузки готов. В этом slice доступен только desktop-local dev boundary.";
+    public const string UploadReceiptLiveReadyMessage =
+        "Preview квитанции загрузки готов. Будет использован существующий control-plane endpoint UploadReceipt.";
     public const string UploadReceiptInProgressMessage =
         "Формируется квитанция загрузки в desktop-local dev boundary.";
+    public const string UploadReceiptLiveInProgressMessage =
+        "Формируется квитанция загрузки через control-plane boundary.";
     public const string UploadReceiptDeferredMessage =
-        "Квитанция загрузки пока доступна только в dev-smoke режиме. Реальный вызов App.Api будет добавлен отдельным approved slice.";
+        "Квитанция загрузки недоступна: задайте live control-plane base address или включите dev-smoke guard.";
     public const string UploadReceiptAcceptedDevMessage =
         "Квитанция загрузки сформирована в dev-smoke режиме.";
+    public const string UploadReceiptAcceptedLiveMessage =
+        "Квитанция загрузки принята control-plane.";
+    public const string UploadReceiptAlreadyAcceptedLiveMessage =
+        "Квитанция загрузки уже была принята control-plane.";
+    public const string UploadReceiptLiveUnauthorizedMessage =
+        "Квитанция загрузки недоступна: требуется повторный вход.";
+    public const string UploadReceiptLiveUnavailableMessage =
+        "Квитанция загрузки временно недоступна. Проверьте подключение или настройку.";
+    public const string UploadReceiptLiveFailedMessage =
+        "Квитанция загрузки не принята. Проверьте состояние загрузки и попробуйте ещё раз.";
+    public const string UploadReceiptLiveMalformedMessage =
+        "Квитанция загрузки вернула неподдерживаемый ответ.";
     public const string UploadReceiptCanceledMessage = "Формирование квитанции загрузки отменено.";
     public const string UploadReceiptButton = "Сформировать квитанцию";
     public const string UploadReceiptBusyButton = "Формируется...";
@@ -282,7 +298,7 @@ public static class DesktopUploadSectionText
     public const string UploadReceiptResultReceiptIdLabel = "receiptId";
     public const string UploadReceiptResultServerCorrelationIdLabel = "serverCorrelationId";
     public const string NextStepDeferredMessage =
-        "Следующий шаг отложен: реальный control-plane UploadReceipt client будет добавлен отдельным approved desktop slice.";
+        "Следующий шаг отложен: production site provider остаётся отдельным approved desktop slice.";
 }
 
 public sealed record DesktopUploadSelectedFile(

@@ -11,7 +11,11 @@ public sealed class DesktopSiteUploadRequestPreview
         string sha256Hex,
         string businessObjectKeyPreview,
         string preUploadCheckDecisionPreview,
-        string capturedAtUtc)
+        string capturedAtUtc,
+        Guid? preUploadCheckId,
+        Guid? groupNodeId,
+        string? plannedExternalVideoId,
+        string? plannedSiteStorageKey)
     {
         FileName = fileName;
         SizeBytes = sizeBytes;
@@ -20,6 +24,10 @@ public sealed class DesktopSiteUploadRequestPreview
         BusinessObjectKeyPreview = businessObjectKeyPreview;
         PreUploadCheckDecisionPreview = preUploadCheckDecisionPreview;
         CapturedAtUtc = capturedAtUtc;
+        PreUploadCheckId = preUploadCheckId;
+        GroupNodeId = groupNodeId;
+        PlannedExternalVideoId = plannedExternalVideoId;
+        PlannedSiteStorageKey = plannedSiteStorageKey;
     }
 
     public string FileName { get; }
@@ -35,6 +43,14 @@ public sealed class DesktopSiteUploadRequestPreview
     public string PreUploadCheckDecisionPreview { get; }
 
     public string CapturedAtUtc { get; }
+
+    public Guid? PreUploadCheckId { get; }
+
+    public Guid? GroupNodeId { get; }
+
+    public string? PlannedExternalVideoId { get; }
+
+    public string? PlannedSiteStorageKey { get; }
 
     public static DesktopSiteUploadRequestPreview? TryCreate(
         DesktopPreUploadCheckRequestPreview? preUploadCheckRequestPreview,
@@ -64,7 +80,11 @@ public sealed class DesktopSiteUploadRequestPreview
             preUploadCheckRequestPreview.Sha256Hex,
             preUploadCheckRequestPreview.BusinessObjectKeyPreview,
             decisionPreview,
-            preUploadCheckRequestPreview.CapturedAtUtc);
+            preUploadCheckRequestPreview.CapturedAtUtc,
+            preUploadCheckResult.PreUploadCheckId,
+            preUploadCheckRequestPreview.GroupNodeId,
+            preUploadCheckResult.SitePlanExternalVideoId,
+            preUploadCheckResult.SitePlanStorageKey);
     }
 
     public override string ToString()
@@ -73,6 +93,8 @@ public sealed class DesktopSiteUploadRequestPreview
             + $"SizeBytes = {SizeBytes}, ContentType = {ContentType}, HasSha256 = {Sha256Hex.Length == 64}, "
             + $"BusinessObjectKeyPreview = {BusinessObjectKeyPreview}, "
             + $"PreUploadCheckDecisionPreview = {PreUploadCheckDecisionPreview}, "
+            + $"HasPreUploadCheckId = {PreUploadCheckId.HasValue}, HasGroupNodeId = {GroupNodeId.HasValue}, "
+            + $"HasPlannedSiteTarget = {!string.IsNullOrWhiteSpace(PlannedExternalVideoId) && !string.IsNullOrWhiteSpace(PlannedSiteStorageKey)}, "
             + $"CapturedAtUtc = {CapturedAtUtc} }}";
     }
 
@@ -128,6 +150,21 @@ public sealed class DesktopSiteUploadResult
         DesktopUploadSectionText.SiteUploadSuccessDevMessage,
         externalVideoId: "visual-smoke-external-video-001",
         siteStorageKey: "visual-smoke/site/video-001");
+
+    public static DesktopSiteUploadResult FromFakeSuccess(DesktopSiteUploadRequestPreview requestPreview)
+    {
+        ArgumentNullException.ThrowIfNull(requestPreview);
+
+        return new DesktopSiteUploadResult(
+            DesktopSiteUploadStatus.Succeeded,
+            DesktopUploadSectionText.SiteUploadSuccessDevMessage,
+            string.IsNullOrWhiteSpace(requestPreview.PlannedExternalVideoId)
+                ? FakeSuccess.ExternalVideoId
+                : requestPreview.PlannedExternalVideoId,
+            string.IsNullOrWhiteSpace(requestPreview.PlannedSiteStorageKey)
+                ? FakeSuccess.SiteStorageKey
+                : requestPreview.PlannedSiteStorageKey);
+    }
 
     public override string ToString()
     {

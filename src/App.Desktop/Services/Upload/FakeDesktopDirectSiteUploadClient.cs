@@ -11,6 +11,6 @@ public sealed class FakeDesktopDirectSiteUploadClient : IDesktopDirectSiteUpload
         ArgumentNullException.ThrowIfNull(requestPreview);
         cancellationToken.ThrowIfCancellationRequested();
 
-        return ValueTask.FromResult(DesktopSiteUploadResult.FakeSuccess);
+        return ValueTask.FromResult(DesktopSiteUploadResult.FromFakeSuccess(requestPreview));
     }
 }

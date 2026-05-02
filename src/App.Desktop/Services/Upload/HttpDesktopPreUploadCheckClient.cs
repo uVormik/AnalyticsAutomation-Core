@@ -153,9 +153,38 @@ public sealed class HttpDesktopPreUploadCheckClient : IDesktopPreUploadCheckClie
             _ => null
         };
 
-        return decision is null
-            ? DesktopPreUploadCheckResult.LiveMalformed
-            : DesktopPreUploadCheckResult.FromLiveDecision(decision.Value);
+        if (decision is null)
+        {
+            return DesktopPreUploadCheckResult.LiveMalformed;
+        }
+
+        string? sitePlanExternalVideoId = null;
+        string? sitePlanStorageKey = null;
+        if (decision is DesktopPreUploadCheckDecision.Allow or DesktopPreUploadCheckDecision.AllowWithReview)
+        {
+            if (payload.SitePlan is null
+                || !string.Equals(
+                    payload.SitePlan.RequiredReceiptEndpoint,
+                    "/api/video/upload-receipt",
+                    StringComparison.Ordinal)
+                || !TryCreateSafeControlPlaneValue(
+                    payload.SitePlan.ExternalVideoId,
+                    allowSlash: false,
+                    out sitePlanExternalVideoId)
+                || !TryCreateSafeControlPlaneValue(
+                    payload.SitePlan.StorageKey,
+                    allowSlash: true,
+                    out sitePlanStorageKey))
+            {
+                return DesktopPreUploadCheckResult.LiveMalformed;
+            }
+        }
+
+        return DesktopPreUploadCheckResult.FromLiveDecision(
+            decision.Value,
+            payload.PreUploadCheckId.Value,
+            sitePlanExternalVideoId,
+            sitePlanStorageKey);
     }
 
     private static string? CreateSafeNullableContentType(string contentType)
@@ -166,6 +195,58 @@ public sealed class HttpDesktopPreUploadCheckClient : IDesktopPreUploadCheckClie
             StringComparison.Ordinal)
             ? null
             : contentType;
+    }
+
+    private static bool TryCreateSafeControlPlaneValue(string? value, bool allowSlash, out string? safeValue)
+    {
+        safeValue = null;
+
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        string trimmed = value.Trim();
+        if (trimmed.Length > 200)
+        {
+            return false;
+        }
+
+        string lower = trimmed.ToLowerInvariant();
+        string[] blockedFragments =
+        [
+            "authorization",
+            "bearer",
+            "password",
+            "token",
+            "sessionid",
+            "session_id",
+            "access_token",
+            "refreshtoken",
+            "refresh_token"
+        ];
+
+        foreach (string blockedFragment in blockedFragments)
+        {
+            if (lower.Contains(blockedFragment, StringComparison.Ordinal))
+            {
+                return false;
+            }
+        }
+
+        foreach (char character in trimmed)
+        {
+            if (char.IsControl(character)
+                || character == '\\'
+                || character == ':'
+                || (!allowSlash && character == '/'))
+            {
+                return false;
+            }
+        }
+
+        safeValue = trimmed;
+        return true;
     }
 
     private sealed record PreUploadCheckRequestPayload(

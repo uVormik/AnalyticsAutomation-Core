@@ -22,6 +22,7 @@ public sealed class DesktopUploadSectionOptions
 
     private DesktopUploadSectionOptions(
         bool isLiveControlPlanePreUploadCheckEnabled,
+        bool isLiveControlPlaneUploadReceiptEnabled,
         bool isDevFakeUploadFileEnabled,
         bool isDevFakeUploadHashEnabled,
         bool isDevFakeBusinessObjectKeyEnabled,
@@ -30,6 +31,7 @@ public sealed class DesktopUploadSectionOptions
         bool isDevFakeUploadReceiptEnabled)
     {
         IsLiveControlPlanePreUploadCheckEnabled = isLiveControlPlanePreUploadCheckEnabled;
+        IsLiveControlPlaneUploadReceiptEnabled = isLiveControlPlaneUploadReceiptEnabled;
         IsDevFakeUploadFileEnabled = isDevFakeUploadFileEnabled;
         IsDevFakeUploadHashEnabled = isDevFakeUploadHashEnabled;
         IsDevFakeBusinessObjectKeyEnabled = isDevFakeBusinessObjectKeyEnabled;
@@ -40,6 +42,7 @@ public sealed class DesktopUploadSectionOptions
 
     public static DesktopUploadSectionOptions Disabled { get; } = new(
         isLiveControlPlanePreUploadCheckEnabled: false,
+        isLiveControlPlaneUploadReceiptEnabled: false,
         isDevFakeUploadFileEnabled: false,
         isDevFakeUploadHashEnabled: false,
         isDevFakeBusinessObjectKeyEnabled: false,
@@ -50,6 +53,7 @@ public sealed class DesktopUploadSectionOptions
 #if DEBUG
     public static DesktopUploadSectionOptions EnabledForDevFakeFileSelection { get; } = new(
         isLiveControlPlanePreUploadCheckEnabled: false,
+        isLiveControlPlaneUploadReceiptEnabled: false,
         isDevFakeUploadFileEnabled: true,
         isDevFakeUploadHashEnabled: false,
         isDevFakeBusinessObjectKeyEnabled: false,
@@ -59,6 +63,7 @@ public sealed class DesktopUploadSectionOptions
 
     public static DesktopUploadSectionOptions EnabledForDevFakeFileSelectionAndHash { get; } = new(
         isLiveControlPlanePreUploadCheckEnabled: false,
+        isLiveControlPlaneUploadReceiptEnabled: false,
         isDevFakeUploadFileEnabled: true,
         isDevFakeUploadHashEnabled: true,
         isDevFakeBusinessObjectKeyEnabled: false,
@@ -68,6 +73,7 @@ public sealed class DesktopUploadSectionOptions
 
     public static DesktopUploadSectionOptions EnabledForDevFakeBusinessObjectKey { get; } = new(
         isLiveControlPlanePreUploadCheckEnabled: false,
+        isLiveControlPlaneUploadReceiptEnabled: false,
         isDevFakeUploadFileEnabled: false,
         isDevFakeUploadHashEnabled: false,
         isDevFakeBusinessObjectKeyEnabled: true,
@@ -77,6 +83,7 @@ public sealed class DesktopUploadSectionOptions
 
     public static DesktopUploadSectionOptions EnabledForDevFakePreUploadCheck { get; } = new(
         isLiveControlPlanePreUploadCheckEnabled: false,
+        isLiveControlPlaneUploadReceiptEnabled: false,
         isDevFakeUploadFileEnabled: false,
         isDevFakeUploadHashEnabled: false,
         isDevFakeBusinessObjectKeyEnabled: false,
@@ -86,6 +93,7 @@ public sealed class DesktopUploadSectionOptions
 
     public static DesktopUploadSectionOptions EnabledForDevFakeSiteUpload { get; } = new(
         isLiveControlPlanePreUploadCheckEnabled: false,
+        isLiveControlPlaneUploadReceiptEnabled: false,
         isDevFakeUploadFileEnabled: false,
         isDevFakeUploadHashEnabled: false,
         isDevFakeBusinessObjectKeyEnabled: false,
@@ -95,6 +103,7 @@ public sealed class DesktopUploadSectionOptions
 
     public static DesktopUploadSectionOptions EnabledForDevFakeUploadReceipt { get; } = new(
         isLiveControlPlanePreUploadCheckEnabled: false,
+        isLiveControlPlaneUploadReceiptEnabled: false,
         isDevFakeUploadFileEnabled: false,
         isDevFakeUploadHashEnabled: false,
         isDevFakeBusinessObjectKeyEnabled: false,
@@ -116,6 +125,8 @@ public sealed class DesktopUploadSectionOptions
 #endif
 
     public bool IsLiveControlPlanePreUploadCheckEnabled { get; }
+
+    public bool IsLiveControlPlaneUploadReceiptEnabled { get; }
 
     public bool IsDevFakeUploadFileEnabled { get; }
 
@@ -218,6 +229,7 @@ public sealed class DesktopUploadSectionOptions
 
         return new DesktopUploadSectionOptions(
             isLiveControlPlanePreUploadCheckEnabled: false,
+            isLiveControlPlaneUploadReceiptEnabled: false,
             isDevFakeUploadFileEnabled: isFakeFileEnabled,
             isDevFakeUploadHashEnabled: isFakeHashEnabled,
             isDevFakeBusinessObjectKeyEnabled: isFakeBusinessObjectKeyEnabled,
@@ -233,6 +245,7 @@ public sealed class DesktopUploadSectionOptions
     {
         return new DesktopUploadSectionOptions(
             isLiveControlPlanePreUploadCheckEnabled: true,
+            isLiveControlPlaneUploadReceiptEnabled: IsLiveControlPlaneUploadReceiptEnabled,
             isDevFakeUploadFileEnabled: IsDevFakeUploadFileEnabled,
             isDevFakeUploadHashEnabled: IsDevFakeUploadHashEnabled,
             isDevFakeBusinessObjectKeyEnabled: IsDevFakeBusinessObjectKeyEnabled,
@@ -241,10 +254,24 @@ public sealed class DesktopUploadSectionOptions
             isDevFakeUploadReceiptEnabled: IsDevFakeUploadReceiptEnabled);
     }
 
+    public DesktopUploadSectionOptions WithLiveControlPlaneUploadReceipt()
+    {
+        return new DesktopUploadSectionOptions(
+            isLiveControlPlanePreUploadCheckEnabled: IsLiveControlPlanePreUploadCheckEnabled,
+            isLiveControlPlaneUploadReceiptEnabled: true,
+            isDevFakeUploadFileEnabled: IsDevFakeUploadFileEnabled,
+            isDevFakeUploadHashEnabled: IsDevFakeUploadHashEnabled,
+            isDevFakeBusinessObjectKeyEnabled: IsDevFakeBusinessObjectKeyEnabled,
+            isDevFakePreUploadCheckEnabled: IsDevFakePreUploadCheckEnabled,
+            isDevFakeSiteUploadEnabled: IsDevFakeSiteUploadEnabled,
+            isDevFakeUploadReceiptEnabled: false);
+    }
+
     public override string ToString()
     {
         return $"{nameof(DesktopUploadSectionOptions)} {{ "
             + $"IsLiveControlPlanePreUploadCheckEnabled = {IsLiveControlPlanePreUploadCheckEnabled}, "
+            + $"IsLiveControlPlaneUploadReceiptEnabled = {IsLiveControlPlaneUploadReceiptEnabled}, "
             + $"IsDevFakeUploadFileEnabled = {IsDevFakeUploadFileEnabled}, "
             + $"IsDevFakeUploadHashEnabled = {IsDevFakeUploadHashEnabled}, "
             + $"IsDevFakeBusinessObjectKeyEnabled = {IsDevFakeBusinessObjectKeyEnabled}, "
