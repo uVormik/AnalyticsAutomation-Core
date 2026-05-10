@@ -55,7 +55,9 @@ public sealed class DesktopCompositionRootTests
             .Set(DesktopUploadSectionOptions.DevFakePreUploadCheckEnabledEnvironmentVariable, null)
             .Set(DesktopUploadSectionOptions.DevFakeSiteUploadEnabledEnvironmentVariable, null)
             .Set(DesktopUploadSectionOptions.DevFakeUploadReceiptEnabledEnvironmentVariable, null)
-            .Set(DesktopGroupTreeOptions.DevFakeGroupTreeEnabledEnvironmentVariable, null);
+            .Set(DesktopGroupTreeOptions.DevFakeGroupTreeEnabledEnvironmentVariable, null)
+            .Set(DesktopDirectSiteProviderOptions.ProviderKeyEnvironmentVariable, null)
+            .Set(DesktopDirectSiteProviderOptions.ProviderBaseAddressEnvironmentVariable, null);
 
         using var services = DesktopCompositionRoot.BuildServicesFromEnvironment();
 
@@ -583,7 +585,9 @@ public sealed class DesktopCompositionRootTests
             .Set(DesktopAuthOptions.ControlPlaneBaseAddressEnvironmentVariable, "https://control-plane.local")
             .Set(DesktopAuthOptions.DevFakeAuthEnabledEnvironmentVariable, "true")
             .Set(DesktopUploadSectionOptions.DevFakeSiteUploadEnabledEnvironmentVariable, "true")
-            .Set(DesktopUploadSectionOptions.DevFakeUploadReceiptEnabledEnvironmentVariable, "true");
+            .Set(DesktopUploadSectionOptions.DevFakeUploadReceiptEnabledEnvironmentVariable, "true")
+            .Set(DesktopDirectSiteProviderOptions.ProviderKeyEnvironmentVariable, "korobochka-direct")
+            .Set(DesktopDirectSiteProviderOptions.ProviderBaseAddressEnvironmentVariable, "https://upload.korobochka.local");
 
         using var services = DesktopCompositionRoot.BuildServicesFromEnvironment();
 
@@ -597,6 +601,9 @@ public sealed class DesktopCompositionRootTests
         Assert.True(services.GetRequiredService<DesktopUploadSectionViewModel>().IsLiveControlPlaneUploadReceiptEnabled);
         Assert.False(services.GetRequiredService<DesktopUploadSectionViewModel>().IsDevFakeSiteUploadEnabled);
         Assert.False(services.GetRequiredService<DesktopUploadSectionViewModel>().IsDevFakeUploadReceiptEnabled);
+        Assert.True(services.GetRequiredService<DesktopDirectSiteProviderOptions>().IsProviderConfigPresent);
+        Assert.True(services.GetRequiredService<DesktopDirectSiteProviderOptions>().IsProviderConfigValid);
+        Assert.False(services.GetRequiredService<DesktopDirectSiteProviderOptions>().IsDirectSiteUploadAvailable);
         Assert.IsType<HttpDesktopPreUploadCheckClient>(
             services.GetRequiredService<IDesktopPreUploadCheckClient>());
         Assert.IsType<DisabledDesktopDirectSiteUploadClient>(
@@ -605,6 +612,62 @@ public sealed class DesktopCompositionRootTests
             services.GetRequiredService<IDesktopUploadReceiptClient>());
     }
 
+    [Fact]
+    public void MissingDirectSiteProviderEnvironmentKeepsProviderDisabled()
+    {
+        using var environment = new EnvironmentVariableScope()
+            .Set(DesktopAuthOptions.ControlPlaneBaseAddressEnvironmentVariable, null)
+            .Set(DesktopDirectSiteProviderOptions.ProviderKeyEnvironmentVariable, null)
+            .Set(DesktopDirectSiteProviderOptions.ProviderBaseAddressEnvironmentVariable, null);
+
+        using var services = DesktopCompositionRoot.BuildServicesFromEnvironment();
+
+        DesktopDirectSiteProviderOptions options = services.GetRequiredService<DesktopDirectSiteProviderOptions>();
+
+        Assert.False(options.IsProviderConfigPresent);
+        Assert.False(options.IsProviderConfigValid);
+        Assert.False(options.IsDirectSiteUploadAvailable);
+        Assert.IsType<DisabledDesktopDirectSiteUploadClient>(
+            services.GetRequiredService<IDesktopDirectSiteUploadClient>());
+    }
+
+    [Fact]
+    public void InvalidDirectSiteProviderEnvironmentDoesNotEscapeCompositionRoot()
+    {
+        using var environment = new EnvironmentVariableScope()
+            .Set(DesktopAuthOptions.ControlPlaneBaseAddressEnvironmentVariable, "https://control-plane.local")
+            .Set(DesktopDirectSiteProviderOptions.ProviderKeyEnvironmentVariable, "korobochka-direct")
+            .Set(DesktopDirectSiteProviderOptions.ProviderBaseAddressEnvironmentVariable, "not a uri");
+
+        using var services = DesktopCompositionRoot.BuildServicesFromEnvironment();
+
+        DesktopDirectSiteProviderOptions options = services.GetRequiredService<DesktopDirectSiteProviderOptions>();
+
+        Assert.True(options.IsProviderConfigPresent);
+        Assert.False(options.IsProviderConfigValid);
+        Assert.False(options.IsDirectSiteUploadAvailable);
+        Assert.IsType<DisabledDesktopDirectSiteUploadClient>(
+            services.GetRequiredService<IDesktopDirectSiteUploadClient>());
+    }
+
+    [Fact]
+    public void ValidDirectSiteProviderConfigIsConfigOnlyAndKeepsDisabledClient()
+    {
+        using var environment = new EnvironmentVariableScope()
+            .Set(DesktopAuthOptions.ControlPlaneBaseAddressEnvironmentVariable, null)
+            .Set(DesktopDirectSiteProviderOptions.ProviderKeyEnvironmentVariable, "korobochka-direct")
+            .Set(DesktopDirectSiteProviderOptions.ProviderBaseAddressEnvironmentVariable, "https://upload.korobochka.local");
+
+        using var services = DesktopCompositionRoot.BuildServicesFromEnvironment();
+
+        DesktopDirectSiteProviderOptions options = services.GetRequiredService<DesktopDirectSiteProviderOptions>();
+
+        Assert.True(options.IsProviderConfigPresent);
+        Assert.True(options.IsProviderConfigValid);
+        Assert.False(options.IsDirectSiteUploadAvailable);
+        Assert.IsType<DisabledDesktopDirectSiteUploadClient>(
+            services.GetRequiredService<IDesktopDirectSiteUploadClient>());
+    }
     [Fact]
     public void ExplicitFakeUploadReceiptFlagDoesNotReplaceConfiguredLiveUploadReceiptClient()
     {
