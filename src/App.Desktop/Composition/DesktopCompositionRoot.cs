@@ -24,7 +24,8 @@ public static class DesktopCompositionRoot
         return BuildServices(
             authOptions,
             DesktopUploadSectionOptions.FromEnvironment(),
-            DesktopGroupTreeOptions.FromAuthOptions(authOptions));
+            DesktopGroupTreeOptions.FromAuthOptions(authOptions),
+            DesktopDirectSiteProviderOptions.FromEnvironment());
     }
 
     public static ServiceProvider BuildServices(DesktopAuthOptions authOptions)
@@ -32,7 +33,8 @@ public static class DesktopCompositionRoot
         return BuildServices(
             authOptions,
             DesktopUploadSectionOptions.Disabled,
-            DesktopGroupTreeOptions.FromAuthOptions(authOptions, devFakeGroupTreeEnabled: null));
+            DesktopGroupTreeOptions.FromAuthOptions(authOptions, devFakeGroupTreeEnabled: null),
+            DesktopDirectSiteProviderOptions.Disabled);
     }
 
     public static ServiceProvider BuildServices(
@@ -42,7 +44,8 @@ public static class DesktopCompositionRoot
         return BuildServices(
             authOptions,
             uploadSectionOptions,
-            DesktopGroupTreeOptions.FromAuthOptions(authOptions, devFakeGroupTreeEnabled: null));
+            DesktopGroupTreeOptions.FromAuthOptions(authOptions, devFakeGroupTreeEnabled: null),
+            DesktopDirectSiteProviderOptions.Disabled);
     }
 
     public static ServiceProvider BuildServices(
@@ -50,9 +53,23 @@ public static class DesktopCompositionRoot
         DesktopUploadSectionOptions uploadSectionOptions,
         DesktopGroupTreeOptions groupTreeOptions)
     {
+        return BuildServices(
+            authOptions,
+            uploadSectionOptions,
+            groupTreeOptions,
+            DesktopDirectSiteProviderOptions.Disabled);
+    }
+
+    public static ServiceProvider BuildServices(
+        DesktopAuthOptions authOptions,
+        DesktopUploadSectionOptions uploadSectionOptions,
+        DesktopGroupTreeOptions groupTreeOptions,
+        DesktopDirectSiteProviderOptions directSiteProviderOptions)
+    {
         ArgumentNullException.ThrowIfNull(authOptions);
         ArgumentNullException.ThrowIfNull(uploadSectionOptions);
         ArgumentNullException.ThrowIfNull(groupTreeOptions);
+        ArgumentNullException.ThrowIfNull(directSiteProviderOptions);
 
         DesktopGroupTreeOptions effectiveGroupTreeOptions = authOptions.IsControlPlaneSignInConfigured
             ? DesktopGroupTreeOptions.EnabledForLiveControlPlane
@@ -74,6 +91,7 @@ public static class DesktopCompositionRoot
         services.AddSingleton(authOptions);
         services.AddSingleton(effectiveUploadSectionOptions);
         services.AddSingleton(effectiveGroupTreeOptions);
+        services.AddSingleton(directSiteProviderOptions);
         services.AddSingleton<IDesktopShellLifecycle, PlaceholderDesktopShellLifecycle>();
         services.AddSingleton<IDesktopSessionStore, DisabledDesktopSessionStore>();
         services.AddSingleton<DesktopSessionState>();
