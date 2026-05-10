@@ -1,0 +1,177 @@
+Title:
+S2-71 Desktop Direct Site Provider Probe / Existing WebsiteIntegration Boundary
+
+Module:
+App.Desktop / direct site provider probe
+
+Owner:
+Coder 1 acting as Coder 2 / Desktop Client
+
+Client form:
+desktop standalone
+
+Type:
+narrow runtime desktop-only provider probe after S2-70 UploadReceipt control-plane client probe
+
+Status:
+Runtime task card created with implementation.
+
+Goal:
+Probe the existing App.Api / Modules.WebsiteIntegration / Modules.VideoUpload / contracts direct-site provider surfaces read-only. Add a live App.Desktop direct-site upload client only if an existing approved direct-site provider boundary, config, and contract are present.
+
+Existing direct-site provider/config/contract found:
+No.
+
+Read-only sources inspected:
+- src/App.Api/Program.cs
+- src/App.Api/appsettings.json
+- src/Modules/WebsiteIntegration/WebsiteIntegrationModule.cs
+- src/Modules/VideoUpload/VideoUploadModule.cs
+- src/Modules/VideoUpload/UploadReceiptSyncService.cs
+- src/BuildingBlocks/Contracts/WebsiteIntegration/SiteGatewayDtos.cs
+- src/BuildingBlocks/Contracts/VideoUpload/PreUploadCheckDtos.cs
+- src/BuildingBlocks/Contracts/VideoUpload/UploadReceiptDtosV1.cs
+- tests/Integration/WebsiteIntegration/WebsiteIntegrationGatewayV1Tests.cs
+- tests/Integration/App.Api/UploadControlPlaneAuthorizationTests.cs
+- tests/Integration/VideoUpload/PreUploadCheckServiceTests.cs
+- tests/Integration/VideoUpload/UploadReceiptServiceTests.cs
+- repository search results for WebsiteIntegration, site gateway, SitePlan, direct site upload, externalVideoId, storageKey
+
+Probe result:
+- WebsiteIntegration currently exposes a Stub gateway for site gateway contracts, receipt preview, download intent preview, status lookup, and reconcile preview.
+- VideoUpload PreUploadCheck currently returns a SitePlan containing provider, externalVideoId, storageKey, and the required App.Api UploadReceipt endpoint.
+- Existing code does not expose an approved direct-site upload endpoint, external provider base address, upload request contract, upload response contract, or media-byte transfer boundary.
+- Therefore S2-71 does not implement HTTP upload and does not invent a production provider.
+
+Scope:
+- Keep the current Russian SignIn UI before authentication.
+- After SignIn, keep the signed-in shell.
+- Preserve S2-68 GroupTree live/fake behavior.
+- Preserve S2-69 PreUploadCheck live/fake behavior.
+- Preserve S2-70 UploadReceipt live/fake behavior.
+- Preserve the S2-65 fake/dev site upload visual-smoke path when no live control-plane base address is configured.
+- Keep IDesktopDirectSiteUploadClient testable.
+- Keep the live direct-site upload client disabled/unavailable because no approved existing provider surface was found.
+- When live control-plane mode is configured, suppress the dev fake site upload guard so a fake site upload cannot become the basis for a live UploadReceipt.
+- Keep Step 5 "Загрузка на сайт" visible with safe preview/deferred behavior.
+- Clear direct-site upload preview/result state on back and sign-out.
+
+Allowed changed areas:
+- docs/task-cards/S2-71_desktop-direct-site-provider-probe-task-card.txt
+- src/App.Desktop/**
+- tests/Unit/App.Desktop.Tests/**
+
+Forbidden changed areas:
+- src/App.Api/**
+- src/App.Worker/**
+- src/App.Web/**
+- src/App.Mobile.Android/**
+- src/App.UI.Shared/**
+- src/BuildingBlocks.Contracts/**
+- src/Modules/**
+- DB migrations
+- .github/workflows/**
+- deploy scripts
+- docs/ops/**
+- committed screenshots or runtime artifacts
+
+Contracts:
+none
+
+Migrations:
+none
+
+Feature flags/env guard:
+- Existing AA_DESKTOP_DEV_FAKE_SITE_UPLOAD_ENABLED=true keeps the fake/dev site upload visual-smoke path only when no live control-plane base address is configured.
+- No live direct-site provider env guard is added because no approved existing provider config/contract was found.
+- Existing AA_DESKTOP_CONTROL_PLANE_BASE_ADDRESS still enables live GroupTree, PreUploadCheck, and UploadReceipt clients from earlier slices.
+- With AA_DESKTOP_CONTROL_PLANE_BASE_ADDRESS configured, fake site upload is suppressed and IDesktopDirectSiteUploadClient remains disabled/unavailable.
+
+Events:
+none
+
+Offline behavior:
+none
+
+Security guardrails:
+- App.Api remains control plane.
+- Video bytes do not go through App.Api.
+- S2-71 sends no real video bytes anywhere.
+- Tests and visual smoke send no real video bytes.
+- Do not log or display accessToken, refreshToken, Authorization, password, raw session id, raw response body, token-like values, or full local file paths.
+- Do not show raw request/response bodies.
+- Screenshots and runtime artifacts stay under C:\CODEX\Temp and are not committed.
+
+Deferred:
+Real direct-site upload remains blocked. A later approved slice must provide the production site provider boundary, endpoint/base-address config, request/response contract, and security rules before App.Desktop can upload bytes to a real provider. Production UploadReceipt after real site upload remains blocked until that direct-site provider is approved.
+
+Explicitly out of scope:
+- App.Api changes.
+- Modules changes.
+- BuildingBlocks.Contracts changes.
+- Backend endpoint/DTO/contract additions.
+- DB migrations.
+- Deploy/workflow changes.
+- App.Web changes.
+- App.Mobile.Android changes.
+- Real direct-site HTTP upload.
+- Video bytes through App.Api.
+- Video bytes in tests or visual smoke.
+- Offline queue.
+- Report draft runtime.
+
+Rollback:
+revert S2-71 PR
+
+Validation:
+- git diff --check
+- dotnet restore AnalyticsAutomation-Core.sln -nologo
+- dotnet format whitespace AnalyticsAutomation-Core.sln --verify-no-changes --no-restore
+- dotnet build src/App.Desktop/App.Desktop.csproj -nologo -v minimal
+- dotnet build AnalyticsAutomation-Core.sln -nologo -v minimal
+- dotnet test tests/Unit/App.Desktop.Tests/App.Desktop.Tests.csproj -nologo -v minimal
+- hidden/control Unicode scan over changed text files
+- App.Desktop fake-auth/fake-group-tree/fake-upload-chain visual smoke with screenshots
+
+Definition of done:
+- Existing direct-site provider/config/contract probe result is documented as not found.
+- No HttpDesktopDirectSiteUploadClient is added.
+- IDesktopDirectSiteUploadClient remains fake/dev or disabled/unavailable only.
+- Fake site upload remains disabled by default.
+- Fake site upload remains enabled only by AA_DESKTOP_DEV_FAKE_SITE_UPLOAD_ENABLED=true in debug/dev-test visual smoke when no live control-plane base address is configured.
+- Configured live control-plane mode suppresses fake site upload and leaves direct-site upload disabled/unavailable.
+- Disabled/no-provider state shows the existing safe deferred Russian message.
+- Request preview remains safe and never shows a full local path or raw body.
+- PreUploadCheck decision continues to gate site upload exactly as before.
+- Back/sign-out clear direct-site upload preview and result state.
+- UploadReceipt behavior is preserved; live UploadReceipt remains available but cannot be reached from a fake site upload in configured live control-plane mode.
+- No App.Api, contracts, migrations, deploy, App.Web, or App.Mobile.Android files are changed.
+- No real video byte upload through App.Api is introduced.
+- No real site upload bytes are sent in tests or visual smoke.
+- Automated App.Desktop unit tests cover default disabled behavior, fake guard behavior, configured live control-plane fake-site suppression, deferred provider status, request-preview safety, reset behavior, and visible-string safety.
+
+Visual-smoke definition of done:
+- Run App.Desktop with:
+  AA_DESKTOP_DEV_FAKE_AUTH_ENABLED=true
+  AA_DESKTOP_DEV_FAKE_GROUP_TREE_ENABLED=true
+  AA_DESKTOP_DEV_FAKE_UPLOAD_FILE_ENABLED=true
+  AA_DESKTOP_DEV_FAKE_UPLOAD_HASH_ENABLED=true
+  AA_DESKTOP_DEV_FAKE_BUSINESS_OBJECT_KEY_ENABLED=true
+  AA_DESKTOP_DEV_FAKE_PREUPLOAD_CHECK_ENABLED=true
+  AA_DESKTOP_DEV_FAKE_SITE_UPLOAD_ENABLED=true
+  AA_DESKTOP_DEV_FAKE_UPLOAD_RECEIPT_ENABLED=true
+- Do not set AA_DESKTOP_CONTROL_PLANE_BASE_ADDRESS.
+- Do not set live site provider config.
+- Use non-secret fake-auth visual-smoke data:
+  login: visual-smoke-user
+  password: visual-smoke-password
+- Capture screenshots under C:\CODEX\Temp\S2-71_DESKTOP_DIRECT_SITE_PROVIDER_PROBE_VISUAL_SMOKE_<timestamp>\.
+- Required screenshots:
+  01_baseline_signin.png
+  02_signed_in_shell.png
+  03_upload_section_after_preuploadcheck_allow.png
+  04_direct_site_upload_request_preview.png
+  05_after_fake_site_upload_success.png
+  06_after_sign_out.png
+- Confirm no password, accessToken, refreshToken, Authorization, raw session id, raw response body, raw path, or real secret is visible.
+- Confirm screenshots and runtime artifacts are not committed.

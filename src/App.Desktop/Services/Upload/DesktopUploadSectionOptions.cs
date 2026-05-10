@@ -267,6 +267,19 @@ public sealed class DesktopUploadSectionOptions
             isDevFakeUploadReceiptEnabled: false);
     }
 
+    public DesktopUploadSectionOptions WithoutDevFakeSiteUpload()
+    {
+        return new DesktopUploadSectionOptions(
+            isLiveControlPlanePreUploadCheckEnabled: IsLiveControlPlanePreUploadCheckEnabled,
+            isLiveControlPlaneUploadReceiptEnabled: IsLiveControlPlaneUploadReceiptEnabled,
+            isDevFakeUploadFileEnabled: IsDevFakeUploadFileEnabled,
+            isDevFakeUploadHashEnabled: IsDevFakeUploadHashEnabled,
+            isDevFakeBusinessObjectKeyEnabled: IsDevFakeBusinessObjectKeyEnabled,
+            isDevFakePreUploadCheckEnabled: IsDevFakePreUploadCheckEnabled,
+            isDevFakeSiteUploadEnabled: false,
+            isDevFakeUploadReceiptEnabled: IsDevFakeUploadReceiptEnabled);
+    }
+
     public override string ToString()
     {
         return $"{nameof(DesktopUploadSectionOptions)} {{ "

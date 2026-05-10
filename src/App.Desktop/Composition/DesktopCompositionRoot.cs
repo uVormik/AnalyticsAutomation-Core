@@ -61,6 +61,7 @@ public static class DesktopCompositionRoot
             ? uploadSectionOptions
                 .WithLiveControlPlanePreUploadCheck()
                 .WithLiveControlPlaneUploadReceipt()
+                .WithoutDevFakeSiteUpload()
             : uploadSectionOptions;
 
         var services = new ServiceCollection();
