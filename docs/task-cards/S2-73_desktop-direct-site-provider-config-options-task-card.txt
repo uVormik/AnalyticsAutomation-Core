@@ -1,0 +1,113 @@
+TASK CARD: S2-73 Desktop Direct Site Provider Config / Options Boundary
+
+Module:
+App.Desktop / direct-site provider configuration
+
+Owner:
+Coder 2 / Desktop Client
+
+Client form:
+desktop standalone
+
+Type:
+narrow runtime implementation task after S2-72 design
+
+Goal:
+Add the App.Desktop provider config/options boundary and disabled/live selection plumbing for a future real direct-site provider.
+
+This task must not implement real byte upload.
+
+Background:
+S2-71 proved that no approved direct-site provider/config/contract exists.
+S2-72 defined the provider boundary design.
+S2-73 starts the implementation sequence with configuration/options and safe selection behavior only.
+
+Allowed changed areas for implementation:
+- src/App.Desktop/**
+- tests/Unit/App.Desktop.Tests/**
+- docs/task-cards/S2-73_desktop-direct-site-provider-config-options-task-card.txt
+
+Forbidden changed areas:
+- src/App.Api/**
+- src/Modules/**
+- src/BuildingBlocks/Contracts/**
+- src/App.Web/**
+- src/App.Mobile.Android/**
+- src/App.UI.Shared/**
+- DB migrations
+- .github/workflows/**
+- deploy scripts
+- docs/ops/**
+- committed screenshots or runtime artifacts
+
+Contracts:
+No shared contract change.
+
+Feature flag / env guard:
+Define or reuse App.Desktop-only configuration inputs for direct-site provider availability.
+No provider secrets may be stored or logged.
+No signed URL or provider credential behavior is implemented in S2-73 unless explicitly approved.
+
+Migration:
+No migration.
+
+Events:
+None.
+
+Offline behavior:
+No runtime offline upload behavior change.
+Real provider upload remains unavailable offline unless later explicitly designed.
+
+Security:
+- Do not print or log password.
+- Do not print or log accessToken.
+- Do not print or log refreshToken.
+- Do not print or log Authorization header.
+- Do not print or log provider credential values.
+- Do not print or log signed URL query secrets.
+- Do not print or log raw local file paths.
+- Do not print or log raw request/response bodies.
+
+Implementation scope:
+- Add provider config/options model for App.Desktop only.
+- Add tests for default disabled provider state.
+- Add tests for missing/invalid provider config.
+- Add tests for live-control-plane mode selecting disabled provider when provider config is absent.
+- Keep IDesktopDirectSiteUploadClient disabled/unavailable when provider config is missing or invalid.
+- Keep fake/dev site upload isolated from configured live control-plane mode.
+- Do not add HttpDesktopDirectSiteUploadClient real upload behavior.
+- Do not send real video bytes.
+- Do not change UploadReceipt contract.
+- Do not change App.Api.
+
+Definition of done:
+- App.Desktop options/config boundary exists and is testable.
+- Missing config produces disabled/unavailable direct-site provider behavior.
+- Invalid config produces disabled/unavailable direct-site provider behavior.
+- Configured live control-plane mode does not enable fake site upload.
+- No real direct-site byte upload is implemented.
+- No App.Api/backend/contracts files are changed.
+- App.Desktop unit tests cover the new config/options behavior.
+- Targeted App.Desktop build/test/format passes.
+
+Validation:
+- dotnet restore src/App.Desktop/App.Desktop.csproj
+- dotnet restore tests/Unit/App.Desktop.Tests/App.Desktop.Tests.csproj
+- dotnet format whitespace src/App.Desktop/App.Desktop.csproj --verify-no-changes --no-restore
+- dotnet format whitespace tests/Unit/App.Desktop.Tests/App.Desktop.Tests.csproj --verify-no-changes --no-restore
+- dotnet build src/App.Desktop/App.Desktop.csproj -nologo -v minimal
+- dotnet build tests/Unit/App.Desktop.Tests/App.Desktop.Tests.csproj -nologo -v minimal
+- dotnet test tests/Unit/App.Desktop.Tests/App.Desktop.Tests.csproj -nologo -v minimal --no-build
+- git diff --check
+
+Rollback:
+Revert S2-73 PR.
+
+NO-GO:
+- Do not implement real HTTP upload.
+- Do not invent provider request/response contract.
+- Do not add App.Api endpoint.
+- Do not add backend/module code.
+- Do not send video bytes through App.Api.
+- Do not add provider credentials or tokens.
+- Do not run live Korobochka smoke for this task.
