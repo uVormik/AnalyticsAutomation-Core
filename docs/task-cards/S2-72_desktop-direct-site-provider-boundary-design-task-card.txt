@@ -1,0 +1,83 @@
+TASK CARD: S2-72 Desktop Direct Site Provider Boundary Design
+
+Module:
+App.Desktop / direct-site provider boundary design
+
+Owner:
+Coder 2 / Desktop Client, with owner/platform/backend coordination required before implementation
+
+Client form:
+desktop standalone
+
+Type:
+docs-only design task after S2-71 probe
+
+Goal:
+Define the approved boundary for a future real direct-site provider used by App.Desktop.
+
+S2-71 result:
+Existing approved direct-site provider/config/contract was not found.
+Real direct-site upload remains blocked/deferred.
+
+Scope:
+- Define provider boundary requirements.
+- Define provider configuration requirements.
+- Define request/response contract requirements.
+- Define auth/token/security/redaction rules.
+- Define UploadReceipt linkage after real provider response.
+- Define explicit rule that video bytes never go through App.Api.
+- Keep this task docs-only.
+
+Allowed changed areas:
+- docs/task-cards/S2-72_desktop-direct-site-provider-boundary-design-task-card.txt
+- docs/design/S2-72_desktop-direct-site-provider-boundary-design.md
+
+Forbidden changed areas:
+- src/App.Desktop/**
+- src/App.Api/**
+- src/Modules/**
+- src/BuildingBlocks/Contracts/**
+- src/App.Web/**
+- src/App.Mobile.Android/**
+- src/App.UI.Shared/**
+- DB migrations
+- .github/workflows/**
+- deploy scripts
+
+Contracts:
+No contract change in this task.
+Future contract changes require separate approval and a separate implementation PR.
+
+Feature flag:
+Not needed for this docs-only design task.
+
+Migration:
+No migration.
+
+Events:
+None.
+
+Offline behavior:
+No runtime behavior change.
+Future offline behavior must not claim absolute duplicate prevention when server is offline.
+
+Security:
+No secrets in docs.
+No token values.
+No Authorization header values.
+No raw local file paths.
+No raw request/response bodies.
+
+Rollback:
+Revert docs-only PR.
+
+Definition of done:
+- Design doc exists.
+- Provider boundary is explicit.
+- Config model requirements are explicit.
+- Upload request/response contract requirements are explicit.
+- Security/redaction rules are explicit.
+- UploadReceipt linkage requirements are explicit.
+- NO-GO conditions are explicit.
+- No production code is changed.
+- No App.Api/backend/contracts code is changed.
