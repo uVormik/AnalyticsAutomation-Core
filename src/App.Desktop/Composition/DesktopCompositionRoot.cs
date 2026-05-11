@@ -92,6 +92,7 @@ public static class DesktopCompositionRoot
         services.AddSingleton(effectiveUploadSectionOptions);
         services.AddSingleton(effectiveGroupTreeOptions);
         services.AddSingleton(directSiteProviderOptions);
+        services.AddSingleton<IDesktopDirectSiteProviderClient, DisabledDesktopDirectSiteProviderClient>();
         services.AddSingleton<IDesktopShellLifecycle, PlaceholderDesktopShellLifecycle>();
         services.AddSingleton<IDesktopSessionStore, DisabledDesktopSessionStore>();
         services.AddSingleton<DesktopSessionState>();
