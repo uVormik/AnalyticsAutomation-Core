@@ -1,0 +1,105 @@
+TASK CARD: S2-74 Desktop Direct Site Provider Request / Response Contract Design
+
+Module:
+App.Desktop / direct-site provider contract design
+
+Owner:
+Coder 2 / Desktop Client, with owner/platform/backend review before implementation
+
+Client form:
+desktop standalone
+
+Type:
+docs-only design task after S2-73 provider config/options boundary
+
+Goal:
+Define the request/response contract boundary for a future direct-site provider upload, without implementing DTO code, App.Api endpoints, provider client code, or byte transfer.
+
+Background:
+S2-71 found no approved direct-site provider/config/contract.
+S2-72 defined provider boundary requirements.
+S2-73 added App.Desktop provider config/options boundary and kept direct-site upload disabled/unavailable.
+S2-74 defines the proposed request/response contract shape and review criteria before any implementation.
+
+Scope:
+- Define proposed direct-site upload request fields.
+- Define proposed direct-site upload response fields.
+- Define error/retry classification requirements.
+- Define idempotency and correlation requirements.
+- Define redaction/security requirements.
+- Define UploadReceipt linkage requirements.
+- Define NO-GO conditions before implementation.
+
+Allowed changed areas:
+- docs/task-cards/S2-74_desktop-direct-site-provider-contract-design-task-card.txt
+- docs/design/S2-74_desktop-direct-site-provider-contract-design.md
+
+Forbidden changed areas:
+- src/App.Desktop/**
+- src/App.Api/**
+- src/Modules/**
+- src/BuildingBlocks/Contracts/**
+- src/App.Web/**
+- src/App.Mobile.Android/**
+- src/App.UI.Shared/**
+- DB migrations
+- .github/workflows/**
+- deploy scripts
+- docs/ops/**
+- committed screenshots or runtime artifacts
+
+Contracts:
+No contract code change in this task.
+No shared DTO is added in S2-74.
+Any future BuildingBlocks.Contracts change requires separate approval and separate implementation PR.
+
+Feature flag:
+Not needed for docs-only design.
+
+Migration:
+No migration.
+
+Events:
+None.
+
+Offline behavior:
+No runtime offline behavior change.
+Future offline/late-sync behavior must be explicitly designed and must not claim absolute duplicate prevention while server is offline.
+
+Security:
+No secrets in docs.
+No token values.
+No Authorization header values.
+No provider credential values.
+No signed URL query secrets.
+No raw local file paths.
+No raw request/response bodies.
+
+Definition of done:
+- Task card exists.
+- Design doc exists.
+- Request fields are proposed.
+- Response fields are proposed.
+- Error/retry/idempotency/correlation rules are proposed.
+- UploadReceipt linkage rules are proposed.
+- Redaction/security rules are explicit.
+- NO-GO conditions are explicit.
+- No production code is changed.
+- No App.Api/backend/contracts code is changed.
+
+Validation:
+- git diff --check
+- docs-only diff scope
+
+Rollback:
+Revert S2-74 docs-only PR.
+
+NO-GO:
+- Do not implement real HTTP upload.
+- Do not add HttpDesktopDirectSiteUploadClient.
+- Do not add shared DTOs.
+- Do not add App.Api endpoint.
+- Do not add backend/module code.
+- Do not send video bytes through App.Api.
+- Do not add provider credentials or tokens.
+- Do not run live Korobochka smoke for this task.
