@@ -1,0 +1,138 @@
+TASK CARD: S2-77 Desktop Direct Site Provider Client Boundary
+
+Module:
+App.Desktop / direct-site provider client boundary
+
+Owner:
+Coder 2 / Desktop Client
+
+Client form:
+desktop standalone
+
+Type:
+narrow runtime implementation task after S2-76 request/response models
+
+Goal:
+Add an App.Desktop-local provider client boundary and disabled/no-live implementation for future direct-site provider integration.
+
+This task must not implement real byte upload.
+
+Background:
+S2-71 found no approved direct-site provider/config/contract.
+S2-72 defined provider boundary requirements.
+S2-73 added provider config/options boundary.
+S2-74 documented request/response contract design.
+S2-75 added upload target value object and redacted diagnostics.
+S2-76 added App.Desktop-local request/response models.
+S2-77 adds a client boundary only, keeping real provider transport disabled.
+
+Allowed changed areas for implementation:
+- src/App.Desktop/**
+- tests/Unit/App.Desktop.Tests/**
+- docs/task-cards/S2-77_desktop-direct-site-provider-client-boundary-task-card.txt
+
+Forbidden changed areas:
+- src/App.Api/**
+- src/Modules/**
+- src/BuildingBlocks/Contracts/**
+- src/App.Web/**
+- src/App.Mobile.Android/**
+- src/App.UI.Shared/**
+- src/App.Worker/**
+- DB migrations
+- .github/workflows/**
+- deploy scripts
+- docs/ops/**
+- committed screenshots or runtime artifacts
+
+Contracts:
+No shared contract change.
+No BuildingBlocks.Contracts DTO.
+No App.Api request/response DTO.
+Client boundary is App.Desktop-local only.
+
+Feature flag / env guard:
+Use only App.Desktop-side config/options boundary from S2-73.
+Do not add credentials, tokens, signed URL generation, or live provider secret behavior.
+
+Migration:
+No migration.
+
+Events:
+None.
+
+Offline behavior:
+No runtime offline upload behavior change.
+Real provider upload remains unavailable offline unless later explicitly designed.
+
+Security:
+- Do not print or log password.
+- Do not print or log accessToken.
+- Do not print or log refreshToken.
+- Do not print or log Authorization header.
+- Do not print or log provider credential values.
+- Do not print or log signed URL query secrets.
+- Do not print or log raw local file paths.
+- Do not print or log raw request/response bodies.
+- Do not include screenshots or runtime artifacts.
+
+Implementation scope:
+- Add App.Desktop-local provider client interface or boundary.
+- Add disabled/unavailable provider client implementation.
+- The disabled client may accept App.Desktop-local request/response models only as local values.
+- Disabled client must not send video bytes.
+- Disabled client must not use HttpClient or HTTP upload primitives.
+- Disabled client must return safe unavailable/failure classification.
+- Disabled client diagnostics must be redacted.
+- Composition may register the disabled provider client if needed.
+- Existing IDesktopDirectSiteUploadClient remains disabled/unavailable.
+- Do not add HttpDesktopDirectSiteUploadClient.
+- Do not implement provider wire HTTP request.
+- Do not implement real provider response parsing.
+- Do not add shared DTOs.
+- Do not add App.Api endpoint.
+- Do not change UploadReceipt contract.
+
+Suggested implementation files:
+- src/App.Desktop/Services/Upload/IDesktopDirectSiteProviderClient.cs
+- src/App.Desktop/Services/Upload/DisabledDesktopDirectSiteProviderClient.cs
+- tests/Unit/App.Desktop.Tests/DisabledDesktopDirectSiteProviderClientTests.cs
+- existing DesktopCompositionRootTests.cs if composition registration is changed
+
+Definition of done:
+- Provider client boundary exists and is testable.
+- Disabled provider client exists and is testable.
+- Disabled provider client returns unavailable/failure response without network activity.
+- Disabled provider client diagnostics are redacted.
+- No HTTP upload primitives are added.
+- No HttpDesktopDirectSiteUploadClient is added.
+- Valid request/response models do not enable real upload.
+- Existing IDesktopDirectSiteUploadClient remains disabled/unavailable.
+- No App.Api/backend/contracts files are changed.
+- Targeted App.Desktop build/test/format passes.
+
+Validation:
+- dotnet restore src/App.Desktop/App.Desktop.csproj
+- dotnet restore tests/Unit/App.Desktop.Tests/App.Desktop.Tests.csproj
+- dotnet format whitespace src/App.Desktop/App.Desktop.csproj --verify-no-changes --no-restore
+- dotnet format whitespace tests/Unit/App.Desktop.Tests/App.Desktop.Tests.csproj --verify-no-changes --no-restore
+- dotnet build src/App.Desktop/App.Desktop.csproj -nologo -v minimal
+- dotnet build tests/Unit/App.Desktop.Tests/App.Desktop.Tests.csproj -nologo -v minimal
+- dotnet test tests/Unit/App.Desktop.Tests/App.Desktop.Tests.csproj -nologo -v minimal --no-build
+- git diff --check
+
+Rollback:
+Revert S2-77 PR.
+
+NO-GO:
+- Do not implement real HTTP upload.
+- Do not add HttpDesktopDirectSiteUploadClient.
+- Do not use HttpClient / SendAsync / PostAsync / PutAsync / MultipartFormDataContent / StreamContent for upload.
+- Do not add shared DTOs.
+- Do not add BuildingBlocks.Contracts types.
+- Do not add App.Api endpoint.
+- Do not add backend/module code.
+- Do not send video bytes through App.Api.
+- Do not send video bytes anywhere.
+- Do not add provider credentials or tokens.
+- Do not run live Korobochka smoke for this task.
