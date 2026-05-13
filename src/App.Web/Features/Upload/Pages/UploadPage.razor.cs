@@ -4,28 +4,26 @@ using App.Web.Features.Upload.Api;
 using App.Web.Features.Upload.ControlPlane;
 using App.Web.Features.Upload.Models;
 using App.Web.Features.Upload.Presentation;
+using App.Web.Features.Upload.Services;
 using App.Web.Features.Upload.SiteGateway;
 
 using BuildingBlocks.Contracts.VideoUpload;
 
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.Extensions.Logging;
 
 namespace App.Web.Features.Upload.Pages;
 
 public partial class UploadPage
 {
+    private const long MaxSelectedVideoFileSizeBytes = 5L * 1024 * 1024 * 1024;
+
     private static readonly Action<ILogger, string, Exception?> LogUnsupportedPreUploadDecision =
         LoggerMessage.Define<string>(
             LogLevel.Warning,
             new EventId(2001, nameof(LogUnsupportedPreUploadDecision)),
             "Unsupported pre-upload decision returned by backend: {Decision}");
-
-    private static readonly Action<ILogger, Exception?> LogUploadScreenPreUploadCheckFailed =
-        LoggerMessage.Define(
-            LogLevel.Error,
-            new EventId(2002, nameof(LogUploadScreenPreUploadCheckFailed)),
-            "Upload screen pre-upload check failed.");
 
     private static readonly Action<ILogger, string, Exception?> LogDirectSiteUploadAdapterDidNotComplete =
         LoggerMessage.Define<string>(
@@ -33,23 +31,17 @@ public partial class UploadPage
             new EventId(2003, nameof(LogDirectSiteUploadAdapterDidNotComplete)),
             "Direct site upload adapter did not complete: {Message}");
 
-    private static readonly Action<ILogger, Exception?> LogDirectSiteUploadAdapterBoundaryFailed =
-        LoggerMessage.Define(
-            LogLevel.Error,
-            new EventId(2004, nameof(LogDirectSiteUploadAdapterBoundaryFailed)),
-            "Direct site upload adapter boundary failed.");
-
     private static readonly Action<ILogger, string, Exception?> LogUnsupportedUploadReceiptStatus =
         LoggerMessage.Define<string>(
             LogLevel.Warning,
             new EventId(2005, nameof(LogUnsupportedUploadReceiptStatus)),
             "Unsupported upload receipt status returned by backend: {Status}");
 
-    private static readonly Action<ILogger, Exception?> LogUploadReceiptSubmissionFailed =
+    private static readonly Action<ILogger, Exception?> LogUploadFlowFailed =
         LoggerMessage.Define(
             LogLevel.Error,
-            new EventId(2006, nameof(LogUploadReceiptSubmissionFailed)),
-            "Upload receipt submission failed.");
+            new EventId(2007, nameof(LogUploadFlowFailed)),
+            "Upload flow failed.");
 
     private static readonly Action<ILogger, Exception?> LogControlPlaneSignInFailed =
         LoggerMessage.Define(
@@ -65,24 +57,18 @@ public partial class UploadPage
 
     private readonly UploadPreCheckFormModel _form = new()
     {
-        UserId = "11111111-1111-1111-1111-111111111111",
-        DeviceId = "22222222-2222-2222-2222-222222222222",
-        GroupNodeId = "33333333-3333-3333-3333-333333333333",
-        BusinessObjectKey = "demo-business-object",
-        FileName = "sample.mp4",
-        SizeBytes = 1048576,
-        ByteSha256 = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         ContentType = "video/mp4",
-        CapturedAtUtc = "2026-04-20T12:00:00Z"
+        CapturedAtUtc = DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture)
     };
 
     private readonly UploadControlPlaneSignInFormModel _signInForm = new();
 
     private bool _isSubmitting;
     private bool _isControlPlaneSubmitting;
+    private string? _statusMessage;
     private string? _errorMessage;
-    private string? _controlPlaneMessage;
     private string? _controlPlaneErrorMessage;
+    private UploadSiteConnectionPhase _phase = UploadSiteConnectionPhase.Idle;
     private VideoPreUploadCheckResponseDto? _preUploadResponse;
     private UploadDecisionPresentationModel? _decisionModel;
     private DirectSiteVideoUploadResult? _directUploadResult;
@@ -91,6 +77,9 @@ public partial class UploadPage
     private UploadReceiptPresentationModel? _receiptModel;
     private UploadControlPlaneSanitizedSession? _sessionSummary;
     private IReadOnlyList<UploadControlPlaneGroupNode> _groupNodes = Array.Empty<UploadControlPlaneGroupNode>();
+    private UploadControlPlaneGroupNode? _selectedGroupNode;
+    private IBrowserFile? _selectedBrowserFile;
+    private UploadSelectedVideoFileMetadata? _selectedFileMetadata;
 
     [Inject]
     public IVideoUploadApi VideoUploadApi { get; set; } = default!;
@@ -105,45 +94,80 @@ public partial class UploadPage
     public IUploadControlPlaneSessionStore SessionStore { get; set; } = default!;
 
     [Inject]
+    public IUploadOnlineStatusProvider OnlineStatusProvider { get; set; } = default!;
+
+    [Inject]
     public ILogger<UploadPage> Logger { get; set; } = default!;
 
-    private bool CanRunDirectUploadBoundary =>
-        !_isSubmitting &&
-        _preUploadResponse is not null &&
-        _decisionModel?.CanContinue == true;
+    private UploadSiteConnectionPhaseModel CurrentPhaseModel =>
+        UploadSiteConnectionPhasePresentation.FromPhase(_phase);
 
-    private bool CanSubmitUploadReceipt =>
-        !_isSubmitting &&
-        _receiptForm is not null &&
-        _directUploadResult?.Succeeded == true;
+    private bool IsBusy =>
+        _isSubmitting ||
+        _isControlPlaneSubmitting ||
+        _phase is UploadSiteConnectionPhase.SigningIn
+            or UploadSiteConnectionPhase.LoadingGroups
+            or UploadSiteConnectionPhase.HashingFile
+            or UploadSiteConnectionPhase.Precheck
+            or UploadSiteConnectionPhase.LocalSiteUpload
+            or UploadSiteConnectionPhase.ReceiptSubmit;
+
+    private bool CanLoadGroups =>
+        UploadFeatureGate.IsEnabled &&
+        !IsBusy &&
+        _sessionSummary is not null;
+
+    private bool CanStartUploadFlow =>
+        UploadFeatureGate.IsEnabled &&
+        !IsBusy &&
+        _sessionSummary?.UserId is not null &&
+        _selectedGroupNode?.Id.HasValue == true &&
+        _selectedFileMetadata is not null &&
+        !string.IsNullOrWhiteSpace(_form.BusinessObjectKey);
 
     protected override async Task OnInitializedAsync()
     {
+        if (!UploadFeatureGate.IsEnabled)
+        {
+            return;
+        }
+
         await LoadStoredSessionSummaryAsync();
     }
 
     private async Task SignInControlPlaneAsync()
     {
+        if (!EnsureFeatureEnabled() || !await EnsureOnlineAsync())
+        {
+            return;
+        }
+
         _isControlPlaneSubmitting = true;
-        _controlPlaneMessage = null;
+        SetPhase(UploadSiteConnectionPhase.SigningIn, "Signing in to the control plane.");
         _controlPlaneErrorMessage = null;
 
         try
         {
-            var request = UploadControlPlaneSessionFactory.CreateSignInRequest(_signInForm);
-            var response = await UploadControlPlaneApi.SignInAsync(request);
-            var session = UploadControlPlaneSessionFactory.CreateSession(
+            UploadControlPlaneSignInRequest request =
+                UploadControlPlaneSessionFactory.CreateSignInRequest(_signInForm);
+
+            UploadControlPlaneSignInResponse response =
+                await UploadControlPlaneApi.SignInAsync(request);
+
+            UploadControlPlaneSession session = UploadControlPlaneSessionFactory.CreateSession(
                 response,
                 DateTimeOffset.UtcNow);
 
             await SessionStore.SetAsync(session);
             _sessionSummary = session.ToSanitized();
-            _controlPlaneMessage = "Control plane session is ready. Token values are hidden.";
+            ApplySessionToForm(_sessionSummary);
+            SetPhase(UploadSiteConnectionPhase.Idle, "Control plane session ready. Credential values are hidden.");
         }
         catch (Exception exception)
         {
             LogControlPlaneSignInFailed(Logger, exception);
             _controlPlaneErrorMessage = SafeMessage(exception);
+            SetPhase(UploadSiteConnectionPhase.Failed, "Control plane sign-in failed.");
         }
         finally
         {
@@ -154,27 +178,34 @@ public partial class UploadPage
 
     private async Task LoadGroupTreeNodesAsync()
     {
+        if (!EnsureFeatureEnabled() || !await EnsureOnlineAsync())
+        {
+            return;
+        }
+
         _isControlPlaneSubmitting = true;
-        _controlPlaneMessage = null;
+        SetPhase(UploadSiteConnectionPhase.LoadingGroups, "Loading group tree.");
         _controlPlaneErrorMessage = null;
 
         try
         {
-            var session = await SessionStore.GetAsync();
+            UploadControlPlaneSession? session = await SessionStore.GetAsync();
 
             if (session is null || string.IsNullOrWhiteSpace(session.AccessToken))
             {
                 _controlPlaneErrorMessage = "Control plane session is required before group tree load.";
+                SetPhase(UploadSiteConnectionPhase.Failed, "Group tree load stopped.");
                 return;
             }
 
             _groupNodes = await UploadControlPlaneApi.GetGroupTreeNodesAsync(session.AccessToken);
-            _controlPlaneMessage = $"{_groupNodes.Count} group tree nodes loaded.";
+            SetPhase(UploadSiteConnectionPhase.Idle, $"{_groupNodes.Count} group tree nodes loaded.");
         }
         catch (Exception exception)
         {
             LogControlPlaneGroupTreeLoadFailed(Logger, exception);
             _controlPlaneErrorMessage = SafeMessage(exception);
+            SetPhase(UploadSiteConnectionPhase.Failed, "Group tree load failed.");
         }
         finally
         {
@@ -182,17 +213,80 @@ public partial class UploadPage
         }
     }
 
-    private void UseGroupNode(UploadControlPlaneGroupNode node)
+    private void SelectGroupNode(UploadControlPlaneGroupNode node)
     {
-        if (!node.Id.HasValue)
+        if (!UploadGroupNodeSelection.CanSelect(node))
         {
-            _controlPlaneErrorMessage = "Selected group node does not have an id.";
+            _controlPlaneErrorMessage = "Selected group node is not selectable.";
             return;
         }
 
-        _form.GroupNodeId = node.Id.Value.ToString();
-        _controlPlaneMessage = $"GroupNodeId selected: {_form.GroupNodeId}";
+        _selectedGroupNode = node;
+        _form.GroupNodeId = node.Id!.Value.ToString();
         _controlPlaneErrorMessage = null;
+        ResetResult();
+        SetPhase(UploadSiteConnectionPhase.Idle, "Group selected.");
+    }
+
+    private bool CanSelectGroupNode(UploadControlPlaneGroupNode node) =>
+        !IsBusy && UploadGroupNodeSelection.CanSelect(node);
+
+    private async Task HandleVideoFileSelectedAsync(InputFileChangeEventArgs args)
+    {
+        if (!EnsureFeatureEnabled())
+        {
+            return;
+        }
+
+        ResetResult();
+        _selectedBrowserFile = null;
+        _selectedFileMetadata = null;
+
+        if (args.FileCount != 1)
+        {
+            _errorMessage = "Select exactly one video file.";
+            SetPhase(UploadSiteConnectionPhase.Failed, "Video file selection failed.");
+            return;
+        }
+
+        IBrowserFile file = args.File;
+
+        if (file.Size > MaxSelectedVideoFileSizeBytes)
+        {
+            _errorMessage = "Selected video file exceeds the allowed baseline size.";
+            SetPhase(UploadSiteConnectionPhase.Failed, "Video file selection failed.");
+            return;
+        }
+
+        _isSubmitting = true;
+        SetPhase(UploadSiteConnectionPhase.HashingFile, "Hashing selected video file.");
+
+        try
+        {
+            await using Stream stream = file.OpenReadStream(MaxSelectedVideoFileSizeBytes);
+            string sha256 = await UploadSelectedVideoFileMetadataFactory.ComputeSha256HexAsync(stream);
+
+            UploadSelectedVideoFileMetadata metadata = UploadSelectedVideoFileMetadataFactory.Create(
+                file.Name,
+                file.Size,
+                file.ContentType,
+                sha256,
+                file.LastModified);
+
+            _selectedBrowserFile = file;
+            _selectedFileMetadata = metadata;
+            UploadPreCheckFormAutoFill.ApplySelectedFile(_form, metadata);
+            SetPhase(UploadSiteConnectionPhase.Idle, "Video file metadata ready.");
+        }
+        catch (Exception exception)
+        {
+            _errorMessage = SafeMessage(exception);
+            SetPhase(UploadSiteConnectionPhase.Failed, "Video file processing failed.");
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
     }
 
     private async Task ClearControlPlaneSessionAsync()
@@ -201,88 +295,92 @@ public partial class UploadPage
 
         _sessionSummary = null;
         _groupNodes = Array.Empty<UploadControlPlaneGroupNode>();
-        _controlPlaneMessage = "Control plane session cleared.";
+        _selectedGroupNode = null;
+        _form.UserId = string.Empty;
+        _form.GroupNodeId = string.Empty;
         _controlPlaneErrorMessage = null;
         _signInForm.Password = string.Empty;
+        ResetResult();
+        SetPhase(UploadSiteConnectionPhase.Idle, "Control plane session cleared.");
     }
 
-    private async Task RunPreUploadCheckAsync()
+    private async Task RunUploadFlowAsync()
     {
+        if (!EnsureFeatureEnabled() || !await EnsureOnlineAsync() || !EnsureUploadInputReady())
+        {
+            return;
+        }
+
         _isSubmitting = true;
-        _errorMessage = null;
-        _preUploadResponse = null;
-        _decisionModel = null;
-        _directUploadResult = null;
-        _receiptForm = null;
-        _receiptResponse = null;
-        _receiptModel = null;
+        ResetResult();
 
         try
         {
-            var request = UploadPreCheckRequestFactory.Create(_form);
-            var response = await VideoUploadApi.CheckPreUploadAsync(request);
+            SetPhase(UploadSiteConnectionPhase.Precheck, "Running pre-upload check.");
+            VideoPreUploadCheckRequestDto preCheckRequest = UploadPreCheckRequestFactory.Create(_form);
+            VideoPreUploadCheckResponseDto preCheckResponse =
+                await VideoUploadApi.CheckPreUploadAsync(preCheckRequest);
 
-            _preUploadResponse = response;
-            _decisionModel = UploadDecisionPresentation.FromDecision(response.Decision);
+            _preUploadResponse = preCheckResponse;
+            _decisionModel = UploadDecisionPresentation.FromDecision(preCheckResponse.Decision);
 
             if (_decisionModel.IsUnsupported)
             {
-                LogUnsupportedPreUploadDecision(Logger, response.Decision, null);
+                LogUnsupportedPreUploadDecision(Logger, preCheckResponse.Decision, null);
             }
-        }
-        catch (Exception exception)
-        {
-            LogUploadScreenPreUploadCheckFailed(Logger, exception);
-            _errorMessage = SafeMessage(exception);
-        }
-        finally
-        {
-            _isSubmitting = false;
-        }
-    }
 
-    private async Task RunDirectSiteUploadBoundaryAsync()
-    {
-        if (_preUploadResponse is null)
-        {
-            _errorMessage = "PreUploadCheck must complete before direct site upload boundary can run.";
-            return;
-        }
+            if (!_decisionModel.CanContinue)
+            {
+                SetPhase(UploadSiteConnectionPhase.Blocked, "Pre-upload decision stopped the upload flow.");
+                return;
+            }
 
-        _isSubmitting = true;
-        _errorMessage = null;
-        _directUploadResult = null;
-        _receiptForm = null;
-        _receiptResponse = null;
-        _receiptModel = null;
+            if (!await EnsureOnlineAsync())
+            {
+                return;
+            }
 
-        try
-        {
-            var draft = new DirectSiteVideoUploadDraft(
-                PreUploadCheckId: _preUploadResponse.PreUploadCheckId,
-                FileName: _form.FileName,
-                SizeBytes: _form.SizeBytes,
-                ByteSha256: _form.ByteSha256,
-                ContentType: _form.ContentType);
-
-            await using var content = new MemoryStream(Array.Empty<byte>());
-            var uploadResult = await DirectSiteVideoUploadAdapter.UploadAsync(draft, content);
+            SetPhase(UploadSiteConnectionPhase.LocalSiteUpload, "Running local direct-site upload boundary.");
+            DirectSiteVideoUploadResult uploadResult = await RunDirectSiteUploadBoundaryAsync();
 
             _directUploadResult = uploadResult;
 
-            if (uploadResult.Succeeded)
-            {
-                _receiptForm = CreateReceiptForm(uploadResult);
-            }
-            else
+            if (!uploadResult.Succeeded)
             {
                 LogDirectSiteUploadAdapterDidNotComplete(Logger, uploadResult.Message, null);
+                _errorMessage = UploadControlPlaneErrorRedactor.Redact(uploadResult.Message);
+                SetPhase(UploadSiteConnectionPhase.Failed, "Local direct-site upload boundary failed.");
+                return;
             }
+
+            _receiptForm = CreateReceiptForm(uploadResult);
+
+            SetPhase(UploadSiteConnectionPhase.ReceiptSubmit, "Submitting upload receipt.");
+            VideoUploadReceiptRequestDto receiptRequest = UploadReceiptRequestFactory.Create(_receiptForm);
+            VideoUploadReceiptResponseDto receiptResponse =
+                await VideoUploadApi.SubmitUploadReceiptAsync(receiptRequest);
+
+            _receiptResponse = receiptResponse;
+            _receiptModel = UploadReceiptPresentation.FromStatus(receiptResponse.Status);
+
+            if (_receiptModel.IsUnsupported)
+            {
+                LogUnsupportedUploadReceiptStatus(Logger, receiptResponse.Status, null);
+            }
+
+            SetPhase(
+                _receiptModel.IsAccepted
+                    ? UploadSiteConnectionPhase.Success
+                    : UploadSiteConnectionPhase.Failed,
+                _receiptModel.IsAccepted
+                    ? "Upload receipt confirmed."
+                    : "Upload receipt was not accepted.");
         }
         catch (Exception exception)
         {
-            LogDirectSiteUploadAdapterBoundaryFailed(Logger, exception);
+            LogUploadFlowFailed(Logger, exception);
             _errorMessage = SafeMessage(exception);
+            SetPhase(UploadSiteConnectionPhase.Failed, "Upload flow failed.");
         }
         finally
         {
@@ -290,47 +388,34 @@ public partial class UploadPage
         }
     }
 
-    private async Task SubmitUploadReceiptAsync()
+    private async Task<DirectSiteVideoUploadResult> RunDirectSiteUploadBoundaryAsync()
     {
-        if (_receiptForm is null)
+        if (_preUploadResponse is null)
         {
-            _errorMessage = "UploadReceipt payload is not ready.";
-            return;
+            throw new InvalidOperationException("PreUploadCheck must complete before direct site upload boundary can run.");
         }
 
-        _isSubmitting = true;
-        _errorMessage = null;
-        _receiptResponse = null;
-        _receiptModel = null;
-
-        try
+        if (_selectedBrowserFile is null)
         {
-            var request = UploadReceiptRequestFactory.Create(_receiptForm);
-            var response = await VideoUploadApi.SubmitUploadReceiptAsync(request);
+            throw new InvalidOperationException("Selected video file is required before direct site upload boundary can run.");
+        }
 
-            _receiptResponse = response;
-            _receiptModel = UploadReceiptPresentation.FromStatus(response.Status);
+        DirectSiteVideoUploadDraft draft = new(
+            PreUploadCheckId: _preUploadResponse.PreUploadCheckId,
+            FileName: _form.FileName,
+            SizeBytes: _form.SizeBytes,
+            ByteSha256: _form.ByteSha256,
+            ContentType: _form.ContentType);
 
-            if (_receiptModel.IsUnsupported)
-            {
-                LogUnsupportedUploadReceiptStatus(Logger, response.Status, null);
-            }
-        }
-        catch (Exception exception)
-        {
-            LogUploadReceiptSubmissionFailed(Logger, exception);
-            _errorMessage = SafeMessage(exception);
-        }
-        finally
-        {
-            _isSubmitting = false;
-        }
+        await using Stream content = _selectedBrowserFile.OpenReadStream(MaxSelectedVideoFileSizeBytes);
+
+        return await DirectSiteVideoUploadAdapter.UploadAsync(draft, content);
     }
 
     private UploadReceiptFormModel CreateReceiptForm(DirectSiteVideoUploadResult uploadResult)
     {
-        var now = DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture);
-        var idempotencyKey = Guid.NewGuid().ToString("N", CultureInfo.InvariantCulture);
+        string now = DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture);
+        string idempotencyKey = Guid.NewGuid().ToString("N", CultureInfo.InvariantCulture);
 
         return new UploadReceiptFormModel
         {
@@ -339,9 +424,12 @@ public partial class UploadPage
             UserId = _form.UserId,
             DeviceId = _form.DeviceId,
             GroupNodeId = _form.GroupNodeId,
+            BusinessObjectKey = _form.BusinessObjectKey,
             ExternalVideoId = uploadResult.ExternalVideoId ?? "site-video-not-configured",
+            FileName = _form.FileName,
+            ContentType = _form.ContentType,
             StorageKey = uploadResult.StorageKey ?? "videos/site-video-not-configured.mp4",
-            SiteStatus = uploadResult.SiteStatus ?? "uploaded",
+            SiteStatus = uploadResult.SiteStatus ?? LocalStubDirectSiteVideoUploadAdapter.LocalStubSiteStatus,
             SizeBytes = _form.SizeBytes,
             ByteSha256 = _form.ByteSha256,
             UploadedAtUtc = now
@@ -357,12 +445,96 @@ public partial class UploadPage
         _receiptForm = null;
         _receiptResponse = null;
         _receiptModel = null;
+
+        if (_phase is UploadSiteConnectionPhase.Success
+            or UploadSiteConnectionPhase.Blocked
+            or UploadSiteConnectionPhase.Failed)
+        {
+            SetPhase(UploadSiteConnectionPhase.Idle, "Ready");
+        }
     }
 
     private async Task LoadStoredSessionSummaryAsync()
     {
-        var session = await SessionStore.GetAsync();
+        UploadControlPlaneSession? session = await SessionStore.GetAsync();
         _sessionSummary = session?.ToSanitized();
+        ApplySessionToForm(_sessionSummary);
+    }
+
+    private bool EnsureFeatureEnabled()
+    {
+        if (UploadFeatureGate.IsEnabled)
+        {
+            return true;
+        }
+
+        _errorMessage = "Upload UI baseline is disabled by feature flag.";
+        SetPhase(UploadSiteConnectionPhase.Failed, "Feature flag is off.");
+        return false;
+    }
+
+    private async Task<bool> EnsureOnlineAsync()
+    {
+        bool isOnline = await OnlineStatusProvider.IsOnlineAsync();
+
+        if (isOnline)
+        {
+            return true;
+        }
+
+        _errorMessage = "Online connection is required for this upload baseline.";
+        SetPhase(UploadSiteConnectionPhase.Failed, "Browser is offline or online status is unavailable.");
+        return false;
+    }
+
+    private bool EnsureUploadInputReady()
+    {
+        if (_sessionSummary?.UserId is null)
+        {
+            _errorMessage = "Control plane session with user id is required.";
+            SetPhase(UploadSiteConnectionPhase.Failed, "Upload input is incomplete.");
+            return false;
+        }
+
+        if (_selectedGroupNode?.Id is null)
+        {
+            _errorMessage = "Selectable group is required.";
+            SetPhase(UploadSiteConnectionPhase.Failed, "Upload input is incomplete.");
+            return false;
+        }
+
+        if (_selectedFileMetadata is null || _selectedBrowserFile is null)
+        {
+            _errorMessage = "Selected video file is required.";
+            SetPhase(UploadSiteConnectionPhase.Failed, "Upload input is incomplete.");
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(_form.BusinessObjectKey))
+        {
+            _errorMessage = "Business object key is required.";
+            SetPhase(UploadSiteConnectionPhase.Failed, "Upload input is incomplete.");
+            return false;
+        }
+
+        ApplySessionToForm(_sessionSummary);
+        _form.GroupNodeId = _selectedGroupNode.Id.Value.ToString();
+
+        return true;
+    }
+
+    private void ApplySessionToForm(UploadControlPlaneSanitizedSession? session)
+    {
+        if (session?.UserId is not null)
+        {
+            _form.UserId = session.UserId.Value.ToString();
+        }
+    }
+
+    private void SetPhase(UploadSiteConnectionPhase phase, string? statusMessage)
+    {
+        _phase = phase;
+        _statusMessage = statusMessage;
     }
 
     private static string SafeMessage(Exception exception) =>
@@ -376,4 +548,7 @@ public partial class UploadPage
         "info" => "alert alert-info mt-3",
         _ => "alert alert-secondary mt-3"
     };
+
+    private static string DisplayValue(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? "Not set" : value;
 }

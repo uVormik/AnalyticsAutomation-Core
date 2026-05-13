@@ -1,0 +1,95 @@
+TASK CARD: C2-S2-40 Web Upload UI Site Connection Baseline
+
+Owner:
+Coder 2 / Web
+
+Branch:
+feature/web-upload-ui-site-connection-s2-40
+
+Base:
+current origin/main at execution time: bf46a3e57ebf075e1f7aa838ca40c7f45e7d2a4a
+
+Module:
+App.Web / upload UX
+
+Type:
+module extension + new UI capability
+
+Goal:
+Implement a web/PWA UI baseline for site connection and video upload through the existing web upload control plane touchpoints:
+sign-in/session -> group selection -> file pick -> pre-upload check -> direct-site upload adapter boundary/stub -> upload progress/state -> upload receipt confirmation.
+
+What changes / backend:
+None.
+
+What changes / web:
+Only App.Web upload UX, page state, progress/error/success states, session surface, group selection, file pick, and minimal navigation entry if needed.
+
+What changes / mobile:
+None in this task; preserve compatibility through existing contracts only.
+
+What changes / worker:
+None.
+
+What changes / db:
+None.
+
+Audit:
+Do not introduce new backend audit requirements; rely on existing upload/auth receipt surfaces.
+
+Feature flag:
+- Add a new web feature flag: App.Web.Upload.SiteConnectionBaselineEnabled.
+- Default state: off.
+- Kill switch is required: when disabled, hide the route/navigation entry and prevent the UI upload flow from starting.
+- Keep the flag local to the web UI implementation unless a later approved coordination step expands scope.
+
+Events:
+No new internal events.
+
+Contracts:
+No contract changes. Reuse existing auth, group tree, pre-upload, upload receipt contracts, and the current direct-site stub boundary.
+
+Migration:
+Not needed.
+
+Offline behavior:
+The new UI is online-only. Offline upload completion is out of scope; when offline, show unavailable state and do not start upload.
+
+Security:
+- Do not log secrets or token values.
+- Do not print bearer/access/refresh token values.
+- Do not send video bytes through App.Api.
+- Use the existing bearer/session flow.
+
+Observability:
+Cover critical UI failure points and sanitized user-facing errors. Do not add new health checks.
+
+Rollback:
+Disable the feature flag and hide the route/navigation entry. No data cleanup is needed.
+
+Explicit out of scope:
+- App.Api changes
+- BuildingBlocks.Contracts changes
+- Modules changes
+- DB migrations
+- App.Mobile.Android changes
+- real live-site provider/runtime
+
+Dependency note:
+The real site provider remains a stub boundary / separate coordination step.
+
+Manual verification for future implementation:
+- target App.Web and App.Web.Tests only
+- verify feature flag off by default
+- verify no video bytes are sent through App.Api
+- verify offline state blocks upload start
+- verify sanitized errors do not expose secrets or bearer values
+
+Definition of done:
+- Future implementation remains web-only: App.Web + App.Web.Tests + docs/handoff.
+- Targeted tests cover page state, feature flag off/default behavior, progress/error/success states, offline-unavailable behavior, and receipt confirmation boundary.
+- No backend changes.
+- No shared contract changes.
+- No Android changes.
+- No DB migration.
+- No real live-site provider/runtime implementation.
